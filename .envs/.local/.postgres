@@ -1,0 +1,7 @@
+# PostgreSQL
+# ------------------------------------------------------------------------------
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+POSTGRES_DB=python_podcast
+POSTGRES_USER=ayVYOYUiXAuVwlpjXkeOQcyWoWKqRzyc
+POSTGRES_PASSWORD=mxbZSOOq4T2z3rTFxxDSK71hsKuzVmfpKrICfVFqBUIrz8Psn47A4P2KF4ZzRhkQ
