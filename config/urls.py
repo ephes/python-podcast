@@ -21,6 +21,9 @@ urlpatterns = [
     ),
     path("accounts/", include("allauth.urls")),
     # Your stuff: custom urls includes go here
+
+    # Cast urls
+    path(r"^cast/", include("cast.urls", namespace="cast")),
 ] + static(
     settings.MEDIA_URL, document_root=settings.MEDIA_ROOT
 )
