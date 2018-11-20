@@ -13,7 +13,7 @@ services:
     depends_on:
       - postgres
     volumes:
-      - .:/app
+      - .:/app:z
     env_file:
       - ./.envs/.local/.django
       - ./.envs/.local/.postgres
@@ -27,7 +27,7 @@ services:
       dockerfile: ./compose/production/postgres/Dockerfile
     image: python_podcast_production_postgres
     volumes:
-      - local_postgres_data:/var/lib/postgresql/data
-      - local_postgres_data_backups:/backups
+      - local_postgres_data:/var/lib/postgresql/data:z
+      - local_postgres_data_backups:/backups:z
     env_file:
       - ./.envs/.local/.postgres
