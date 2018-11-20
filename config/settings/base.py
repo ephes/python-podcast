@@ -38,7 +38,7 @@ USE_TZ = True
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#databases
 DATABASES = {
-    'default': env.db('DATABASE_URL'),
+    'default': env.db('DATABASE_URL', default='postgres:///python_podcast'),
 }
 DATABASES['default']['ATOMIC_REQUESTS'] = True
 
@@ -66,7 +66,11 @@ THIRD_PARTY_APPS = [
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
+    'imagekit',
+    'ckeditor',
+    'ckeditor_uploader',
     'rest_framework',
+    'rest_framework.authtoken',
     'cast.apps.CastConfig',
 ]
 LOCAL_APPS = [
@@ -238,3 +242,29 @@ SOCIALACCOUNT_ADAPTER = 'python_podcast.users.adapters.SocialAccountAdapter'
 
 # Your stuff...
 # ------------------------------------------------------------------------------
+
+# CKEditor
+CKEDITOR_UPLOAD_PATH = 'uploads/ckeditor/'
+CKEDITOR_IMAGE_BACKEND = 'pillow'
+AWS_QUERYSTRING_AUTH = False
+X_FRAME_OPTIONS = 'SAMEORIGIN'
+CKEDITOR_CONFIGS = {
+'default': {
+ 'removePlugins': 'stylesheetparser',
+ 'allowedContent': True,
+ 'enterMode': 2,
+},
+}
+
+# REST
+REST_FRAMEWORK = {
+ # Use Django's standard django.contrib.auth permissions,
+ # or allow read-only access for unauthenticated users.
+ 'DEFAULT_AUTHENTICATION_CLASSES': (
+     'rest_framework.authentication.SessionAuthentication',
+     'rest_framework.authentication.TokenAuthentication',
+ )
+}
+
+# django imagekit
+IMAGEKIT_DEFAULT_CACHEFILE_STRATEGY='imagekit.cachefiles.strategies.Optimistic'

@@ -5,6 +5,9 @@ from django.contrib import admin
 from django.views.generic import TemplateView
 from django.views import defaults as default_views
 
+from rest_framework.documentation import include_docs_urls
+from rest_framework.authtoken import views as authtokenviews
+
 urlpatterns = [
     path("", TemplateView.as_view(template_name="pages/home.html"), name="home"),
     path(
@@ -23,7 +26,9 @@ urlpatterns = [
     # Your stuff: custom urls includes go here
 
     # Cast urls
-    path(r"^cast/", include("cast.urls", namespace="cast")),
+    path('cast/', include('cast.urls', namespace='cast')),
+    path('api/api-token-auth/', authtokenviews.obtain_auth_token),
+    path('docs/', include_docs_urls(title='API service')),
 ] + static(
     settings.MEDIA_URL, document_root=settings.MEDIA_ROOT
 )
