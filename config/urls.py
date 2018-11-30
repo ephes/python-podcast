@@ -27,10 +27,10 @@ urlpatterns = [
 
     # Cast urls
     #path('cast/', include('cast.urls', namespace='cast')),
-    path('', include('cast.urls', namespace='cast')),
     path('api/api-token-auth/', authtokenviews.obtain_auth_token),
     path('docs/', include_docs_urls(title='API service')),
     path("ckeditor/", include('ckeditor_uploader.urls')),
+    path('', include('cast.urls', namespace='cast')),
 ] + static(
     settings.MEDIA_URL, document_root=settings.MEDIA_ROOT
 )
