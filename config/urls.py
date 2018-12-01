@@ -2,14 +2,15 @@ from django.conf import settings
 from django.urls import include, path
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.views.generic import TemplateView
 from django.views import defaults as default_views
+from django.views.generic import TemplateView, RedirectView
 
 from rest_framework.documentation import include_docs_urls
 from rest_framework.authtoken import views as authtokenviews
 
 urlpatterns = [
-    path("", TemplateView.as_view(template_name="pages/home.html"), name="home"),
+    # path("", TemplateView.as_view(template_name="pages/home.html"), name="home"),
+    path("", RedirectView.as_view(url='/show'), name="home"),
     path(
         "about/",
         TemplateView.as_view(template_name="pages/about.html"),
