@@ -6,7 +6,7 @@ postgres_id = (check_output(docker_id_cmd, shell=True)
                .replace("\n", "")[:12])
 print(postgres_id)
 
-backup_cmd = 'docker-compose -f production.yml run postgres backup | cut -d " " -f 4'
+backup_cmd = 'docker-compose -f production.yml run postgres backup | cut -d " " -f 5'
 backup_name = (check_output(backup_cmd, shell=True)
                .decode('utf-8')
                .replace("\n", ""))
