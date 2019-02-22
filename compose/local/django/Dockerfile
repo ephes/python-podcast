@@ -1,4 +1,4 @@
-FROM python:3.6-alpine
+FROM python:3.7-alpine
 
 ENV PYTHONUNBUFFERED 1
 
@@ -13,7 +13,11 @@ RUN apk update \
   # Translations dependencies
   && apk add gettext \
   # https://docs.djangoproject.com/en/dev/ref/django-admin/#dbshell
-  && apk add postgresql-client
+  && apk add postgresql-client \
+  # build essentials
+  && apk add --virtual build-dependencies build-base wget git \
+  # numpy?
+  && apk add py-numpy
 
 # Requirements are installed here to ensure they will be cached.
 COPY ./requirements /requirements
