@@ -18,6 +18,9 @@ django-redis==4.10.0  # https://github.com/niwinz/django-redis
 djangorestframework==3.9.0  # https://github.com/encode/django-rest-framework
 coreapi==2.3.3  # https://github.com/core-api/python-client
 
+# imagekit
+django-imagekit
+
 # blogging framework
 # django-cast
 git+git://github.com/ephes/django-cast.git#egg=django-cast
