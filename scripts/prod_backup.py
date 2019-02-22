@@ -1,3 +1,4 @@
+import os
 from subprocess import check_output
 
 docker_id_cmd = 'docker ps | grep postgres | cut -d " " -f 1'
@@ -13,6 +14,9 @@ backup_name = (check_output(backup_cmd, shell=True)
 # there are weird escape sequences in backup_name
 backup_name = "".join([c for c in backup_name if c.isalnum() or c in set(['.', '_'])])
 print(backup_name)
+
+if not os.path.exists("backups"):
+    os.mkdir("backups")
 
 copy_cmd = "docker cp {}:/backups/{} backups".format(
     postgres_id, backup_name)
