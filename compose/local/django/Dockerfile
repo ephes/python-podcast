@@ -1,23 +1,20 @@
-FROM python:3.7-alpine
+FROM python:3.7.2-slim
 
 ENV PYTHONUNBUFFERED 1
 
-RUN apk update \
-  # psycopg2 dependencies
-  && apk add --virtual build-deps gcc python3-dev musl-dev \
-  && apk add postgresql-dev \
-  # Pillow dependencies
-  && apk add jpeg-dev zlib-dev freetype-dev lcms2-dev openjpeg-dev tiff-dev tk-dev tcl-dev \
-  # CFFI dependencies
-  && apk add libffi-dev py-cffi \
-  # Translations dependencies
-  && apk add gettext \
-  # https://docs.djangoproject.com/en/dev/ref/django-admin/#dbshell
-  && apk add postgresql-client \
-  # build essentials
-  && apk add --virtual build-dependencies build-base wget git \
-  # numpy?
-  && apk add py-numpy
+# being able to use apt
+RUN apt update
+RUN apt -y upgrade
+
+# git
+RUN apt -y install git gcc
+
+# postgres client
+RUN apt -y install libpq-dev
+
+# use bash (pipefail option)
+RUN apt -y install bash
+RUN chsh -s /bin/bash
 
 # Requirements are installed here to ensure they will be cached.
 COPY ./requirements /requirements
@@ -32,5 +29,7 @@ RUN sed -i 's/\r//' /start
 RUN chmod +x /start
 
 WORKDIR /app
+
+ENV DJANGO_READ_DOT_ENV_FILE=True
 
 ENTRYPOINT ["/entrypoint"]
