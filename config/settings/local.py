@@ -1,3 +1,4 @@
+import os
 from .base import *  # noqa
 from .base import env
 
@@ -65,3 +66,41 @@ INSTALLED_APPS += ['django_extensions']  # noqa F405
 
 # Your stuff...
 # ------------------------------------------------------------------------------
+
+# STORAGE CONFIGURATION
+# ------------------------------------------------------------------------------
+# Uploaded Media Files
+# ------------------------
+# See: http://django-storages.readthedocs.io/en/latest/index.html
+INSTALLED_APPS += ['storages', ]
+
+AWS_ACCESS_KEY_ID = env('DJANGO_AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = env('DJANGO_AWS_SECRET_ACCESS_KEY')
+AWS_STORAGE_BUCKET_NAME = env('DJANGO_AWS_STORAGE_BUCKET_NAME')
+AWS_AUTO_CREATE_BUCKET = True
+AWS_QUERYSTRING_AUTH = False
+AWS_S3_REGION_NAME = 'eu-central-1'
+AWS_S3_SIGNATURE_VERSION = 's3v4'
+AWS_S3_FILE_OVERWRITE = True
+
+# logging
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
+        },
+        'python-podcast': {
+            'handlers': ['console',],
+            'propagate': True,
+            'level': 'DEBUG',
+        },
+    },
+}
