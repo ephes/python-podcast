@@ -14,7 +14,7 @@ client = paramiko.SSHClient()
 client.load_system_host_keys()
 client.connect(host, username=username)
 
-ssh_stdin, ssh_stdout, ssh_stderr = client.exec_command("cd site;python scripts/prod_backup.py")
+ssh_stdin, ssh_stdout, ssh_stderr = client.exec_command("cd site;python3 scripts/prod_backup.py")
 stdout_lines = ssh_stdout.read().decode("utf-8").split("\n")
 print(stdout_lines)
 remote_path = None
@@ -32,6 +32,10 @@ sftp.get(remote_path, "backups/{}".format(file_name))
 
 # recreate local docker environment from production
 
+docker_postgres_cmd = "docker-compose -f local.yml up -d postgres"
+detach_postgres_out = check_output(docker_postgres_cmd, shell=True)
+print(detach_postgres_out)
+
 # restore backup dump to database
 docker_id_cmd = 'docker ps | grep postgres | cut -d " " -f 1'
 postgres_id = (check_output(docker_id_cmd, shell=True)
@@ -48,24 +52,24 @@ docker_down = "docker-compose -f local.yml down"
 result = check_output(docker_down, shell=True)
 print(result)
 
-start_postgres_cmd = "docker-compose -f local.yml run django ./manage.py"
+start_postgres_cmd = "docker-compose -f local.yml run --rm django ./manage.py"
 result = check_output(start_postgres_cmd, shell=True)
 print(result)
 
-restore_cmd = "docker-compose -f local.yml run postgres restore {}".format(file_name)
+restore_cmd = "docker-compose -f local.yml run --rm postgres restore {}".format(file_name)
 print(restore_cmd)
 result = check_output(restore_cmd, shell=True)
 print(result)
 
 # remove stale media files
-#delete_stale_cmd = "docker-compose -f local.yml run django ./manage.py s3_stale --delete"
-#delete_stale_cmd = "docker-compose -f local.yml run django ./manage.py s3_stale"
+#delete_stale_cmd = "docker-compose -f local.yml run --rm django ./manage.py s3_stale --delete"
+#delete_stale_cmd = "docker-compose -f local.yml run --rm django ./manage.py s3_stale"
 #print(delete_stale_cmd)
 #result = check_output(delete_stale_cmd, shell=True)
 #print(result)
 
 # get new media files from s3
-backup_s3_cmd = "docker-compose -f local.yml run django ./manage.py s3_backup"
+backup_s3_cmd = "docker-compose -f local.yml run --rm django ./manage.py s3_backup"
 print(backup_s3_cmd)
 result = check_output(backup_s3_cmd, shell=True)
 print(result)
