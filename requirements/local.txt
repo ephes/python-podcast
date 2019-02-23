@@ -25,6 +25,12 @@ django-extensions==2.1.3  # https://github.com/django-extensions/django-extensio
 django-coverage-plugin==1.6.0  # https://github.com/nedbat/django_coverage_plugin
 pytest-django==3.4.3  # https://github.com/pytest-dev/pytest-django
 
+# get backup from production
+paramiko
+
+# read env from .env
+python-dotenv
+
 # notebooks
 jupyter
 numpy
