@@ -1,7 +1,7 @@
 import os
 from subprocess import check_output
 
-docker_id_cmd = 'docker ps | grep postgres | cut -d " " -f 1'
+docker_id_cmd = 'docker ps | grep python_podcast_production_postgres | cut -d " " -f 1'
 postgres_id = (check_output(docker_id_cmd, shell=True)
                .decode('utf-8')
                .replace("\n", "")[:12])
