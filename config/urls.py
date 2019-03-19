@@ -37,10 +37,12 @@ urlpatterns = [
     # Your stuff: custom urls includes go here
 
     # Cast urls
-    #path('cast/', include('cast.urls', namespace='cast')),
     path('api/api-token-auth/', authtokenviews.obtain_auth_token),
     path('docs/', include_docs_urls(title='API service')),
     path("ckeditor/", include('ckeditor_uploader.urls')),
+    # Uploads
+    path("uploads/", include("filepond.urls", namespace="filepond")),
+    # Cast
     path('', include('cast.urls', namespace='cast')),
 ] + static(
     settings.MEDIA_URL, document_root=settings.MEDIA_ROOT
