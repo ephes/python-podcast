@@ -73,6 +73,7 @@ THIRD_PARTY_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'cast.apps.CastConfig',
+    'filepond',  # uploading files via filepond
 ]
 LOCAL_APPS = [
     'python_podcast.users.apps.UsersAppConfig',
