@@ -75,7 +75,10 @@ THIRD_PARTY_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'cast.apps.CastConfig',
+    'fluent_comments',
     'filepond',  # uploading files via filepond
+    'threadedcomments',
+    'django_comments',
 ]
 LOCAL_APPS = [
     'python_podcast.users.apps.UsersAppConfig',
@@ -272,3 +275,8 @@ REST_FRAMEWORK = {
 
 # django imagekit
 IMAGEKIT_DEFAULT_CACHEFILE_STRATEGY='imagekit.cachefiles.strategies.Optimistic'
+
+# Comments
+COMMENTS_APP = 'fluent_comments'
+FLUENT_COMMENTS_EXCLUDE_FIELDS = ('email', 'url', "title")
+CAST_COMMENTS_ENABLED = True
