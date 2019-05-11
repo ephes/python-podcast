@@ -31,7 +31,7 @@ django-filter
 django-storages[boto3]==1.7.1  # https://github.com/jschneier/django-storages
 
 # blogging framework
-# django-cast
-git+git://github.com/ephes/django-cast.git#egg=django-cast
-# django-filepond
-git+git://github.com/ephes/django-filepond.git#egg=django-filepond
+django-cast
+# git+git://github.com/ephes/django-cast.git#egg=django-cast
+django-filepond
+# git+git://github.com/ephes/django-filepond.git#egg=django-filepond
