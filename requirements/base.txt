@@ -25,6 +25,10 @@ django-imagekit
 django-watson
 django-filter
 
+# comments
+django-fluent-comments
+django-threadedcomments
+
 # s3 backup
 #boto3
 #django-storages

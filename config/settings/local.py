@@ -104,3 +104,8 @@ LOGGING = {
         },
     },
 }
+
+# i18n
+LOCALE_PATHS = [
+    "/Users/jochen/projects/django-cast/locale/",
+]
