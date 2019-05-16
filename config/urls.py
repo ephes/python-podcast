@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.urls import include, path
+from django.urls import include, path, re_path
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.views import defaults as default_views
@@ -44,6 +44,8 @@ urlpatterns = [
     path("uploads/", include("filepond.urls", namespace="filepond")),
     # Cast
     path('', include('cast.urls', namespace='cast')),
+    # Threadedcomments
+    re_path(r'^show/comments/', include('fluent_comments.urls')),
 ] + static(
     settings.MEDIA_URL, document_root=settings.MEDIA_ROOT
 )
