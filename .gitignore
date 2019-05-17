@@ -333,3 +333,6 @@ python_podcast/media/
 .env
 .envs/*
 !.envs/.local/
+
+# notebooks
+notebooks
