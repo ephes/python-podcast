@@ -281,3 +281,6 @@ IMAGEKIT_DEFAULT_CACHEFILE_STRATEGY='imagekit.cachefiles.strategies.Optimistic'
 COMMENTS_APP = 'fluent_comments'
 FLUENT_COMMENTS_EXCLUDE_FIELDS = ('email', 'url', "title")
 CAST_COMMENTS_ENABLED = True
+
+# Analytics import requests are bigger than default
+DATA_UPLOAD_MAX_MEMORY_SIZE=26214400  # c.a. 25MB
