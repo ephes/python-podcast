@@ -93,6 +93,8 @@ AWS_S3_OBJECT_PARAMETERS = {
 # ------------------------
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
+from storages.backends.s3boto3 import S3Boto3Storage
+
 
 class CustomS3Boto3Storage(S3Boto3Storage):
     """
@@ -103,7 +105,6 @@ class CustomS3Boto3Storage(S3Boto3Storage):
     https://github.com/matthewwithanm/django-imagekit/issues/391
     """
 
-    location = "media"
     file_overwrite = False
     default_acl = "public-read"
 
