@@ -40,3 +40,6 @@ git+git://github.com/ephes/django-cast.git#egg=django-cast
 # django-cast
 django-filepond
 # git+git://github.com/ephes/django-filepond.git#egg=django-filepond
+
+# dashboard
+plotly
