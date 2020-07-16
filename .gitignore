@@ -336,3 +336,6 @@ python_podcast/media/
 
 # notebooks
 notebooks
+
+# links
+docker-compose.yml
