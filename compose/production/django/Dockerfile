@@ -6,6 +6,8 @@ RUN apt-get update \
   && apt -y upgrade \
   # postgres client psql for python manage.py dbshell
   && apt-get install -y postgresql-client \
+  # gettexts for compilemessages + fluent comments
+  && apt-get install -y gettext \
   && rm -rf /var/lib/apt/lists/*
 
 # Add django user

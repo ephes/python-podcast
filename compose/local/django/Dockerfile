@@ -6,6 +6,8 @@ RUN apt update \
   && apt -y upgrade \
   # postgres client psql for python manage.py dbshell
   && apt-get install -y postgresql-client \
+  # gettexts for compilemessages + fluent comments
+  && apt-get install -y gettext \
   # bash for pipefail option
   && apt -y install bash \
   && chsh -s /bin/bash
