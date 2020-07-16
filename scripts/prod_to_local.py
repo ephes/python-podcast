@@ -10,6 +10,7 @@ load_dotenv(find_dotenv())
 host = os.environ.get("PRODUCTION_HOST")
 username = os.environ.get("PRODUCTION_USERNAME")
 db_name = os.environ.get("DATABASE_NAME")
+db_user = os.environ.get("POSTGRES_USER")
 client = paramiko.SSHClient()
 client.load_system_host_keys()
 client.connect(host, username=username)
@@ -69,21 +70,32 @@ print(result)
 #print(result)
 
 # get new media files from s3
-backup_s3_cmd = "docker-compose -f local.yml run --rm django ./manage.py s3_backup"
-print(backup_s3_cmd)
-result = check_output(backup_s3_cmd, shell=True)
-print(result)
+#backup_s3_cmd = "docker-compose -f local.yml run --rm django ./manage.py s3_backup"
+#print(backup_s3_cmd)
+#result = check_output(backup_s3_cmd, shell=True)
+#print(result)
 
 # recreate local db from production
-dropdb_cmd = f"dropdb {db_name}"
-print(dropdb_cmd)
-result = check_output(dropdb_cmd, shell=True)
-print(result)
+#dropdb_cmd = f"dropdb {db_name}"
+#print(dropdb_cmd)
+#result = check_output(dropdb_cmd, shell=True)
+#print(result)
 
-createdb_cmd = f"createdb {db_name}"
-print(createdb_cmd)
-result = check_output(createdb_cmd, shell=True)
-print(result)
+try:
+    createdb_cmd = f"createuser {db_user}"
+    print(createdb_cmd)
+    result = check_output(createdb_cmd, shell=True)
+    print(result)
+except Exception:
+    pass
+
+try:
+    createdb_cmd = f"createdb {db_name}"
+    print(createdb_cmd)
+    result = check_output(createdb_cmd, shell=True)
+    print(result)
+except Exception:
+    pass
 
 local_restore_cmd = f"gunzip -c {local_path} | psql {db_name} -U {db_name}"
 print(local_restore_cmd)

@@ -1,0 +1,70 @@
+[tool.poetry]
+name = "python-podcast"
+version = "0.1.0"
+description = ""
+authors = ["Jochen Wersdörfer <jochen@wersdoerfer.de>"]
+license = "MIT"
+packages = [
+    { include = "./commands.py" },
+]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+psycopg2 = "^2.8"
+requests = "^2"
+djangorestframework = "^3"
+django-model-utils = "^4"
+django-environ = "^0.4"
+django-crispy-forms = "^1"
+Django = "^3.0"
+numpy = "^1"
+argon2-cffi = "^19"
+typer = "^0.0.8"
+gunicorn = "^20"
+django_redis = "^4"
+django-extensions = "^2"
+pandas = "^1"
+matplotlib = "^3"
+django-allauth = "^0.42.0"
+django-imagekit = "^4.0.2"
+django-filepond = "^0.1.2"
+django-cast = "^0.1.28"
+django-storages = "^1.9.1"
+paramiko = "^2.7.1"
+python-dotenv = "^0.14.0"
+boto3 = "^1.14.21"
+raven = "^6.10.0"
+django-anymail = {extras = ["mailgun"], version = "^7.1.0"}
+whitenoise = "^5.1.0"
+
+[tool.poetry.dev-dependencies]
+Werkzeug = "^0.16"
+pytest = "<5.4"
+pytest-sugar = "^0.9"
+factory-boy = "^2"
+flake8 = "^3"
+coverage = "^5"
+ipdb = "^0.12"
+django-extensions = "^2"
+django-debug-toolbar = "^2.2"
+Sphinx = "^2"
+jupyter = "^1"
+ipython = "^7"
+pytest-django = "^3"
+black = "19.10b0"
+sphinx_rtd_theme = "^0.4"
+
+[tool.poetry.scripts]
+test = "commands:test"
+pytest = "commands:pytest"
+lint = "commands:flake8"
+black = "commands:black"
+coverage = "commands:coverage"
+shell = "commands:shell"
+docs = "commands:docs"
+command = "commands:command"
+attach = "commands:attach"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"

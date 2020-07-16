@@ -1,25 +1,25 @@
-FROM python:3.7.2-slim
+FROM python:3.8-buster
 
 ENV PYTHONUNBUFFERED 1
 
-# being able to use apt
-RUN apt update
-RUN apt -y upgrade
+RUN apt update \
+  && apt -y upgrade \
+  # postgres client psql for python manage.py dbshell
+  && apt-get install -y postgresql-client \
+  # bash for pipefail option
+  && apt -y install bash \
+  && chsh -s /bin/bash
 
-# git
-RUN apt -y install git gcc
+# Install Poetry
+RUN curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python \
+  && mkdir -p /etc/bash_completion.d \
+  && /root/.poetry/bin/poetry completions bash > /etc/bash_completion.d/poetry.bash-completion
 
-# postgres client
-RUN apt -y install libpq-dev
-
-# use bash (pipefail option)
-RUN apt -y install bash
-RUN chsh -s /bin/bash
-
-# Requirements are installed here to ensure they will be cached.
-COPY ./requirements /requirements
-RUN pip install --upgrade pip
-RUN pip install -r /requirements/local.txt
+# Project Initialization
+COPY poetry.lock pyproject.toml /app/
+WORKDIR /app
+RUN /root/.poetry/bin/poetry config virtualenvs.create false \
+    && /root/.poetry/bin/poetry install --no-interaction --no-ansi --no-root
 
 COPY ./compose/production/django/entrypoint /entrypoint
 RUN sed -i 's/\r//' /entrypoint
@@ -28,6 +28,8 @@ RUN chmod +x /entrypoint
 COPY ./compose/local/django/start /start
 RUN sed -i 's/\r//' /start
 RUN chmod +x /start
+
+COPY ./compose/local/django/bashrc /root/.bashrc
 
 WORKDIR /app
 

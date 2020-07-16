@@ -1,0 +1,2 @@
+# poetry should by in the path
+export PATH="$PATH:/root/.poetry/bin"

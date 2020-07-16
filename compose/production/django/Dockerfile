@@ -1,28 +1,27 @@
-FROM python:3.7-alpine
+FROM python:3.8-buster
 
 ENV PYTHONUNBUFFERED 1
 
-RUN apk update \
-  # psycopg2 dependencies
-  && apk add --virtual build-deps gcc python3-dev musl-dev \
-  && apk add postgresql-dev \
-  # Pillow dependencies
-  && apk add jpeg-dev zlib-dev freetype-dev lcms2-dev openjpeg-dev tiff-dev tk-dev tcl-dev \
-  # CFFI dependencies
-  && apk add libffi-dev py-cffi \
-  # ffmpeg
-  && apk add ffmpeg \
-  # git
-  && apk add git
+RUN apt-get update \
+  && apt -y upgrade \
+  # postgres client psql for python manage.py dbshell
+  && apt-get install -y postgresql-client \
+  && rm -rf /var/lib/apt/lists/*
 
-RUN addgroup -S django \
-    && adduser -S -G django django
+# Add django user
+RUN addgroup --system django \
+    && adduser --system --ingroup django django
 
-# Requirements are installed here to ensure they will be cached.
-COPY ./requirements /requirements
-RUN pip install --upgrade pip
-RUN pip install --no-cache-dir -r /requirements/production.txt \
-    && rm -rf /requirements
+# Install Poetry
+RUN curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python \
+    && mkdir -p /etc/bash_completion.d \
+    && /root/.poetry/bin/poetry completions bash > /etc/bash_completion.d/poetry.bash-completion
+
+# Project Initialization
+COPY poetry.lock pyproject.toml /app/
+WORKDIR /app
+RUN /root/.poetry/bin/poetry config virtualenvs.create false \
+    && /root/.poetry/bin/poetry install --no-interaction --no-ansi --no-root --no-dev
 
 COPY ./compose/production/django/entrypoint /entrypoint
 RUN sed -i 's/\r//' /entrypoint
@@ -33,6 +32,8 @@ COPY ./compose/production/django/start /start
 RUN sed -i 's/\r//' /start
 RUN chmod +x /start
 RUN chown django /start
+
+COPY ./compose/production/django/bashrc /home/django/.bashrc
 
 COPY . /app
 

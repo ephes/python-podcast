@@ -1,0 +1,11 @@
+# poetry should by in the path
+export PATH="$PATH:/root/.poetry/bin"
+
+# set env variable to indicate we are in a docker container
+export INSIDE_DOCKER=true
+
+# Aliases
+alias tests="poetry run pytest"
+alias unittests="poetry run test"
+alias flake="poetry run flake8"
+alias docs="poetry run docs"
