@@ -413,6 +413,18 @@ wagtail = "^2.8"
 reference = "d3343cd4a479a8b9f09ea7b58452196c9486a905"
 type = "git"
 url = "https://github.com/ephes/django-cast"
+
+[[package]]
+category = "main"
+description = "Django admin CKEditor integration."
+name = "django-ckeditor"
+optional = false
+python-versions = "*"
+version = "5.9.0"
+
+[package.dependencies]
+django-js-asset = ">=1.2.2"
+
 [[package]]
 category = "main"
 description = "The code formerly known as django.contrib.comments."
@@ -526,6 +538,14 @@ six = "*"
 [package.extras]
 async = ["django-celery (>=3.0)"]
 async_rq = ["django-rq (>=0.6.0)"]
+
+[[package]]
+category = "main"
+description = "script tag with additional attributes for django.forms.Media"
+name = "django-js-asset"
+optional = false
+python-versions = "*"
+version = "1.2.2"
 
 [[package]]
 category = "main"
@@ -2030,7 +2050,7 @@ python-versions = "*"
 version = "1.2.9"
 
 [metadata]
-content-hash = "1257e8fe9372695153d022cdd70755db4ad815a998bc7020532d73d267efb827"
+content-hash = "c9877e937aa4db51c7d67c69bc62373499d7ed85d55010281bf3489be2f75fb7"
 python-versions = "^3.8"
 
 [metadata.files]
@@ -2270,6 +2290,10 @@ django-appconf = [
     {file = "django_appconf-1.0.4-py2.py3-none-any.whl", hash = "sha256:1b1d0e1069c843ebe8ae5aa48ec52403b1440402b320c3e3a206a0907e97bb06"},
 ]
 django-cast = []
+django-ckeditor = [
+    {file = "django-ckeditor-5.9.0.tar.gz", hash = "sha256:e4d112851a72c5bf8b586e1c674d34084cab16d28f2553ad15cc770d1e9639c7"},
+    {file = "django_ckeditor-5.9.0-py2.py3-none-any.whl", hash = "sha256:71c3c7bb46b0cbfb9712ef64af0d2a406eab233f44ecd7c42c24bdfa39ae3bde"},
+]
 django-contrib-comments = []
 django-crispy-forms = [
     {file = "django-crispy-forms-1.9.2.tar.gz", hash = "sha256:f2f1e0fbb458851636447cfb6be1a611b40c8ac9e41a74ba923011378670b43b"},
@@ -2299,6 +2323,10 @@ django-fluent-comments = []
 django-imagekit = [
     {file = "django-imagekit-4.0.2.tar.gz", hash = "sha256:6ec0afb77cdf52cd453c9fc2c10ef350d111edfd6ce53c5977aa8a0e22cee00c"},
     {file = "django_imagekit-4.0.2-py2.py3-none-any.whl", hash = "sha256:304c3379f6a5cac387e47ace11195a603ad3cb01e3e951b45489824d25b00359"},
+]
+django-js-asset = [
+    {file = "django-js-asset-1.2.2.tar.gz", hash = "sha256:c163ae80d2e0b22d8fb598047cd0dcef31f81830e127cfecae278ad574167260"},
+    {file = "django_js_asset-1.2.2-py2.py3-none-any.whl", hash = "sha256:8ec12017f26eec524cab436c64ae73033368a372970af4cf42d9354fcb166bdd"},
 ]
 django-model-utils = [
     {file = "django-model-utils-4.0.0.tar.gz", hash = "sha256:adf09e5be15122a7f4e372cb5a6dd512bbf8d78a23a90770ad0983ee9d909061"},
