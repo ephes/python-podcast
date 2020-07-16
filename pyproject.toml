@@ -36,6 +36,9 @@ boto3 = "^1.14.21"
 raven = "^6.10.0"
 django-anymail = {extras = ["mailgun"], version = "^7.1.0"}
 whitenoise = "^5.1.0"
+cyberpandas = "^1.1.1"
+django-fluent-comments = {git = "https://github.com/ephes/django-fluent-comments"}
+django-contrib-comments = {git = "https://github.com/ephes/django-contrib-comments"}
 
 [tool.poetry.dev-dependencies]
 Werkzeug = "^0.16"
