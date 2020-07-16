@@ -347,7 +347,7 @@ description = "Integrated set of Django applications addressing authentication, 
 name = "django-allauth"
 optional = false
 python-versions = "*"
-version = "0.41.0"
+version = "0.42.0"
 
 [package.dependencies]
 Django = ">=2.0"
@@ -389,16 +389,19 @@ description = ""
 name = "django-cast"
 optional = false
 python-versions = "^3.8"
-version = "0.1.29"
+version = "0.1.30"
 
 [package.dependencies]
 Pillow = "^6"
 coreapi = "^2.3.3"
 django = "^3.0.3"
-django-allauth = "^0.41.0"
+django-allauth = "^0.42.0"
+django-ckeditor = "^5.9.0"
 django-environ = "^0.4.5"
+django-filepond = "^0.1.2"
 django-filter = "^2.2.0"
 django-fluent-comments = "branch master"
+django-imagekit = "^4.0.2"
 django-model-utils = "^4.0.0"
 django-threadedcomments = "^1.2"
 django-watson = "^1.5.4"
@@ -410,10 +413,9 @@ python-slugify = "^4.0.0"
 wagtail = "^2.8"
 
 [package.source]
-reference = "d3343cd4a479a8b9f09ea7b58452196c9486a905"
+reference = "eccc88567555c167db5c3a189c96fab87ac2108f"
 type = "git"
 url = "https://github.com/ephes/django-cast"
-
 [[package]]
 category = "main"
 description = "Django admin CKEditor integration."
@@ -441,7 +443,6 @@ six = "*"
 reference = "75439f9797e6a9bb903f44536413897ea87e8038"
 type = "git"
 url = "https://github.com/ephes/django-contrib-comments"
-
 [[package]]
 category = "main"
 description = "Best way to have Django DRY forms"
@@ -521,7 +522,6 @@ threadedcomments = ["django-threadedcomments (>=1.2)"]
 reference = "109b9896cdc1c32b149a27e7ed254aef09c1b07e"
 type = "git"
 url = "https://github.com/ephes/django-fluent-comments"
-
 [[package]]
 category = "main"
 description = "Automated image processing for Django models."
@@ -1333,7 +1333,7 @@ version = "2.8.5"
 [[package]]
 category = "dev"
 description = "Run a subprocess in a pseudo terminal"
-marker = "python_version >= \"3.3\" and sys_platform != \"win32\" or sys_platform != \"win32\" or python_version >= \"3.4\" and sys_platform != \"win32\" or os_name != \"nt\" or python_version >= \"3.3\" and sys_platform != \"win32\" and (python_version >= \"3.3\" and sys_platform != \"win32\" or sys_platform != \"win32\" or python_version >= \"3.4\" and sys_platform != \"win32\") or python_version >= \"3.4\" and sys_platform != \"win32\" and (python_version >= \"3.3\" and sys_platform != \"win32\" or sys_platform != \"win32\" or python_version >= \"3.4\" and sys_platform != \"win32\")"
+marker = "sys_platform != \"win32\" or os_name != \"nt\" or python_version >= \"3.3\" and sys_platform != \"win32\" or python_version >= \"3.4\" and sys_platform != \"win32\""
 name = "ptyprocess"
 optional = false
 python-versions = "*"
@@ -2050,7 +2050,7 @@ python-versions = "*"
 version = "1.2.9"
 
 [metadata]
-content-hash = "c9877e937aa4db51c7d67c69bc62373499d7ed85d55010281bf3489be2f75fb7"
+content-hash = "9b6f452fa7a165777da05888f94046476230c87044e177445462d705eb0607e1"
 python-versions = "^3.8"
 
 [metadata.files]
@@ -2279,7 +2279,7 @@ django = [
     {file = "Django-3.0.8.tar.gz", hash = "sha256:31a5fbbea5fc71c99e288ec0b2f00302a0a92c44b13ede80b73a6a4d6d205582"},
 ]
 django-allauth = [
-    {file = "django-allauth-0.41.0.tar.gz", hash = "sha256:7ab91485b80d231da191d5c7999ba93170ef1bf14ab6487d886598a1ad03e1d8"},
+    {file = "django-allauth-0.42.0.tar.gz", hash = "sha256:f17209410b7f87da0a84639fd79d3771b596a6d3fc1a8e48ce50dabc7f441d30"},
 ]
 django-anymail = [
     {file = "django-anymail-7.1.0.tar.gz", hash = "sha256:a2bd7a40aa91a1033892630652d3ca8148de70fa2927eb4eebde239fe705f0f4"},

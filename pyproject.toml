@@ -25,7 +25,6 @@ django_redis = "^4"
 django-extensions = "^2"
 pandas = "^1"
 matplotlib = "^3"
-django-allauth = "^0.41"
 django-imagekit = "^4.0.2"
 django-filepond = "^0.1.2"
 django-storages = "^1.9.1"
@@ -39,7 +38,6 @@ cyberpandas = "^1.1.1"
 django-fluent-comments = {git = "https://github.com/ephes/django-fluent-comments"}
 django-contrib-comments = {git = "https://github.com/ephes/django-contrib-comments"}
 django-cast = {git = "https://github.com/ephes/django-cast"}
-django-ckeditor = "^5.9.0"
 
 [tool.poetry.dev-dependencies]
 Werkzeug = "^0.16"
