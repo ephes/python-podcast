@@ -8,6 +8,8 @@ RUN apt-get update \
   && apt-get install -y postgresql-client \
   # gettexts for compilemessages + fluent comments
   && apt-get install -y gettext \
+  # ffmpeg/ffprobe for audio length etc
+  && apt-get install -y ffmpeg \
   && rm -rf /var/lib/apt/lists/*
 
 # Add django user

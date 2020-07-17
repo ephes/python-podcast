@@ -8,6 +8,8 @@ RUN apt update \
   && apt-get install -y postgresql-client \
   # gettexts for compilemessages + fluent comments
   && apt-get install -y gettext \
+  # ffmpeg/ffprobe for audio length etc
+  && apt-get install -y ffmpeg \
   # bash for pipefail option
   && apt -y install bash \
   && chsh -s /bin/bash
