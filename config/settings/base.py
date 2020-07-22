@@ -280,7 +280,7 @@ IMAGEKIT_DEFAULT_CACHEFILE_STRATEGY='imagekit.cachefiles.strategies.Optimistic'
 
 # Comments
 COMMENTS_APP = 'fluent_comments'
-FLUENT_COMMENTS_EXCLUDE_FIELDS = ('email', 'url', "title")
+FLUENT_COMMENTS_EXCLUDE_FIELDS = ('url', "title")
 CAST_COMMENTS_ENABLED = True
 
 # Analytics import requests are bigger than default
