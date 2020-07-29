@@ -330,10 +330,10 @@ description = "A high-level Python Web framework that encourages rapid developme
 name = "django"
 optional = false
 python-versions = ">=3.6"
-version = "3.0.8"
+version = "3.1rc1"
 
 [package.dependencies]
-asgiref = ">=3.2,<4.0"
+asgiref = ">=3.2.10,<3.3.0"
 pytz = "*"
 sqlparse = ">=0.2.2"
 
@@ -416,6 +416,7 @@ wagtail = "^2.8"
 reference = "eccc88567555c167db5c3a189c96fab87ac2108f"
 type = "git"
 url = "https://github.com/ephes/django-cast"
+
 [[package]]
 category = "main"
 description = "Django admin CKEditor integration."
@@ -443,6 +444,7 @@ six = "*"
 reference = "75439f9797e6a9bb903f44536413897ea87e8038"
 type = "git"
 url = "https://github.com/ephes/django-contrib-comments"
+
 [[package]]
 category = "main"
 description = "Best way to have Django DRY forms"
@@ -522,6 +524,7 @@ threadedcomments = ["django-threadedcomments (>=1.2)"]
 reference = "109b9896cdc1c32b149a27e7ed254aef09c1b07e"
 type = "git"
 url = "https://github.com/ephes/django-fluent-comments"
+
 [[package]]
 category = "main"
 description = "Automated image processing for Django models."
@@ -1333,7 +1336,7 @@ version = "2.8.5"
 [[package]]
 category = "dev"
 description = "Run a subprocess in a pseudo terminal"
-marker = "sys_platform != \"win32\" or os_name != \"nt\" or python_version >= \"3.3\" and sys_platform != \"win32\" or python_version >= \"3.4\" and sys_platform != \"win32\""
+marker = "python_version >= \"3.3\" and sys_platform != \"win32\" or sys_platform != \"win32\" or python_version >= \"3.4\" and sys_platform != \"win32\" or os_name != \"nt\" or python_version >= \"3.3\" and sys_platform != \"win32\" and (python_version >= \"3.3\" and sys_platform != \"win32\" or sys_platform != \"win32\" or python_version >= \"3.4\" and sys_platform != \"win32\") or python_version >= \"3.4\" and sys_platform != \"win32\" and (python_version >= \"3.3\" and sys_platform != \"win32\" or sys_platform != \"win32\" or python_version >= \"3.4\" and sys_platform != \"win32\")"
 name = "ptyprocess"
 optional = false
 python-versions = "*"
@@ -2050,7 +2053,7 @@ python-versions = "*"
 version = "1.2.9"
 
 [metadata]
-content-hash = "9b6f452fa7a165777da05888f94046476230c87044e177445462d705eb0607e1"
+content-hash = "558afa1cd264b6bd6cc67bdda601da6b46bcb965898a75599526a7d9cd2e5093"
 python-versions = "^3.8"
 
 [metadata.files]
@@ -2275,8 +2278,8 @@ defusedxml = [
     {file = "defusedxml-0.6.0.tar.gz", hash = "sha256:f684034d135af4c6cbb949b8a4d2ed61634515257a67299e5f940fbaa34377f5"},
 ]
 django = [
-    {file = "Django-3.0.8-py3-none-any.whl", hash = "sha256:5457fc953ec560c5521b41fad9e6734a4668b7ba205832191bbdff40ec61073c"},
-    {file = "Django-3.0.8.tar.gz", hash = "sha256:31a5fbbea5fc71c99e288ec0b2f00302a0a92c44b13ede80b73a6a4d6d205582"},
+    {file = "Django-3.1rc1-py3-none-any.whl", hash = "sha256:e5893668d8981a35a5bed8287c56363f83181566037e5beabe09d2a29c8bf4ce"},
+    {file = "Django-3.1rc1.tar.gz", hash = "sha256:a805872093720658e2b858a51c1b43a634790df073b732832d6b8080c38d6263"},
 ]
 django-allauth = [
     {file = "django-allauth-0.42.0.tar.gz", hash = "sha256:f17209410b7f87da0a84639fd79d3771b596a6d3fc1a8e48ce50dabc7f441d30"},
