@@ -33,4 +33,4 @@ services:
       - ./.envs/.production/.postgres
 
   redis:
-    image: redis:3.2
+    image: redis:latest
