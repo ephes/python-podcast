@@ -35,9 +35,9 @@ raven = "^6.10.0"
 django-anymail = {extras = ["mailgun"], version = "^7.1.0"}
 whitenoise = "^5.1.0"
 cyberpandas = "^1.1.1"
+django-cast = "0.1.28"
 django-fluent-comments = {git = "https://github.com/ephes/django-fluent-comments"}
 django-contrib-comments = {git = "https://github.com/ephes/django-contrib-comments"}
-django-cast = {git = "https://github.com/ephes/django-cast"}
 django-allauth = "^0.42.0"
 
 [tool.poetry.dev-dependencies]
