@@ -35,7 +35,8 @@ raven = "^6.10.0"
 django-anymail = {extras = ["mailgun"], version = "^7.1.0"}
 whitenoise = "^5.1.0"
 cyberpandas = "^1.1.1"
-django-cast = {git = "https://github.com/ephes/django-cast", branch = "master"}
+# django-cast = {git = "https://github.com/ephes/django-cast", branch = "master"}
+django-cast = "*"
 django-fluent-comments = {git = "https://github.com/ephes/django-fluent-comments"}
 django-contrib-comments = {git = "https://github.com/ephes/django-contrib-comments"}
 django-allauth = "^0.42.0"
