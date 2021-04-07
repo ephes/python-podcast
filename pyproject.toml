@@ -29,7 +29,7 @@ django-imagekit = "^4.0.2"
 django-filepond = "^0.1.2"
 django-storages = "^1.9.1"
 paramiko = "^2.7.1"
-python-dotenv = "^0.14.0"
+python-dotenv = "^0.17"
 boto3 = "^1.14.21"
 raven = "^6.10.0"
 django-anymail = {extras = ["mailgun"], version = "^7.1.0"}
