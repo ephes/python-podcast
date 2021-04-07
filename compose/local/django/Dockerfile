@@ -1,4 +1,4 @@
-FROM python:3.9-buster
+FROM python:3.9.4-buster
 
 ENV PYTHONUNBUFFERED 1
 
@@ -24,6 +24,10 @@ COPY poetry.lock pyproject.toml /app/
 WORKDIR /app
 RUN /root/.poetry/bin/poetry config virtualenvs.create false \
     && /root/.poetry/bin/poetry install --no-interaction --no-ansi --no-root
+
+# django-imagekit workaround (exception on save)
+RUN python -m pip uninstall -y django-imagekit \
+    && python -m pip install git+https://github.com/ephes/django-imagekit
 
 COPY ./compose/production/django/entrypoint /entrypoint
 RUN sed -i 's/\r//' /entrypoint
