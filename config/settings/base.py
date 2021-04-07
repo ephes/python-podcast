@@ -285,3 +285,6 @@ CAST_COMMENTS_ENABLED = True
 
 # Analytics import requests are bigger than default
 DATA_UPLOAD_MAX_MEMORY_SIZE=26214400  # c.a. 25MB
+
+# Default auto primary key field (Django 3.2)
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
