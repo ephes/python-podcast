@@ -282,7 +282,8 @@ IMAGEKIT_DEFAULT_CACHEFILE_STRATEGY='imagekit.cachefiles.strategies.Optimistic'
 COMMENTS_APP = 'fluent_comments'
 FLUENT_COMMENTS_EXCLUDE_FIELDS = ('url', "title")
 CAST_COMMENTS_ENABLED = True
-FLUENT_COMMENTS_DEFAULT_MODERATOR = "cast.moderation.Moderator"
+# needed to set via env because analytics cron breaks on cast.moderation
+FLUENT_COMMENTS_DEFAULT_MODERATOR = env("FLUENT_COMMENTS_DEFAULT_MODERATOR", default="cast.moderation.Moderator")
 
 # Analytics import requests are bigger than default
 DATA_UPLOAD_MAX_MEMORY_SIZE=26214400  # c.a. 25MB
