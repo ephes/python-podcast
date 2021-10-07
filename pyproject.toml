@@ -14,14 +14,13 @@ psycopg2 = "^2.8"
 requests = "^2"
 djangorestframework = "^3"
 django-model-utils = "^4"
-django-environ = "^0.4"
-django-crispy-forms = "^1"
+django-environ = "^0.7"
+django-crispy-forms = "*"
 Django = "^3.2"
-numpy = "^1"
-argon2-cffi = "^20"
-typer = "^0.3"
+argon2-cffi = "^21"
+typer = "^0.4"
 gunicorn = "^20"
-django_redis = "^4"
+django_redis = "^5"
 django-extensions = "^3"
 pandas = "^1"
 matplotlib = "^3"
@@ -36,8 +35,8 @@ django-anymail = {extras = ["mailgun"], version = "*"}
 whitenoise = "^5.1.0"
 cyberpandas = "^1.1.1"
 django-cast = {git = "https://github.com/ephes/django-cast", branch = "master"}
-django-fluent-comments = {git = "https://github.com/ephes/django-fluent-comments"}
-django-contrib-comments = {git = "https://github.com/ephes/django-contrib-comments"}
+django-fluent-comments = "*"
+django-contrib-comments = "*"
 
 [tool.poetry.dev-dependencies]
 Werkzeug = "*"
