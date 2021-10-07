@@ -417,7 +417,7 @@ python-slugify = "*"
 type = "git"
 url = "https://github.com/ephes/django-cast"
 reference = "master"
-resolved_reference = "1abf40af2d056d28bb0db27d99163a2d88276661"
+resolved_reference = "34b6aab98f7e9a750116ec2949e9cda4f2dcb127"
 
 [[package]]
 name = "django-ckeditor"
