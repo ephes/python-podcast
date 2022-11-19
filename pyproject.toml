@@ -1,71 +1,17 @@
-[tool.poetry]
-name = "python-podcast"
-version = "0.1.0"
-description = ""
-authors = ["Jochen Wersdörfer <jochen@wersdoerfer.de>"]
-license = "MIT"
-packages = [
-    { include = "./commands.py" },
+[tool.black]
+line-length = 119
+
+[tool.isort]
+profile = "black"
+
+[tool.coverage.run]
+branch = true
+source = ["apps"]
+omit = ["apps/*/tests/*", "apps/*/migrations/*"]
+command_line = "-m pytest"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+filterwarnings = [
+    "ignore::django.utils.deprecation.RemovedInDjango50Warning",
 ]
-
-[tool.poetry.dependencies]
-python = "^3.8"
-psycopg2 = "^2.8"
-requests = "^2"
-djangorestframework = "^3"
-django-model-utils = "^4"
-django-environ = "^0.7"
-django-crispy-forms = "*"
-Django = "^3.2"
-argon2-cffi = "^21"
-typer = "^0.4"
-gunicorn = "^20"
-django_redis = "^5"
-django-extensions = "^3"
-pandas = "^1"
-matplotlib = "^3"
-django-imagekit = "^4.0.2"
-django-filepond = "^0.1.2"
-django-storages = "^1.9.1"
-paramiko = "^2.7.1"
-python-dotenv = "^0.17"
-boto3 = "^1.14.21"
-raven = "^6.10.0"
-django-anymail = {extras = ["mailgun"], version = "*"}
-whitenoise = "^5.1.0"
-cyberpandas = "^1.1.1"
-django-cast = {git = "https://github.com/ephes/django-cast", branch = "master"}
-django-fluent-comments = "*"
-django-contrib-comments = "*"
-
-[tool.poetry.dev-dependencies]
-Werkzeug = "*"
-pytest = "*"
-pytest-sugar = "^0.9"
-factory-boy = "^3"
-flake8 = "^3"
-coverage = "^5"
-ipdb = "*"
-django-extensions = "^3"
-django-debug-toolbar = "*"
-Sphinx = "*"
-jupyter = "^1"
-ipython = "^7"
-pytest-django = "*"
-black = "19.10b0"
-sphinx_rtd_theme = "*"
-
-[tool.poetry.scripts]
-test = "commands:test"
-pytest = "commands:pytest"
-lint = "commands:flake8"
-black = "commands:black"
-coverage = "commands:coverage"
-shell = "commands:shell"
-docs = "commands:docs"
-command = "commands:command"
-attach = "commands:attach"
-
-[build-system]
-requires = ["poetry>=0.12"]
-build-backend = "poetry.masonry.api"
