@@ -26,16 +26,23 @@ DATABASES['default']['CONN_MAX_AGE'] = env.int('CONN_MAX_AGE', default=60)  # no
 
 # CACHES
 # ------------------------------------------------------------------------------
+#CACHES = {
+#    'default': {
+#        'BACKEND': 'django_redis.cache.RedisCache',
+#        'LOCATION': env('REDIS_URL'),
+#        'OPTIONS': {
+#            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+#            # Mimicing memcache behavior.
+#            # http://niwinz.github.io/django-redis/latest/#_memcached_exceptions_behavior
+#            'IGNORE_EXCEPTIONS': True,
+#        }
+#    }
+#}
+
 CACHES = {
-    'default': {
-        'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': env('REDIS_URL'),
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-            # Mimicing memcache behavior.
-            # http://niwinz.github.io/django-redis/latest/#_memcached_exceptions_behavior
-            'IGNORE_EXCEPTIONS': True,
-        }
+    "default": {
+        "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+        "LOCATION": env("DJANGO_CACHE_LOCATION"),
     }
 }
 
@@ -92,6 +99,10 @@ AWS_S3_OBJECT_PARAMETERS = {
 
 # STATIC
 # ------------------------
+WHITENOISE_MIDDLEWARE = [
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+]
+MIDDLEWARE = WHITENOISE_MIDDLEWARE + MIDDLEWARE
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 from storages.backends.s3boto3 import S3Boto3Storage
