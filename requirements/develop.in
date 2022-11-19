@@ -1,0 +1,14 @@
+black
+coverage
+factory-boy
+flake8
+django-debug-toolbar
+django-test-plus
+jupyterlab
+nb_black
+pytest
+pytest-sugar
+pytest-django
+rich
+sphinx_rtd_theme
+typer
