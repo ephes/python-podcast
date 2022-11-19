@@ -8,9 +8,13 @@ from django.views.generic import TemplateView, RedirectView
 from rest_framework.documentation import include_docs_urls
 from rest_framework.authtoken import views as authtokenviews
 
+from wagtail.admin import urls as wagtailadmin_urls
+from wagtail.core import urls as wagtail_urls
+from wagtail.documents import urls as wagtaildocs_urls
+
 urlpatterns = [
     # path("", TemplateView.as_view(template_name="pages/home.html"), name="home"),
-    path("", RedirectView.as_view(url='/show'), name="home"),
+    path("", RedirectView.as_view(url="/show"), name="home"),
     path(
         "about/",
         TemplateView.as_view(template_name="pages/about.html"),
@@ -35,20 +39,23 @@ urlpatterns = [
     ),
     path("accounts/", include("allauth.urls")),
     # Your stuff: custom urls includes go here
-
-    # Cast urls
-    path('api/api-token-auth/', authtokenviews.obtain_auth_token),
-    path('docs/', include_docs_urls(title='API service')),
-    path("ckeditor/", include('ckeditor_uploader.urls')),
+    # Threadedcomments
+    re_path(r"^show/comments/", include("fluent_comments.urls")),
+    # Fulltext Search
+    path("search/", include("watson.urls", namespace="watson")),
+    # rest
+    path("api/api-token-auth/", authtokenviews.obtain_auth_token),
+    path("docs/", include_docs_urls(title="API service")),
     # Uploads
     path("uploads/", include("filepond.urls", namespace="filepond")),
+    # Wagtail
+    path(settings.WAGTAILADMIN_BASE_URL, include(wagtailadmin_urls)),
+    path("documents/", include(wagtaildocs_urls)),
+    path("blogs/", include(wagtail_urls)),  # default is wagtail
     # Cast
-    path('', include('cast.urls', namespace='cast')),
-    # Threadedcomments
-    re_path(r'^show/comments/', include('fluent_comments.urls')),
-] + static(
-    settings.MEDIA_URL, document_root=settings.MEDIA_ROOT
-)
+    path("blogs/", include("cast.urls", namespace="cast")),
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
 
 if settings.DEBUG:
     # This allows the error pages to be debugged during development, just visit
@@ -74,4 +81,6 @@ if settings.DEBUG:
     if "debug_toolbar" in settings.INSTALLED_APPS:
         import debug_toolbar
 
-        urlpatterns = [path("__debug__/", include(debug_toolbar.urls))] + urlpatterns
+        urlpatterns = [
+            path("__debug__/", include(debug_toolbar.urls)),
+        ] + urlpatterns
