@@ -48,12 +48,12 @@ urlpatterns = [
     path("docs/", include_docs_urls(title="API service")),
     # Uploads
     path("uploads/", include("filepond.urls", namespace="filepond")),
+    # Cast
+    path("", include("cast.urls", namespace="cast")),
     # Wagtail
     path(settings.WAGTAILADMIN_BASE_URL, include(wagtailadmin_urls)),
     path("documents/", include(wagtaildocs_urls)),
-    path("blogs/", include(wagtail_urls)),  # default is wagtail
-    # Cast
-    path("blogs/", include("cast.urls", namespace="cast")),
+    path("", include(wagtail_urls)),  # default is wagtail
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 
