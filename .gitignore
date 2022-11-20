@@ -345,3 +345,6 @@ databases
 
 # vault password
 .vault_password
+
+# PyCharm
+.idea
