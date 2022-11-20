@@ -324,7 +324,7 @@ notebook==6.5.2
     # via jupyterlab
 notebook-shim==0.2.2
     # via nbclassic
-numpy==1.23.4
+numpy==1.23.5
     # via
     #   contourpy
     #   matplotlib
@@ -514,7 +514,7 @@ telepath==0.3
     # via wagtail
 tenacity==8.1.0
     # via plotly
-termcolor==2.1.0
+termcolor==2.1.1
     # via pytest-sugar
 terminado==0.17.0
     # via
