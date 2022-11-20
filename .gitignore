@@ -342,3 +342,6 @@ docker-compose.yml
 
 # databases
 databases
+
+# vault password
+.vault_password
