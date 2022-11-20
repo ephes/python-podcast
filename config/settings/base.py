@@ -284,7 +284,7 @@ COMMENTS_APP = "fluent_comments"
 FLUENT_COMMENTS_EXCLUDE_FIELDS = ("url", "title")
 CAST_COMMENTS_ENABLED = True
 # needed to set via env because analytics cron breaks on cast.moderation
-# FLUENT_COMMENTS_DEFAULT_MODERATOR = env("FLUENT_COMMENTS_DEFAULT_MODERATOR", default="cast.moderation.Moderator")
+FLUENT_COMMENTS_DEFAULT_MODERATOR = env("FLUENT_COMMENTS_DEFAULT_MODERATOR", default="cast.moderation.Moderator")
 
 # Default auto primary key field (Django 3.2)
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
