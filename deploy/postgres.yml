@@ -1,0 +1,9 @@
+- hosts: production
+  roles:
+    - role: ephes.postgresql
+
+      become: yes
+      vars:
+        - postgresql_version: 14
+      debug:
+        - msg: postgres has version {{ postgresql_version }}
