@@ -215,10 +215,11 @@ def production_db_to_local():
     [line] = [l for l in output.split("\n") if "sql.gz" in l]
     backup_file_name = line.split('"')[-2]
     backup_path = get_project_root() / "backups" / backup_file_name
-    subprocess.call(["dropdb", "python_podcast"])
-    subprocess.call(["createdb", "python_podcast"])
-    subprocess.call(["createuser", "python_podcast"])
-    command = f"gunzip -c {backup_path} | psql python_podcast"
+    db_name = "python_podcast"
+    subprocess.call(["dropdb", db_name])
+    subprocess.call(["createdb", db_name])
+    subprocess.call(["createuser", db_name])
+    command = f"gunzip -c {backup_path} | psql {db_name}"
     print(command)
     subprocess.call(command, shell=True)
 
