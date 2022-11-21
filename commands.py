@@ -1,3 +1,4 @@
+import contextlib
 import os
 import platform
 import subprocess
@@ -187,6 +188,41 @@ def docs():
         subprocess.call(*command)
     file_url = "file://" + str(Path("docs/_build/html/index.html").resolve())
     webbrowser.open_new_tab(file_url)
+
+
+@contextlib.contextmanager
+def working_directory(path):
+    """Changes working directory and returns to previous on exit."""
+    prev_cwd = Path.cwd().absolute()
+    try:
+        os.chdir(path)
+        yield
+    finally:
+        os.chdir(prev_cwd)
+
+
+@cli.command()
+def production_db_to_local():
+    """
+    Use ansible to create and fetch a backup.
+
+    Make sure only the database is running using:
+      postgres -D databases/postgres
+    """
+    deploy_root = Path(__file__).parent / "deploy"
+    with working_directory(deploy_root):
+        output = subprocess.check_output(["ansible-playbook", "backup_database.yml", "--limit", "production"], text=True)
+    [line] = [l for l in output.split("\n") if "sql.gz" in l]
+    backup_file_name = line.split('"')[-2]
+    backup_path = get_project_root() / "backups" / backup_file_name
+    subprocess.call(["dropdb", "python_podcast"])
+    subprocess.call(["createdb", "python_podcast"])
+    subprocess.call(["createuser", "python_podcast"])
+    command = f"gunzip -c {backup_path} | psql python_podcast"
+    print(command)
+    subprocess.call(command, shell=True)
+
+    print(backup_path)
 
 
 if __name__ == "__main__":

@@ -17,3 +17,4 @@ traefik_config_dir: "/etc/traefik/dynamic"
 traefik_config_path: "{{ traefik_config_dir }}/{{ project_name }}.traefik.yml"
 systemd_unit_path: "/etc/systemd/system/{{ project_name }}.service"
 gunicorn_number_of_workers: 4
+postgres_backup_dir: "/var/lib/postgresql/backups"
