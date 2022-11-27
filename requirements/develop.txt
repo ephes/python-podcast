@@ -46,9 +46,9 @@ black==22.10.0
     #   nb-black
 bleach==5.0.1
     # via nbconvert
-boto3==1.26.13
+boto3==1.26.16
     # via -r requirements/production.in
-botocore==1.29.13
+botocore==1.29.16
     # via
     #   boto3
     #   s3transfer
@@ -184,13 +184,13 @@ executing==1.2.0
     # via stack-data
 factory-boy==3.2.1
     # via -r requirements/develop.in
-faker==15.3.2
+faker==15.3.3
     # via factory-boy
 fastjsonschema==2.16.2
     # via nbformat
 feedparser==6.0.10
     # via django-cast
-flake8==5.0.4
+flake8==6.0.0
     # via -r requirements/develop.in
 fonttools==4.38.0
     # via matplotlib
@@ -221,7 +221,7 @@ ipython-genutils==0.2.0
     #   notebook
 itypes==1.2.0
     # via coreapi
-jedi==0.18.1
+jedi==0.18.2
     # via ipython
 jinja2==3.1.2
     # via
@@ -239,7 +239,7 @@ jmespath==1.0.1
     #   botocore
 json5==0.9.10
     # via jupyterlab-server
-jsonschema==4.17.0
+jsonschema==4.17.1
     # via
     #   jupyterlab-server
     #   nbformat
@@ -259,7 +259,7 @@ jupyter-core==5.0.0
     #   nbconvert
     #   nbformat
     #   notebook
-jupyter-server==1.23.2
+jupyter-server==1.23.3
     # via
     #   jupyterlab
     #   jupyterlab-server
@@ -344,7 +344,7 @@ packaging==21.3
     #   pytest
     #   pytest-sugar
     #   sphinx
-pandas==1.5.1
+pandas==1.5.2
     # via
     #   -r requirements/production.in
     #   cyberpandas
@@ -375,10 +375,12 @@ prometheus-client==0.15.0
     #   jupyter-server
     #   nbclassic
     #   notebook
-prompt-toolkit==3.0.32
+prompt-toolkit==3.0.33
     # via ipython
 psutil==5.9.4
-    # via ipykernel
+    # via
+    #   -r requirements/develop.in
+    #   ipykernel
 psycopg2==2.9.5
     # via -r requirements/production.in
 ptyprocess==0.7.0
@@ -387,11 +389,11 @@ ptyprocess==0.7.0
     #   terminado
 pure-eval==0.2.2
     # via stack-data
-pycodestyle==2.9.1
+pycodestyle==2.10.0
     # via flake8
 pycparser==2.21
     # via cffi
-pyflakes==2.5.0
+pyflakes==3.0.1
     # via flake8
 pygments==2.13.0
     # via
@@ -555,7 +557,7 @@ typer==0.7.0
     #   -r requirements/production.in
 uritemplate==4.1.1
     # via coreapi
-urllib3==1.26.12
+urllib3==1.26.13
     # via
     #   botocore
     #   requests
@@ -580,5 +582,5 @@ willow==1.4.1
     # via wagtail
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==65.6.0
+setuptools==65.6.3
     # via gunicorn
