@@ -9,6 +9,7 @@ nb_black
 pytest
 pytest-sugar
 pytest-django
+psutil
 rich
 sphinx_rtd_theme
 typer
