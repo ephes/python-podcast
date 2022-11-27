@@ -209,6 +209,16 @@ def production_db_to_local():
     Make sure only the database is running using:
       postgres -D databases/postgres
     """
+    import psutil
+
+    for proc in psutil.process_iter(["pid", "name", "username"]):
+        if "python" not in proc.info["name"]:
+            continue
+        cmdline = " ".join(proc.cmdline())
+        if "honcho" in cmdline:
+            print("please stop honcho first and start a single postgres db with postgres -D database/postgres")
+            sys.exit(1)
+
     deploy_root = Path(__file__).parent / "deploy"
     with working_directory(deploy_root):
         output = subprocess.check_output(["ansible-playbook", "backup_database.yml", "--limit", "production"], text=True)
@@ -222,7 +232,6 @@ def production_db_to_local():
     command = f"gunzip -c {backup_path} | psql {db_name}"
     print(command)
     subprocess.call(command, shell=True)
-
     print(backup_path)
 
 
