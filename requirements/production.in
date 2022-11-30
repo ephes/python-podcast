@@ -13,7 +13,7 @@ matplotlib
 pandas
 psycopg2
 python-dotenv
-raven
+sentry-sdk
 requests
 typer
 whitenoise

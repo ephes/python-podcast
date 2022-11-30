@@ -3,6 +3,9 @@ import logging
 
 from tempfile import SpooledTemporaryFile
 
+import sentry_sdk
+from sentry_sdk.integrations.django import DjangoIntegration
+
 from .base import *  # noqa
 from .base import env
 
@@ -200,25 +203,33 @@ INSTALLED_APPS += ['gunicorn']  # noqa F405
 # http://whitenoise.evans.io/en/latest/django.html#enable-whitenoise
 MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')  # noqa F405
 
-# raven
-# ------------------------------------------------------------------------------
-# https://docs.sentry.io/clients/python/integrations/django/
-INSTALLED_APPS += ['raven.contrib.django.raven_compat']  # noqa F405
-MIDDLEWARE = ['raven.contrib.django.raven_compat.middleware.SentryResponseErrorIdMiddleware'] + MIDDLEWARE
-
-# Sentry
-# ------------------------------------------------------------------------------
+# Sentry Configuration
 SENTRY_DSN = env('SENTRY_DSN')
-SENTRY_CLIENT = env('DJANGO_SENTRY_CLIENT', default='raven.contrib.django.raven_compat.DjangoClient')
+sentry_sdk.init(
+    dsn=SENTRY_DSN,
+    integrations=[DjangoIntegration()],
+    # Set traces_sample_rate to 1.0 to capture 100%
+    # of transactions for performance monitoring.
+    # We recommend adjusting this value in production,
+    traces_sample_rate=1.0,
+    # If you wish to associate users to errors (assuming you are using
+    # django.contrib.auth) you may enable sending PII data.
+    send_default_pii=True,
+    # By default the SDK will try to use the SENTRY_RELEASE
+    # environment variable, or infer a git commit
+    # SHA as release, however you may want to set
+    # something more human-readable.
+    # release="myapp@1.0.0",
+)
 
 # LOGGING
 # ------------------------------------------------------------------------------
 LOGGING = {
     'version': 1,
-    'disable_existing_loggers': True,
+    'disable_existing_loggers': False,
     'root': {
         'level': 'WARNING',
-        'handlers': ['sentry'],
+        'handlers': ['console'],
     },
     'formatters': {
         'verbose': {
@@ -227,10 +238,6 @@ LOGGING = {
         },
     },
     'handlers': {
-        'sentry': {
-            'level': 'ERROR',
-            'class': 'raven.contrib.django.raven_compat.handlers.SentryHandler',
-        },
         'console': {
             'level': 'DEBUG',
             'class': 'logging.StreamHandler',
@@ -243,25 +250,10 @@ LOGGING = {
             'handlers': ['console'],
             'propagate': False,
         },
-        'raven': {
-            'level': 'DEBUG',
-            'handlers': ['console'],
-            'propagate': False,
-        },
-        'sentry.errors': {
-            'level': 'DEBUG',
-            'handlers': ['console'],
-            'propagate': False,
-        },
         'django.security.DisallowedHost': {
             'level': 'ERROR',
-            'handlers': ['console', 'sentry'],
+            'handlers': ['console'],
             'propagate': False,
         },
     },
-}
-
-SENTRY_CELERY_LOGLEVEL = env.int('DJANGO_SENTRY_LOG_LEVEL', logging.INFO)
-RAVEN_CONFIG = {
-    'dsn': SENTRY_DSN
 }

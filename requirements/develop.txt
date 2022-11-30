@@ -24,7 +24,7 @@ argon2-cffi-bindings==21.2.0
     # via argon2-cffi
 asgiref==3.5.2
     # via django
-asttokens==2.1.0
+asttokens==2.2.0
     # via stack-data
 attrs==22.1.0
     # via
@@ -46,14 +46,16 @@ black==22.10.0
     #   nb-black
 bleach==5.0.1
     # via nbconvert
-boto3==1.26.16
+boto3==1.26.19
     # via -r requirements/production.in
-botocore==1.29.16
+botocore==1.29.19
     # via
     #   boto3
     #   s3transfer
 certifi==2022.9.24
-    # via requests
+    # via
+    #   requests
+    #   sentry-sdk
 cffi==1.15.1
     # via
     #   argon2-cffi-bindings
@@ -74,13 +76,13 @@ coreschema==0.0.4
     # via coreapi
 coverage==6.5.0
     # via -r requirements/develop.in
-cryptography==38.0.3
+cryptography==38.0.4
     # via pyjwt
 cyberpandas==1.1.1
     # via -r requirements/production.in
 cycler==0.11.0
     # via matplotlib
-debugpy==1.6.3
+debugpy==1.6.4
     # via ipykernel
 decorator==5.1.1
     # via ipython
@@ -210,7 +212,7 @@ ipykernel==6.17.1
     # via
     #   nbclassic
     #   notebook
-ipython==8.6.0
+ipython==8.7.0
     # via
     #   ipykernel
     #   jupyterlab
@@ -239,7 +241,7 @@ jmespath==1.0.1
     #   botocore
 json5==0.9.10
     # via jupyterlab-server
-jsonschema==4.17.1
+jsonschema==4.17.3
     # via
     #   jupyterlab-server
     #   nbformat
@@ -250,12 +252,13 @@ jupyter-client==7.4.7
     #   nbclassic
     #   nbclient
     #   notebook
-jupyter-core==5.0.0
+jupyter-core==5.1.0
     # via
     #   jupyter-client
     #   jupyter-server
     #   jupyterlab
     #   nbclassic
+    #   nbclient
     #   nbconvert
     #   nbformat
     #   notebook
@@ -299,7 +302,7 @@ nbclassic==0.4.8
     # via
     #   jupyterlab
     #   notebook
-nbclient==0.7.0
+nbclient==0.7.2
     # via nbconvert
 nbconvert==7.2.5
     # via
@@ -318,7 +321,6 @@ nest-asyncio==1.5.6
     #   ipykernel
     #   jupyter-client
     #   nbclassic
-    #   nbclient
     #   notebook
 notebook==6.5.2
     # via jupyterlab
@@ -450,8 +452,6 @@ pyzmq==24.0.1
     #   jupyter-server
     #   nbclassic
     #   notebook
-raven==6.10.0
-    # via -r requirements/production.in
 requests==2.28.1
     # via
     #   -r requirements/production.in
@@ -474,6 +474,8 @@ send2trash==1.8.0
     #   jupyter-server
     #   nbclassic
     #   notebook
+sentry-sdk==1.11.1
+    # via -r requirements/production.in
 sgmllib3k==1.0.0
     # via feedparser
 six==1.16.0
@@ -510,7 +512,7 @@ sqlparse==0.4.3
     # via
     #   django
     #   django-debug-toolbar
-stack-data==0.6.1
+stack-data==0.6.2
     # via ipython
 telepath==0.3
     # via wagtail
@@ -538,7 +540,7 @@ tornado==6.2
     #   nbclassic
     #   notebook
     #   terminado
-traitlets==5.5.0
+traitlets==5.6.0
     # via
     #   ipykernel
     #   ipython
@@ -561,6 +563,7 @@ urllib3==1.26.13
     # via
     #   botocore
     #   requests
+    #   sentry-sdk
 wagtail==4.1.1
     # via
     #   django-cast
