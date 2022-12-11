@@ -15,3 +15,8 @@ DJANGO_SETTINGS_MODULE = "config.settings.test"
 filterwarnings = [
     "ignore::django.utils.deprecation.RemovedInDjango50Warning",
 ]
+addopts = [
+    "-ra",
+    "--reuse-db",
+    "--no-migrations",
+]
