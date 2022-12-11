@@ -43,7 +43,6 @@ THIRD_PARTY_APPS = [
     "watson",  # fulltext search
     "indieweb",  # indieauth etc
     "fluent_comments",
-    "filepond",  # uploading files via filepond
     "threadedcomments",
     "django_comments",
     "wagtail.contrib.forms",
@@ -118,8 +117,8 @@ MANAGERS = ADMINS
 # https://docs.djangoproject.com/en/dev/ref/settings/#databases
 DATABASES = {
     "default": env.db("DATABASE_URL", default="postgres:///python_podcast"),
-    "legacy": env.db("LEGACY_DATABASE_URL", default="postgres:///python_podcast_legacy")
-}    
+    "legacy": env.db("LEGACY_DATABASE_URL", default="postgres:///python_podcast_legacy"),
+}
 DATABASES["default"]["ATOMIC_REQUESTS"] = True
 
 # GENERAL

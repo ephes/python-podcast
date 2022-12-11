@@ -3,7 +3,6 @@ boto3
 cyberpandas
 django-anymail[mailgun]
 django-extensions
-django-filepond
 django-indieweb
 django-storages
 django-watson

@@ -1,16 +1,20 @@
 from django.conf import settings
-from django.urls import include, path, re_path
 from django.conf.urls.static import static
 from django.contrib import admin
+from django.urls import include, path
 from django.views import defaults as default_views
-from django.views.generic import TemplateView, RedirectView
-
-from rest_framework.documentation import include_docs_urls
+from django.views.generic import RedirectView, TemplateView
 from rest_framework.authtoken import views as authtokenviews
-
+from rest_framework.documentation import include_docs_urls
 from wagtail.admin import urls as wagtailadmin_urls
+from wagtail.api.v2.views import PagesAPIViewSet
 from wagtail.core import urls as wagtail_urls
 from wagtail.documents import urls as wagtaildocs_urls
+
+# openapi endpoint broken for wagtail until this is fixed:
+# https://github.com/wagtail/wagtail/issues/8583
+PagesAPIViewSet.schema = None
+
 
 urlpatterns = [
     # path("", TemplateView.as_view(template_name="pages/home.html"), name="home"),
@@ -40,14 +44,12 @@ urlpatterns = [
     path("accounts/", include("allauth.urls")),
     # Your stuff: custom urls includes go here
     # Threadedcomments
-    re_path(r"^show/comments/", include("fluent_comments.urls")),
+    path("show/comments/", include("fluent_comments.urls")),
     # Fulltext Search
     path("search/", include("watson.urls", namespace="watson")),
     # rest
     path("api/api-token-auth/", authtokenviews.obtain_auth_token),
-    path("docs/", include_docs_urls(title="API service")),
-    # Uploads
-    path("uploads/", include("filepond.urls", namespace="filepond")),
+    path("docs/", include_docs_urls(title="API service", public=False)),
     # Cast
     path("", include("cast.urls", namespace="cast")),
     # Wagtail
