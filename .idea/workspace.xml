@@ -4,13 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="6bad3b53-5784-45c0-90c3-08ebf028abf5" name="Changes" comment="#16 factory boy interface changed">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/settings/test.py" beforeDir="false" afterPath="$PROJECT_DIR$/config/settings/test.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pyproject.toml" beforeDir="false" afterPath="$PROJECT_DIR$/pyproject.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pytest.ini" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/python_podcast/users/tests/factories.py" beforeDir="false" afterPath="$PROJECT_DIR$/python_podcast/users/tests/factories.py" afterDir="false" />
-    </list>
+    <list default="true" id="6bad3b53-5784-45c0-90c3-08ebf028abf5" name="Changes" comment="dunno how to fix that :/" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -61,7 +55,7 @@
       <updated>1668929674136</updated>
       <workItem from="1668929676158" duration="15093000" />
       <workItem from="1670711229844" duration="1635000" />
-      <workItem from="1670740256517" duration="4416000" />
+      <workItem from="1670740256517" duration="5101000" />
     </task>
     <task id="LOCAL-00001" summary="#15 remove filepond stuff">
       <created>1670740625061</created>
@@ -77,7 +71,21 @@
       <option name="project" value="LOCAL" />
       <updated>1670741569607</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="#16 use faker directly + migrations don't work in tests with wagtail">
+      <created>1670745283939</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1670745283939</updated>
+    </task>
+    <task id="LOCAL-00004" summary="dunno how to fix that :/">
+      <created>1670745329528</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1670745329528</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -97,6 +105,8 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="#15 remove filepond stuff" />
     <MESSAGE value="#16 factory boy interface changed" />
-    <option name="LAST_COMMIT_MESSAGE" value="#16 factory boy interface changed" />
+    <MESSAGE value="#16 use faker directly + migrations don't work in tests with wagtail" />
+    <MESSAGE value="dunno how to fix that :/" />
+    <option name="LAST_COMMIT_MESSAGE" value="dunno how to fix that :/" />
   </component>
 </project>
