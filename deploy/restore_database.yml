@@ -24,7 +24,7 @@
     - name: Make sure gunicorn service is stopped
       systemd:
         state: stopped
-        name: "{{ project_name }}"
+        name: "{{ project_name }}"
 
     - name: Remove the running database
       community.general.postgresql_db:
@@ -70,6 +70,36 @@
         grant_option: false
         privs: all
         objs: ALL_IN_SCHEMA
+      become: true
+      become_user: postgres
+
+    - name: Create postgres function to be able to change owner of db objects
+      postgresql_query:
+        db: "{{ postgres_database }}"
+        query: |
+          CREATE FUNCTION exec(text) returns text language plpgsql volatile
+            AS $f$
+              BEGIN
+                EXECUTE $1;
+                RETURN $1;
+              END;
+          $f$;
+      become: true
+      become_user: postgres
+      ignore_errors: true
+
+    - name: "Change owner of all tables in db to {{ postgres_user }}"
+      postgresql_query:
+        db: "{{ postgres_database }}"
+        query: |
+          SELECT exec('ALTER TABLE ' || quote_ident(s.nspname) || '.' ||
+                      quote_ident(s.relname) || ' OWNER TO "{{ postgres_user }}"')
+            FROM (SELECT nspname, relname
+                    FROM pg_class c JOIN pg_namespace n ON (c.relnamespace = n.oid)
+                   WHERE nspname NOT LIKE E'pg\\_%' AND
+                         nspname <> 'information_schema' AND
+                         relkind IN ('r','S','v') ORDER BY relkind = 'S') s;
+
       become: true
       become_user: postgres
 
