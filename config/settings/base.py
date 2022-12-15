@@ -63,6 +63,7 @@ THIRD_PARTY_APPS = [
 ]
 LOCAL_APPS = [
     "python_podcast.users.apps.UsersAppConfig",
+    "python_podcast.fedi.apps.FediConfig",
     # Your stuff: custom apps go here
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps

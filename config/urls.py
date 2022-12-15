@@ -52,6 +52,8 @@ urlpatterns = [
     path("docs/", include_docs_urls(title="API service", public=False)),
     # Cast
     path("", include("cast.urls", namespace="cast")),
+    # Fediverse redirects etc.
+    path("", include("python_podcast.fedi.urls", namespace="fedi")),
     # Wagtail
     path(settings.WAGTAILADMIN_BASE_URL, include(wagtailadmin_urls)),
     path("documents/", include(wagtaildocs_urls)),

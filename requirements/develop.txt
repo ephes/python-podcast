@@ -48,9 +48,9 @@ black==22.12.0
     #   nb-black
 bleach==5.0.1
     # via nbconvert
-boto3==1.26.28
+boto3==1.26.31
     # via -r requirements/production.in
-botocore==1.29.28
+botocore==1.29.31
     # via
     #   boto3
     #   s3transfer
@@ -152,6 +152,8 @@ django-modelcluster==6.0
     # via wagtail
 django-permissionedforms==0.1
     # via wagtail
+django-proxy==1.2.1
+    # via -r requirements/production.in
 django-storages==1.13.1
     # via -r requirements/production.in
 django-tag-parser==3.2
@@ -472,6 +474,7 @@ requests==2.28.1
     #   coreapi
     #   django-allauth
     #   django-anymail
+    #   django-proxy
     #   jupyterlab-server
     #   python-akismet
     #   requests-oauthlib
@@ -492,7 +495,7 @@ send2trash==1.8.0
     #   jupyter-server
     #   nbclassic
     #   notebook
-sentry-sdk==1.11.1
+sentry-sdk==1.12.0
     # via -r requirements/production.in
 sgmllib3k==1.0.0
     # via feedparser
