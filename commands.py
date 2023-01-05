@@ -17,6 +17,7 @@ def update_via_pip_tools(upgrade: bool):
         base_command.append("--upgrade")
     base_command.extend(
         [
+            "--resolver=backtracking",
             "--allow-unsafe",
             # "--generate-hashes",  # FIXME does not work with repo urls (django-cast)
             "requirements/production.in",
@@ -221,8 +222,10 @@ def production_db_to_local():
 
     deploy_root = Path(__file__).parent / "deploy"
     with working_directory(deploy_root):
-        output = subprocess.check_output(["ansible-playbook", "backup_database.yml", "--limit", "production"], text=True)
-    [line] = [l for l in output.split("\n") if "sql.gz" in l]
+        output = subprocess.check_output(
+            ["ansible-playbook", "backup_database.yml", "--limit", "production"], text=True
+        )
+    [line] = [line for line in output.split("\n") if "sql.gz" in line]
     backup_file_name = line.split('"')[-2]
     backup_path = get_project_root() / "backups" / backup_file_name
     db_name = "python_podcast"
