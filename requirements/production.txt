@@ -14,9 +14,9 @@ asgiref==3.6.0
     # via django
 beautifulsoup4==4.11.1
     # via wagtail
-boto3==1.26.44
+boto3==1.26.45
     # via -r requirements/production.in
-botocore==1.29.44
+botocore==1.29.45
     # via
     #   boto3
     #   s3transfer
@@ -91,7 +91,7 @@ django-filter==22.1
     #   wagtail
 django-fluent-comments==3.0
     # via django-cast
-django-indieweb==0.0.6
+django-indieweb==0.0.7
     # via -r requirements/production.in
 django-model-utils==4.3.1
     # via

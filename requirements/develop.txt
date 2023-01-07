@@ -48,9 +48,9 @@ black==22.12.0
     #   nb-black
 bleach==5.0.1
     # via nbconvert
-boto3==1.26.44
+boto3==1.26.45
     # via -r requirements/production.in
-botocore==1.29.44
+botocore==1.29.45
     # via
     #   boto3
     #   s3transfer
@@ -142,7 +142,7 @@ django-filter==22.1
     #   wagtail
 django-fluent-comments==3.0
     # via django-cast
-django-indieweb==0.0.6
+django-indieweb==0.0.7
     # via -r requirements/production.in
 django-model-utils==4.3.1
     # via
@@ -487,7 +487,7 @@ rfc3339-validator==0.1.4
     # via jsonschema
 rfc3986-validator==0.1.1
     # via jsonschema
-rich==13.0.0
+rich==13.0.1
     # via -r requirements/develop.in
 s3transfer==0.6.0
     # via boto3
