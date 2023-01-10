@@ -78,7 +78,7 @@ coreapi==2.3.3
     # via django-cast
 coreschema==0.0.4
     # via coreapi
-coverage==7.0.3
+coverage==7.0.4
     # via -r requirements/develop.in
 cryptography==39.0.0
     # via pyjwt
@@ -152,7 +152,7 @@ django-modelcluster==6.0
     # via wagtail
 django-permissionedforms==0.1
     # via wagtail
-django-proxy==1.2.1
+django-proxy==1.2.2
     # via -r requirements/production.in
 django-storages==1.13.2
     # via -r requirements/production.in
@@ -211,7 +211,7 @@ idna==3.4
     #   requests
 imagesize==1.4.1
     # via sphinx
-iniconfig==1.1.1
+iniconfig==2.0.0
     # via pytest
 ipykernel==6.19.4
     # via
@@ -349,7 +349,7 @@ oauthlib==3.2.2
     # via requests-oauthlib
 openpyxl==3.0.10
     # via wagtail
-packaging==22.0
+packaging==23.0
     # via
     #   ipykernel
     #   jupyter-server
@@ -498,6 +498,8 @@ send2trash==1.8.0
     #   notebook
 sentry-sdk==1.12.1
     # via -r requirements/production.in
+setuptools==65.6.3
+    # via gunicorn
 sgmllib3k==1.0.0
     # via feedparser
 six==1.16.0
@@ -519,7 +521,7 @@ sphinx==5.3.0
     # via sphinx-rtd-theme
 sphinx-rtd-theme==1.1.1
     # via -r requirements/develop.in
-sphinxcontrib-applehelp==1.0.2
+sphinxcontrib-applehelp==1.0.3
     # via sphinx
 sphinxcontrib-devhelp==1.0.2
     # via sphinx
@@ -613,7 +615,3 @@ whitenoise==6.3.0
     # via -r requirements/production.in
 willow==1.4.1
     # via wagtail
-
-# The following packages are considered to be unsafe in a requirements file:
-setuptools==65.6.3
-    # via gunicorn
