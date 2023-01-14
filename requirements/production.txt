@@ -14,9 +14,9 @@ asgiref==3.6.0
     # via django
 beautifulsoup4==4.11.1
     # via wagtail
-boto3==1.26.49
+boto3==1.26.50
     # via -r requirements/production.in
-botocore==1.29.49
+botocore==1.29.50
     # via
     #   boto3
     #   s3transfer
@@ -172,7 +172,7 @@ pillow==9.4.0
     # via
     #   matplotlib
     #   wagtail
-plotly==5.11.0
+plotly==5.12.0
     # via django-cast
 psycopg2==2.9.5
     # via -r requirements/production.in
@@ -220,6 +220,8 @@ s3transfer==0.6.0
     # via boto3
 sentry-sdk==1.13.0
     # via -r requirements/production.in
+setuptools==65.7.0
+    # via gunicorn
 sgmllib3k==1.0.0
     # via feedparser
 six==1.16.0
@@ -259,7 +261,3 @@ whitenoise==6.3.0
     # via -r requirements/production.in
 willow==1.4.1
     # via wagtail
-
-# The following packages are considered to be unsafe in a requirements file:
-setuptools==65.7.0
-    # via gunicorn
