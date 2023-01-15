@@ -115,10 +115,8 @@ django-threadedcomments==2.0
     # via django-cast
 django-treebeard==4.6.0
     # via wagtail
-django-watson==1.6.2
-    # via
-    #   -r requirements/production.in
-    #   django-cast
+django-watson==1.6.3
+    # via -r requirements/production.in
 djangorestframework==3.14.0
     # via wagtail
 draftjs-exporter==2.1.7
@@ -178,6 +176,8 @@ psycopg2==2.9.5
     # via -r requirements/production.in
 pycparser==2.21
     # via cffi
+pygments==2.14.0
+    # via django-cast
 pyjwt[crypto]==2.6.0
     # via django-allauth
 pyparsing==3.0.9
@@ -197,7 +197,7 @@ python-slugify==7.0.0
     # via django-cast
 python3-openid==3.2.0
     # via django-allauth
-pytz==2022.7
+pytz==2022.7.1
     # via
     #   django-indieweb
     #   django-modelcluster

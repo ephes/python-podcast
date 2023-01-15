@@ -168,10 +168,8 @@ django-threadedcomments==2.0
     # via django-cast
 django-treebeard==4.6.0
     # via wagtail
-django-watson==1.6.2
-    # via
-    #   -r requirements/production.in
-    #   django-cast
+django-watson==1.6.3
+    # via -r requirements/production.in
 djangorestframework==3.14.0
     # via wagtail
 docutils==0.17.1
@@ -413,6 +411,7 @@ pyflakes==3.0.1
     # via flake8
 pygments==2.14.0
     # via
+    #   django-cast
     #   ipython
     #   nbconvert
     #   rich
@@ -423,7 +422,7 @@ pyparsing==3.0.9
     # via matplotlib
 pyrsistent==0.19.3
     # via jsonschema
-pytest==7.2.0
+pytest==7.2.1
     # via
     #   -r requirements/develop.in
     #   pytest-django
@@ -452,7 +451,7 @@ python-slugify==7.0.0
     # via django-cast
 python3-openid==3.2.0
     # via django-allauth
-pytz==2022.7
+pytz==2022.7.1
     # via
     #   babel
     #   django-indieweb
@@ -491,7 +490,7 @@ rfc3986-validator==0.1.1
     # via
     #   jsonschema
     #   jupyter-events
-rich==13.0.1
+rich==13.1.0
     # via -r requirements/develop.in
 s3transfer==0.6.0
     # via boto3
@@ -604,7 +603,7 @@ wagtail==4.1.1
     #   wagtail-srcset
 wagtail-srcset==0.2.0
     # via django-cast
-wcwidth==0.2.5
+wcwidth==0.2.6
     # via prompt-toolkit
 webcolors==1.12
     # via jsonschema
