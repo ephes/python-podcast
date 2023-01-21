@@ -503,8 +503,6 @@ send2trash==1.8.0
     #   notebook
 sentry-sdk==1.13.0
     # via -r requirements/production.in
-setuptools==66.1.1
-    # via gunicorn
 sgmllib3k==1.0.0
     # via feedparser
 six==1.16.0
@@ -620,3 +618,7 @@ whitenoise==6.3.0
     # via -r requirements/production.in
 willow==1.4.1
     # via wagtail
+
+# The following packages are considered to be unsafe in a requirements file:
+setuptools==66.1.1
+    # via gunicorn
