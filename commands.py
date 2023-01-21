@@ -242,6 +242,21 @@ def production_db_to_local():
     print(backup_path)
 
 
+@cli.command()
+def make_local_db_restorable():
+    """
+    Make a local db restorable by ansible.
+
+    Just print out help atm.
+    """
+    help = """
+        pg_dump python_podcast | gzip > backups/db.staging.psql.gz
+        cd deploy
+        ansible-playbook restore_database.yml
+    """
+    print(help)
+
+
 def deploy(environment):
     """
     Use ansible-playbook to deploy the site to the staging server.
