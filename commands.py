@@ -215,10 +215,14 @@ def production_db_to_local():
     for proc in psutil.process_iter(["pid", "name", "username"]):
         if "python" not in proc.info["name"]:
             continue
-        cmdline = " ".join(proc.cmdline())
-        if "honcho" in cmdline:
-            print("please stop honcho first and start a single postgres db with postgres -D database/postgres")
-            sys.exit(1)
+        try:
+            cmdline = " ".join(proc.cmdline())
+            if "honcho" in cmdline:
+                print("please stop honcho first and start a single postgres db with postgres -D database/postgres")
+                sys.exit(1)
+        except psutil.AccessDenied:
+            # ignore processes that we cannot observe
+            pass
 
     deploy_root = Path(__file__).parent / "deploy"
     with working_directory(deploy_root):
