@@ -218,7 +218,7 @@ def production_db_to_local():
         try:
             cmdline = " ".join(proc.cmdline())
             if "honcho" in cmdline:
-                print("please stop honcho first and start a single postgres db with postgres -D database/postgres")
+                print("please stop honcho first and start a single postgres db with postgres -D databases/postgres")
                 sys.exit(1)
         except psutil.AccessDenied:
             # ignore processes that we cannot observe
