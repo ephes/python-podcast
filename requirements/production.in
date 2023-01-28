@@ -1,6 +1,5 @@
 argon2-cffi
 boto3
-cyberpandas
 django-anymail[mailgun]
 django-extensions
 django-indieweb
@@ -9,8 +8,6 @@ django-storages
 django-watson
 git+https://github.com/ephes/django-cast@develop
 gunicorn
-matplotlib
-pandas
 psycopg2
 python-dotenv
 sentry-sdk
