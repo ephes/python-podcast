@@ -45,8 +45,6 @@ urlpatterns = [
     # Your stuff: custom urls includes go here
     # Threadedcomments
     path("show/comments/", include("fluent_comments.urls")),
-    # Fulltext Search
-    path("search/", include("watson.urls", namespace="watson")),
     # rest
     path("api/api-token-auth/", authtokenviews.obtain_auth_token),
     path("docs/", include_docs_urls(title="API service", public=False)),

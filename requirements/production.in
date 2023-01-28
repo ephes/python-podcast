@@ -5,7 +5,6 @@ django-extensions
 django-indieweb
 django-proxy
 django-storages
-django-watson
 git+https://github.com/ephes/django-cast@develop
 gunicorn
 psycopg2
