@@ -9,7 +9,7 @@
     <meta name="twitter:description" content="{{ episode.get_description }}">
     <meta name="twitter:image" content="{{ episode.blog.itunes_artwork.original.url }}">
     <meta name="twitter:image:alt" content="Python Podcast Logo">
-    <meta name="twitter:player" content="{% url 'cast:twitter-player' episode_slug=episode.slug blog_slug=episode.blog.slug %}">
+    <meta name="twitter:player" content="{{ player_url }}">
     <meta name="twitter:player:stream" content="{{ episode.podcast_audio.m4a.url }}">
     <meta name="twitter:player:stream:content_type" content="audio/mp4">
     <meta name="twitter:player:width" content="480">
