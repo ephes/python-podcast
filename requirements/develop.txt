@@ -400,7 +400,7 @@ python-dateutil==2.8.2
     #   jupyter-client
 python-dotenv==0.21.1
     # via -r requirements/production.in
-python-slugify==7.0.0
+python-slugify==8.0.0
     # via django-cast
 python3-openid==3.2.0
     # via django-allauth
@@ -443,7 +443,7 @@ send2trash==1.8.0
     #   notebook
 sentry-sdk==1.14.0
     # via -r requirements/production.in
-setuptools==66.1.1
+setuptools==67.0.0
     # via gunicorn
 sgmllib3k==1.0.0
     # via feedparser

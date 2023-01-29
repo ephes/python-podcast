@@ -161,7 +161,7 @@ python-dateutil==2.8.2
     # via botocore
 python-dotenv==0.21.1
     # via -r requirements/production.in
-python-slugify==7.0.0
+python-slugify==8.0.0
     # via django-cast
 python3-openid==3.2.0
     # via django-allauth
@@ -187,7 +187,7 @@ s3transfer==0.6.0
     # via boto3
 sentry-sdk==1.14.0
     # via -r requirements/production.in
-setuptools==66.1.1
+setuptools==67.0.0
     # via gunicorn
 sgmllib3k==1.0.0
     # via feedparser
