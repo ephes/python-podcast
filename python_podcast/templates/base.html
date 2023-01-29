@@ -1,12 +1,14 @@
 {% load static i18n %}<!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="utf-8">
-    <meta http-equiv="x-ua-compatible" content="ie=edge">
     <title>{% block title %}Python Podcast{% endblock title %}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="">
-    <meta name="author" content="">
+    {% block meta %}
+      <meta charset="utf-8">
+      <meta http-equiv="x-ua-compatible" content="ie=edge">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="description" content="">
+      <meta name="author" content="">
+    {% endblock %}
     <script defer data-domain="python-podcast.de" src="https://plausible.io/js/script.js"></script>
 
     <link rel="icon" href="{% static 'images/favicons/favicon.ico' %}">
