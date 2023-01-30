@@ -192,7 +192,7 @@ imagesize==1.4.1
     # via sphinx
 iniconfig==2.0.0
     # via pytest
-ipykernel==6.20.2
+ipykernel==6.21.0
     # via
     #   nbclassic
     #   notebook
@@ -229,15 +229,16 @@ jsonschema==4.17.3
     # via
     #   jupyterlab-server
     #   nbformat
-jupyter-client==8.0.1
+jupyter-client==8.0.2
     # via
     #   ipykernel
     #   jupyter-server
     #   nbclassic
     #   nbclient
     #   notebook
-jupyter-core==5.1.5
+jupyter-core==5.2.0
     # via
+    #   ipykernel
     #   jupyter-client
     #   jupyter-server
     #   jupyterlab
@@ -303,7 +304,6 @@ nbformat==5.7.3
     #   notebook
 nest-asyncio==1.5.6
     # via
-    #   ipykernel
     #   nbclassic
     #   notebook
 notebook==6.5.2
@@ -508,7 +508,7 @@ tornado==6.2
     #   nbclassic
     #   notebook
     #   terminado
-traitlets==5.8.1
+traitlets==5.9.0
     # via
     #   comm
     #   ipykernel
