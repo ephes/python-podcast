@@ -1,6 +1,6 @@
 fqdn: "python-podcast.de"
 deploy_environment: "production"
-username: "{{ project_name }}"
+username: "python-podcast"
 postgres_backup: "{{ home_path }}/site/backups/db.production.psql.gz"
 traefik_host_rule: "Host(`python-podcast.de`) || Host(`www.python-podcast.de`) || Host(`python-podcast.com`) || Host(`pythonpodcast.de`)"
 django_allowed_hosts: "{{ fqdn }},pythonpodcast.de,python-podcast.com,localhost"
