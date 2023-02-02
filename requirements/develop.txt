@@ -52,9 +52,9 @@ black==23.1.0
     #   nb-black
 bleach==6.0.0
     # via nbconvert
-boto3==1.26.62
+boto3==1.26.63
     # via -r requirements/production.in
-botocore==1.29.62
+botocore==1.29.63
     # via
     #   boto3
     #   s3transfer
@@ -182,8 +182,6 @@ faker==16.6.1
     # via factory-boy
 fastjsonschema==2.16.2
     # via nbformat
-feedparser==6.0.10
-    # via django-cast
 flake8==6.0.0
     # via -r requirements/develop.in
 fqdn==1.5.1
@@ -367,8 +365,6 @@ platformdirs==2.6.2
     # via
     #   black
     #   jupyter-core
-plotly==5.13.0
-    # via django-cast
 pluggy==1.0.0
     # via pytest
 prometheus-client==0.16.0
@@ -481,8 +477,6 @@ sentry-sdk==1.14.0
     # via -r requirements/production.in
 setuptools==67.1.0
     # via gunicorn
-sgmllib3k==1.0.0
-    # via feedparser
 six==1.16.0
     # via
     #   asttokens
@@ -521,8 +515,6 @@ stack-data==0.6.2
     # via ipython
 telepath==0.3
     # via wagtail
-tenacity==8.1.0
-    # via plotly
 termcolor==2.2.0
     # via pytest-sugar
 terminado==0.17.1
