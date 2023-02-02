@@ -4,6 +4,10 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/develop.txt --resolver=backtracking requirements/develop.in requirements/production.in
 #
+aiofiles==22.1.0
+    # via ypy-websocket
+aiosqlite==0.18.0
+    # via ypy-websocket
 alabaster==0.7.13
     # via sphinx
 anyascii==0.3.1
@@ -22,6 +26,8 @@ argon2-cffi==21.3.0
     #   notebook
 argon2-cffi-bindings==21.2.0
     # via argon2-cffi
+arrow==1.2.3
+    # via isoduration
 asgiref==3.6.0
     # via django
 asttokens==2.2.1
@@ -36,19 +42,19 @@ babel==2.11.0
     #   sphinx
 backcall==0.2.0
     # via ipython
-beautifulsoup4==4.11.1
+beautifulsoup4==4.11.2
     # via
     #   nbconvert
     #   wagtail
-black==22.12.0
+black==23.1.0
     # via
     #   -r requirements/develop.in
     #   nb-black
 bleach==6.0.0
     # via nbconvert
-boto3==1.26.59
+boto3==1.26.62
     # via -r requirements/production.in
-botocore==1.29.59
+botocore==1.29.62
     # via
     #   boto3
     #   s3transfer
@@ -84,7 +90,7 @@ defusedxml==0.7.1
     # via
     #   nbconvert
     #   python3-openid
-django==4.1.5
+django==4.1.6
     # via
     #   django-allauth
     #   django-anymail
@@ -180,6 +186,8 @@ feedparser==6.0.10
     # via django-cast
 flake8==6.0.0
     # via -r requirements/develop.in
+fqdn==1.5.1
+    # via jsonschema
 gunicorn==20.1.0
     # via -r requirements/production.in
 html5lib==1.1
@@ -187,12 +195,13 @@ html5lib==1.1
 idna==3.4
     # via
     #   anyio
+    #   jsonschema
     #   requests
 imagesize==1.4.1
     # via sphinx
 iniconfig==2.0.0
     # via pytest
-ipykernel==6.21.0
+ipykernel==6.21.1
     # via
     #   nbclassic
     #   notebook
@@ -205,6 +214,8 @@ ipython-genutils==0.2.0
     # via
     #   nbclassic
     #   notebook
+isoduration==20.11.0
+    # via jsonschema
 itypes==1.2.0
     # via coreapi
 jedi==0.18.2
@@ -225,8 +236,11 @@ jmespath==1.0.1
     #   botocore
 json5==0.9.11
     # via jupyterlab-server
-jsonschema==4.17.3
+jsonpointer==2.3
+    # via jsonschema
+jsonschema[format-nongpl]==4.17.3
     # via
+    #   jupyter-events
     #   jupyterlab-server
     #   nbformat
 jupyter-client==8.0.2
@@ -247,14 +261,25 @@ jupyter-core==5.2.0
     #   nbconvert
     #   nbformat
     #   notebook
+jupyter-events==0.5.0
+    # via jupyter-server-fileid
 jupyter-server==1.23.5
     # via
     #   -r requirements/develop.in
+    #   jupyter-server-fileid
     #   jupyterlab
     #   jupyterlab-server
     #   nbclassic
     #   notebook-shim
-jupyterlab==3.5.3
+jupyter-server-fileid==0.6.0
+    # via jupyter-server-ydoc
+jupyter-server-ydoc==0.6.1
+    # via jupyterlab
+jupyter-ydoc==0.2.2
+    # via
+    #   jupyter-server-ydoc
+    #   jupyterlab
+jupyterlab==3.6.0
     # via -r requirements/develop.in
 jupyterlab-pygments==0.2.2
     # via nbconvert
@@ -304,6 +329,7 @@ nbformat==5.7.3
     #   notebook
 nest-asyncio==1.5.6
     # via
+    #   ipykernel
     #   nbclassic
     #   notebook
 notebook==6.5.2
@@ -312,10 +338,11 @@ notebook-shim==0.2.2
     # via nbclassic
 oauthlib==3.2.2
     # via requests-oauthlib
-openpyxl==3.0.10
+openpyxl==3.1.0
     # via wagtail
 packaging==23.0
     # via
+    #   black
     #   ipykernel
     #   jupyter-server
     #   jupyterlab
@@ -395,11 +422,14 @@ python-akismet==0.4.3
     #   django-fluent-comments
 python-dateutil==2.8.2
     # via
+    #   arrow
     #   botocore
     #   faker
     #   jupyter-client
 python-dotenv==0.21.1
     # via -r requirements/production.in
+python-json-logger==2.0.4
+    # via jupyter-events
 python-slugify==8.0.0
     # via django-cast
 python3-openid==3.2.0
@@ -411,6 +441,8 @@ pytz==2022.7.1
     #   django-modelcluster
     #   djangorestframework
     #   l18n
+pyyaml==6.0
+    # via jupyter-events
 pyzmq==25.0.0
     # via
     #   ipykernel
@@ -432,6 +464,10 @@ requests==2.28.2
     #   wagtail
 requests-oauthlib==1.3.1
     # via django-allauth
+rfc3339-validator==0.1.4
+    # via jsonschema
+rfc3986-validator==0.1.1
+    # via jsonschema
 rich==13.3.1
     # via -r requirements/develop.in
 s3transfer==0.6.0
@@ -443,7 +479,7 @@ send2trash==1.8.0
     #   notebook
 sentry-sdk==1.14.0
     # via -r requirements/production.in
-setuptools==67.0.0
+setuptools==67.1.0
     # via gunicorn
 sgmllib3k==1.0.0
     # via feedparser
@@ -454,6 +490,7 @@ six==1.16.0
     #   html5lib
     #   l18n
     #   python-dateutil
+    #   rfc3339-validator
 sniffio==1.3.0
     # via anyio
 snowballstemmer==2.2.0
@@ -468,7 +505,7 @@ sphinxcontrib-applehelp==1.0.4
     # via sphinx
 sphinxcontrib-devhelp==1.0.2
     # via sphinx
-sphinxcontrib-htmlhelp==2.0.0
+sphinxcontrib-htmlhelp==2.0.1
     # via sphinx
 sphinxcontrib-jsmath==1.0.1
     # via sphinx
@@ -497,8 +534,6 @@ text-unidecode==1.3
     # via python-slugify
 tinycss2==1.2.1
     # via nbconvert
-tomli==2.0.1
-    # via jupyterlab
 tornado==6.2
     # via
     #   ipykernel
@@ -515,6 +550,7 @@ traitlets==5.9.0
     #   ipython
     #   jupyter-client
     #   jupyter-core
+    #   jupyter-events
     #   jupyter-server
     #   matplotlib-inline
     #   nbclassic
@@ -526,6 +562,8 @@ typer==0.7.0
     # via
     #   -r requirements/develop.in
     #   -r requirements/production.in
+uri-template==1.2.0
+    # via jsonschema
 uritemplate==4.1.1
     # via coreapi
 urllib3==1.26.14
@@ -541,6 +579,8 @@ wagtail-srcset==0.2.0
     # via django-cast
 wcwidth==0.2.6
     # via prompt-toolkit
+webcolors==1.12
+    # via jsonschema
 webencodings==0.5.1
     # via
     #   bleach
@@ -552,3 +592,9 @@ whitenoise==6.3.0
     # via -r requirements/production.in
 willow==1.4.1
     # via wagtail
+y-py==0.5.5
+    # via
+    #   jupyter-ydoc
+    #   ypy-websocket
+ypy-websocket==0.8.2
+    # via jupyter-server-ydoc
