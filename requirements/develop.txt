@@ -52,9 +52,9 @@ black==23.1.0
     #   nb-black
 bleach==6.0.0
     # via nbconvert
-boto3==1.26.63
+boto3==1.26.64
     # via -r requirements/production.in
-botocore==1.29.63
+botocore==1.29.64
     # via
     #   boto3
     #   s3transfer
@@ -277,7 +277,7 @@ jupyter-ydoc==0.2.2
     # via
     #   jupyter-server-ydoc
     #   jupyterlab
-jupyterlab==3.6.0
+jupyterlab==3.6.1
     # via -r requirements/develop.in
 jupyterlab-pygments==0.2.2
     # via nbconvert
@@ -303,7 +303,7 @@ mdurl==0.1.2
     # via markdown-it-py
 mistune==2.0.4
     # via nbconvert
-mypy-extensions==0.4.3
+mypy-extensions==1.0.0
     # via black
 nb-black==1.0.7
     # via -r requirements/develop.in
