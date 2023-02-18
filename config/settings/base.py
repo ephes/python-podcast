@@ -323,3 +323,7 @@ NOTEBOOK_ARGUMENTS = [
     notebook_default_url,
 ]
 IPYTHON_KERNEL_DISPLAY_NAME = "Django Kernel"
+
+# crispy forms settings
+CRISPY_TEMPLATE_PACK = "bootstrap4"
+CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap4"
