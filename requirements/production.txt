@@ -14,9 +14,9 @@ asgiref==3.6.0
     # via django
 beautifulsoup4==4.11.2
     # via wagtail
-boto3==1.26.72
+boto3==1.26.74
     # via -r requirements/production.in
-botocore==1.29.72
+botocore==1.29.74
     # via
     #   boto3
     #   s3transfer
@@ -36,17 +36,21 @@ coreapi==2.3.3
     # via django-cast
 coreschema==0.0.4
     # via coreapi
+crispy-bootstrap4==2022.1
+    # via django-cast
 cryptography==39.0.1
     # via pyjwt
 defusedxml==0.7.1
     # via python3-openid
 django==4.1.7
     # via
+    #   crispy-bootstrap4
     #   django-allauth
     #   django-anymail
     #   django-braces
     #   django-cast
     #   django-contrib-comments
+    #   django-crispy-forms
     #   django-extensions
     #   django-filter
     #   django-indieweb
@@ -71,8 +75,9 @@ django-contrib-comments==2.2.0
     #   django-cast
     #   django-fluent-comments
     #   django-threadedcomments
-django-crispy-forms==1.14.0
+django-crispy-forms==2.0
     # via
+    #   crispy-bootstrap4
     #   django-cast
     #   django-fluent-comments
 django-environ==0.9.0
