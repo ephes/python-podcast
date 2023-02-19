@@ -6,9 +6,9 @@ from django.views import defaults as default_views
 from django.views.generic import RedirectView, TemplateView
 from rest_framework.authtoken import views as authtokenviews
 from rest_framework.documentation import include_docs_urls
+from wagtail import urls as wagtail_urls
 from wagtail.admin import urls as wagtailadmin_urls
 from wagtail.api.v2.views import PagesAPIViewSet
-from wagtail.core import urls as wagtail_urls
 from wagtail.documents import urls as wagtaildocs_urls
 
 # openapi endpoint broken for wagtail until this is fixed:
