@@ -52,9 +52,9 @@ black==23.1.0
     #   nb-black
 bleach==6.0.0
     # via nbconvert
-boto3==1.26.74
+boto3==1.26.79
     # via -r requirements/production.in
-botocore==1.29.74
+botocore==1.29.79
     # via
     #   boto3
     #   s3transfer
@@ -78,7 +78,7 @@ coreapi==2.3.3
     # via django-cast
 coreschema==0.0.4
     # via coreapi
-coverage==7.1.0
+coverage==7.2.0
     # via -r requirements/develop.in
 crispy-bootstrap4==2022.1
     # via django-cast
@@ -183,9 +183,9 @@ executing==1.2.0
     # via stack-data
 factory-boy==3.2.1
     # via -r requirements/develop.in
-faker==17.0.0
+faker==17.3.0
     # via factory-boy
-fastjsonschema==2.16.2
+fastjsonschema==2.16.3
     # via nbformat
 flake8==6.0.0
     # via -r requirements/develop.in
@@ -274,7 +274,7 @@ jupyter-server==1.23.6
     #   jupyterlab-server
     #   nbclassic
     #   notebook-shim
-jupyter-server-fileid==0.7.0
+jupyter-server-fileid==0.8.0
     # via jupyter-server-ydoc
 jupyter-server-ydoc==0.6.1
     # via jupyterlab
@@ -292,7 +292,7 @@ l18n==2021.3
     # via wagtail
 markdown==3.4.1
     # via django-cast
-markdown-it-py==2.1.0
+markdown-it-py==2.2.0
     # via rich
 markupsafe==2.1.2
     # via
@@ -377,7 +377,7 @@ prometheus-client==0.16.0
     #   jupyter-server
     #   nbclassic
     #   notebook
-prompt-toolkit==3.0.36
+prompt-toolkit==3.0.37
     # via ipython
 psutil==5.9.4
     # via
@@ -427,11 +427,11 @@ python-dateutil==2.8.2
     #   botocore
     #   faker
     #   jupyter-client
-python-dotenv==0.21.1
+python-dotenv==1.0.0
     # via -r requirements/production.in
-python-json-logger==2.0.6
+python-json-logger==2.0.7
     # via jupyter-events
-python-slugify==8.0.0
+python-slugify==8.0.1
     # via django-cast
 python3-openid==3.2.0
     # via django-allauth
@@ -589,11 +589,11 @@ webencodings==0.5.1
     #   tinycss2
 websocket-client==1.5.1
     # via jupyter-server
-whitenoise==6.3.0
+whitenoise==6.4.0
     # via -r requirements/production.in
 willow==1.4.1
     # via wagtail
-y-py==0.5.5
+y-py==0.5.9
     # via
     #   jupyter-ydoc
     #   ypy-websocket
@@ -601,7 +601,7 @@ ypy-websocket==0.8.2
     # via jupyter-server-ydoc
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==67.3.2
+setuptools==67.4.0
     # via
     #   gunicorn
     #   sphinxcontrib-jquery

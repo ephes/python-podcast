@@ -14,9 +14,9 @@ asgiref==3.6.0
     # via django
 beautifulsoup4==4.11.2
     # via wagtail
-boto3==1.26.74
+boto3==1.26.79
     # via -r requirements/production.in
-botocore==1.29.74
+botocore==1.29.79
     # via
     #   boto3
     #   s3transfer
@@ -160,9 +160,9 @@ python-akismet==0.4.3
     #   django-fluent-comments
 python-dateutil==2.8.2
     # via botocore
-python-dotenv==0.21.1
+python-dotenv==1.0.0
     # via -r requirements/production.in
-python-slugify==8.0.0
+python-slugify==8.0.1
     # via django-cast
 python3-openid==3.2.0
     # via django-allauth
@@ -218,11 +218,11 @@ wagtail-srcset==0.2.0
     # via django-cast
 webencodings==0.5.1
     # via html5lib
-whitenoise==6.3.0
+whitenoise==6.4.0
     # via -r requirements/production.in
 willow==1.4.1
     # via wagtail
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==67.3.2
+setuptools==67.4.0
     # via gunicorn
