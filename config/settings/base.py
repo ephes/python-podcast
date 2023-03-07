@@ -46,6 +46,7 @@ THIRD_PARTY_APPS = [
     "threadedcomments",
     "django_comments",
     "wagtail.contrib.forms",
+    "wagtail.contrib.settings",
     "wagtail.contrib.redirects",
     "wagtail.embeds",
     "wagtail.sites",
