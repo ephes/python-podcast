@@ -224,5 +224,5 @@ willow==1.4.1
     # via wagtail
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==67.5.1
+setuptools==67.6.0
     # via gunicorn

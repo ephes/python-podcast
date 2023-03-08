@@ -600,7 +600,7 @@ ypy-websocket==0.8.2
     # via jupyter-server-ydoc
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==67.5.1
+setuptools==67.6.0
     # via
     #   gunicorn
     #   sphinxcontrib-jquery
