@@ -174,6 +174,7 @@ TEMPLATES = [
                 "django.template.context_processors.static",
                 "django.template.context_processors.tz",
                 "django.contrib.messages.context_processors.messages",
+                "cast.context_processors.site_template_base_dir",
             ],
         },
     },
