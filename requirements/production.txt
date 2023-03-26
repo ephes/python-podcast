@@ -14,9 +14,9 @@ asgiref==3.6.0
     # via django
 beautifulsoup4==4.11.2
     # via wagtail
-boto3==1.26.95
+boto3==1.26.99
     # via -r requirements/production.in
-botocore==1.29.95
+botocore==1.29.99
     # via
     #   boto3
     #   s3transfer
@@ -38,7 +38,7 @@ coreschema==0.0.4
     # via coreapi
 crispy-bootstrap4==2022.1
     # via django-cast
-cryptography==39.0.2
+cryptography==40.0.1
     # via pyjwt
 defusedxml==0.7.1
     # via python3-openid
@@ -139,7 +139,7 @@ jmespath==1.0.1
     #   botocore
 l18n==2021.3
     # via wagtail
-markdown==3.4.1
+markdown==3.4.3
     # via django-cast
 markupsafe==2.1.2
     # via jinja2
@@ -169,7 +169,7 @@ python-slugify==8.0.1
     # via django-cast
 python3-openid==3.2.0
     # via django-allauth
-pytz==2022.7.1
+pytz==2023.2
     # via
     #   django-indieweb
     #   django-modelcluster
