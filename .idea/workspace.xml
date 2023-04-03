@@ -4,7 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="6bad3b53-5784-45c0-90c3-08ebf028abf5" name="Changes" comment="dunno how to fix that :/" />
+    <list default="true" id="6bad3b53-5784-45c0-90c3-08ebf028abf5" name="Changes" comment="dunno how to fix that :/">
+      <change beforePath="$PROJECT_DIR$/.pre-commit-config.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/.pre-commit-config.yaml" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -56,6 +58,7 @@
       <workItem from="1668929676158" duration="15093000" />
       <workItem from="1670711229844" duration="1635000" />
       <workItem from="1670740256517" duration="5101000" />
+      <workItem from="1680455525841" duration="124000" />
     </task>
     <task id="LOCAL-00001" summary="#15 remove filepond stuff">
       <created>1670740625061</created>
