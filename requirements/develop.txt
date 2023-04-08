@@ -52,9 +52,9 @@ black==23.3.0
     #   nb-black
 bleach==6.0.0
     # via nbconvert
-boto3==1.26.105
+boto3==1.26.109
     # via -r requirements/production.in
-botocore==1.29.105
+botocore==1.29.109
     # via
     #   boto3
     #   s3transfer
@@ -78,13 +78,13 @@ coreapi==2.3.3
     # via django-cast
 coreschema==0.0.4
     # via coreapi
-coverage==7.2.2
+coverage==7.2.3
     # via -r requirements/develop.in
 crispy-bootstrap4==2022.1
     # via django-cast
 cryptography==40.0.1
     # via pyjwt
-debugpy==1.6.6
+debugpy==1.6.7
     # via ipykernel
 decorator==5.1.1
     # via ipython
@@ -92,7 +92,7 @@ defusedxml==0.7.1
     # via
     #   nbconvert
     #   python3-openid
-django==4.1.7
+django==4.1.8
     # via
     #   crispy-bootstrap4
     #   django-allauth
@@ -186,7 +186,7 @@ executing==1.2.0
     # via stack-data
 factory-boy==3.2.1
     # via -r requirements/develop.in
-faker==18.3.2
+faker==18.4.0
     # via factory-boy
 fastjsonschema==2.16.3
     # via nbformat
@@ -315,7 +315,7 @@ mypy-extensions==1.0.0
     # via black
 nb-black==1.0.7
     # via -r requirements/develop.in
-nbclassic==0.5.4
+nbclassic==0.5.5
     # via
     #   jupyterlab
     #   notebook
@@ -338,7 +338,7 @@ nest-asyncio==1.5.6
     #   ipykernel
     #   nbclassic
     #   notebook
-notebook==6.5.3
+notebook==6.5.4
     # via jupyterlab
 notebook-shim==0.2.2
     # via nbclassic
@@ -484,7 +484,7 @@ send2trash==1.8.0
     #   jupyter-server
     #   nbclassic
     #   notebook
-sentry-sdk==1.18.0
+sentry-sdk==1.19.1
     # via -r requirements/production.in
 six==1.16.0
     # via
