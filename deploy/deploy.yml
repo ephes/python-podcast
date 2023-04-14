@@ -41,6 +41,10 @@
       ansible.posix.synchronize:
         src: "{{ playbook_dir }}/../"
         dest: "{{ site_path }}"
+        rsync_opts:
+          - "--exclude=python-podcast/media"
+          - "--exclude=backups"
+          - "--exclude=databases"
       become: true
       become_user: "{{ username }}"
 
