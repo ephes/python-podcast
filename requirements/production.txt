@@ -38,7 +38,7 @@ coreschema==0.0.4
     # via coreapi
 crispy-bootstrap4==2022.1
     # via django-cast
-cryptography==40.0.1
+cryptography==40.0.2
     # via pyjwt
 defusedxml==0.7.1
     # via python3-openid

@@ -50,9 +50,9 @@ black==23.3.0
     #   nb-black
 bleach==6.0.0
     # via nbconvert
-boto3==1.26.111
+boto3==1.26.113
     # via -r requirements/production.in
-botocore==1.29.111
+botocore==1.29.113
     # via
     #   boto3
     #   s3transfer
@@ -80,7 +80,7 @@ coverage==7.2.3
     # via -r requirements/develop.in
 crispy-bootstrap4==2022.1
     # via django-cast
-cryptography==40.0.1
+cryptography==40.0.2
     # via pyjwt
 debugpy==1.6.7
     # via ipykernel
@@ -247,7 +247,7 @@ jsonschema[format-nongpl]==4.17.3
     #   jupyter-events
     #   jupyterlab-server
     #   nbformat
-jupyter-client==8.1.0
+jupyter-client==8.2.0
     # via
     #   ipykernel
     #   jupyter-server
@@ -267,7 +267,7 @@ jupyter-core==5.3.0
     #   notebook
 jupyter-events==0.6.3
     # via jupyter-server-fileid
-jupyter-server==1.23.6
+jupyter-server==1.24.0
     # via
     #   -r requirements/develop.in
     #   jupyter-server-fileid
@@ -287,7 +287,7 @@ jupyterlab==3.6.3
     # via -r requirements/develop.in
 jupyterlab-pygments==0.2.2
     # via nbconvert
-jupyterlab-server==2.22.0
+jupyterlab-server==2.22.1
     # via jupyterlab
 l18n==2021.3
     # via wagtail
@@ -344,7 +344,7 @@ oauthlib==3.2.2
     # via requests-oauthlib
 openpyxl==3.1.2
     # via wagtail
-packaging==23.0
+packaging==23.1
     # via
     #   black
     #   ipykernel
@@ -473,7 +473,7 @@ rfc3986-validator==0.1.1
     # via
     #   jsonschema
     #   jupyter-events
-rich==13.3.3
+rich==13.3.4
     # via -r requirements/develop.in
 s3transfer==0.6.0
     # via boto3
