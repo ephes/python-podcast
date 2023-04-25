@@ -90,6 +90,16 @@
       become: true
       become_user: "{{ username }}"
 
+    - name: Install wagtail release candidate
+      shell: "{{ python }} -m pip install wagtail==5.0rc1"
+      become: true
+      become_user: "{{ username }}"
+
+    - name: Upgrade Django
+      shell: "{{ python }} -m pip install -U Django"
+      become: true
+      become_user: "{{ username }}"
+
     - name: Create gunicorn start script
       template:
         src: gunicorn.sh.j2
