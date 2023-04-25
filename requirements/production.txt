@@ -14,9 +14,9 @@ asgiref==3.6.0
     # via django
 beautifulsoup4==4.11.2
     # via wagtail
-boto3==1.26.118
+boto3==1.26.119
     # via -r requirements/production.in
-botocore==1.29.118
+botocore==1.29.119
     # via
     #   boto3
     #   s3transfer
@@ -217,7 +217,7 @@ wagtail==4.2.2
     # via
     #   django-cast
     #   wagtail-srcset
-wagtail-srcset==0.2.0
+wagtail-srcset==0.3.0
     # via django-cast
 webencodings==0.5.1
     # via html5lib
@@ -227,5 +227,5 @@ willow==1.4.1
     # via wagtail
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==67.7.1
+setuptools==67.7.2
     # via gunicorn
