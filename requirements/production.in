@@ -1,5 +1,6 @@
 argon2-cffi
 boto3
+cast-bootstrap5
 django-anymail[mailgun]
 django-extensions
 django-indieweb

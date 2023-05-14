@@ -1,0 +1,59 @@
+{% extends "cast/bootstrap5/base.html" %}
+{% load i18n static wagtailcore_tags %}
+
+{% block title %}{{ page.title }}{% endblock title %}
+{% block css %}
+  {{ block.super }}
+  <link href="{% static 'css/project.css' %}" rel="stylesheet">
+{% endblock css %}
+
+{% block headerscript %}
+  <script defer data-domain="python-podcast.de" src="https://plausible.io/js/script.js"></script>
+{% endblock headerscript %}
+
+{% block additionalheaders %}
+  <link rel="icon" href="{% static 'images/favicons/favicon.ico' %}">
+{% endblock additionalheaders %}
+
+{% block bodystart %}
+  <a href="https://fedi.wersdoerfer.de/@jochen" rel="me"></a>
+{% endblock bodystart %}
+
+{% block navigation %}
+  <nav class="navbar navbar-expand-lg bg-light">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="{% url 'home' %}">Python Podcast</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item active">
+            <a class="nav-link" href="{% url 'home' %}">Home</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'about' %}">About</a>
+          </li>
+          {% if request.user.is_authenticated %}
+            <li class="nav-item">
+              {# URL provided by django-allauth/account/urls.py #}
+              <a class="nav-link" href="{% url 'users:detail' request.user.username  %}">{% trans "My Profile" %}</a>
+            </li>
+            <li class="nav-item">
+              {# URL provided by django-allauth/account/urls.py #}
+              <a class="nav-link" href="{% url 'account_logout' %}">{% trans "Sign Out" %}</a>
+            </li>
+          {% else %}
+            <li class="nav-item">
+              {# URL provided by django-allauth/account/urls.py #}
+              <a id="sign-up-link" class="nav-link" href="{% url 'account_signup' %}">{% trans "Sign Up" %}</a>
+            </li>
+            <li class="nav-item">
+              {# URL provided by django-allauth/account/urls.py #}
+              <a id="log-in-link" class="nav-link" href="{% url 'account_login' %}">{% trans "Sign In" %}</a>
+            </li>
+          {% endif %}
+        </ul>
+      </div>
+    </nav>
+{% endblock navigation%}

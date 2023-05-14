@@ -33,7 +33,7 @@ DJANGO_APPS = [
 ]
 THIRD_PARTY_APPS = [
     "crispy_forms",  # Form layouts
-    "crispy_bootstrap4",
+    "crispy_bootstrap5",
     "allauth",  # registration
     "allauth.account",  # registration
     "allauth.socialaccount",  # registration
@@ -60,6 +60,7 @@ THIRD_PARTY_APPS = [
     "wagtail_srcset",
     "modelcluster",
     "taggit",
+    "cast_bootstrap5.apps.CastBootstrap5Config",  # bootstrap5 theme for django-cast
     "cast",  # blog/podcast package
 ]
 LOCAL_APPS = [
@@ -181,8 +182,6 @@ TEMPLATES = [
         },
     },
 ]
-# http://django-crispy-forms.readthedocs.io/en/latest/install.html#template-packs
-CRISPY_TEMPLATE_PACK = "bootstrap4"
 
 # STATIC
 # ------------------------------------------------------------------------------
@@ -330,5 +329,5 @@ NOTEBOOK_ARGUMENTS = [
 IPYTHON_KERNEL_DISPLAY_NAME = "Django Kernel"
 
 # crispy forms settings
-CRISPY_TEMPLATE_PACK = "bootstrap4"
-CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap4"
+CRISPY_TEMPLATE_PACK = "bootstrap5"
+CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
