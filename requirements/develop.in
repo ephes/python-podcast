@@ -6,7 +6,6 @@ django-debug-toolbar
 django-test-plus
 jupyter-server < 2.0.0
 jupyterlab
-nb_black
 pytest
 pytest-sugar
 pytest-django
