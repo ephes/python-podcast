@@ -28,7 +28,7 @@ argon2-cffi-bindings==21.2.0
     # via argon2-cffi
 arrow==1.2.3
     # via isoduration
-asgiref==3.6.0
+asgiref==3.7.1
     # via django
 asttokens==2.2.1
     # via stack-data
@@ -48,9 +48,9 @@ black==23.3.0
     # via -r requirements/develop.in
 bleach==6.0.0
     # via nbconvert
-boto3==1.26.137
+boto3==1.26.139
     # via -r requirements/production.in
-botocore==1.29.137
+botocore==1.29.139
     # via
     #   boto3
     #   s3transfer
@@ -76,7 +76,7 @@ coreapi==2.3.3
     # via django-cast
 coreschema==0.0.4
     # via coreapi
-coverage==7.2.5
+coverage==7.2.6
     # via -r requirements/develop.in
 crispy-bootstrap4==2022.1
     # via django-cast
@@ -193,7 +193,7 @@ factory-boy==3.2.1
     # via -r requirements/develop.in
 faker==18.9.0
     # via factory-boy
-fastjsonschema==2.17.0
+fastjsonschema==2.17.1
     # via nbformat
 filetype==1.2.0
     # via willow
@@ -324,7 +324,7 @@ nbclassic==1.0.0
     # via
     #   jupyterlab
     #   notebook
-nbclient==0.7.4
+nbclient==0.8.0
     # via nbconvert
 nbconvert==7.4.0
     # via
@@ -458,7 +458,7 @@ pyzmq==25.0.2
     #   jupyter-server
     #   nbclassic
     #   notebook
-requests==2.30.0
+requests==2.31.0
     # via
     #   -r requirements/production.in
     #   coreapi
@@ -489,7 +489,7 @@ send2trash==1.8.2
     #   jupyter-server
     #   nbclassic
     #   notebook
-sentry-sdk==1.23.1
+sentry-sdk==1.24.0
     # via -r requirements/production.in
 six==1.16.0
     # via
@@ -509,7 +509,7 @@ sphinx==6.2.1
     # via
     #   sphinx-rtd-theme
     #   sphinxcontrib-jquery
-sphinx-rtd-theme==1.2.0
+sphinx-rtd-theme==1.2.1
     # via -r requirements/develop.in
 sphinxcontrib-applehelp==1.0.4
     # via sphinx
@@ -572,13 +572,13 @@ typer==0.9.0
     # via
     #   -r requirements/develop.in
     #   -r requirements/production.in
-typing-extensions==4.5.0
+typing-extensions==4.6.1
     # via typer
 uri-template==1.2.0
     # via jsonschema
 uritemplate==4.1.1
     # via coreapi
-urllib3==1.26.15
+urllib3==1.26.16
     # via
     #   botocore
     #   django-anymail
@@ -599,7 +599,7 @@ webencodings==0.5.1
     #   bleach
     #   html5lib
     #   tinycss2
-websocket-client==1.5.1
+websocket-client==1.5.2
     # via jupyter-server
 whitenoise==6.4.0
     # via -r requirements/production.in
