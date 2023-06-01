@@ -12,7 +12,7 @@ alabaster==0.7.13
     # via sphinx
 anyascii==0.3.2
     # via wagtail
-anyio==3.6.2
+anyio==3.7.0
     # via jupyter-server
 appnope==0.1.3
     # via
@@ -28,7 +28,7 @@ argon2-cffi-bindings==21.2.0
     # via argon2-cffi
 arrow==1.2.3
     # via isoduration
-asgiref==3.7.1
+asgiref==3.7.2
     # via django
 asttokens==2.2.1
     # via stack-data
@@ -48,9 +48,9 @@ black==23.3.0
     # via -r requirements/develop.in
 bleach==6.0.0
     # via nbconvert
-boto3==1.26.141
+boto3==1.26.144
     # via -r requirements/production.in
-botocore==1.29.141
+botocore==1.29.144
     # via
     #   boto3
     #   s3transfer
@@ -76,13 +76,13 @@ coreapi==2.3.3
     # via django-cast
 coreschema==0.0.4
     # via coreapi
-coverage==7.2.6
+coverage==7.2.7
     # via -r requirements/develop.in
 crispy-bootstrap4==2022.1
     # via django-cast
 crispy-bootstrap5==0.7
     # via cast-bootstrap5
-cryptography==40.0.2
+cryptography==41.0.1
     # via pyjwt
 debugpy==1.6.7
     # via ipykernel
@@ -292,7 +292,7 @@ jupyter-ydoc==0.2.4
     # via
     #   jupyter-server-ydoc
     #   jupyterlab
-jupyterlab==3.6.3
+jupyterlab==3.6.4
     # via -r requirements/develop.in
 jupyterlab-pygments==0.2.2
     # via nbconvert
@@ -331,7 +331,7 @@ nbconvert==7.4.0
     #   jupyter-server
     #   nbclassic
     #   notebook
-nbformat==5.8.0
+nbformat==5.9.0
     # via
     #   jupyter-server
     #   nbclassic
@@ -451,7 +451,7 @@ pytz==2023.3
     #   l18n
 pyyaml==6.0
     # via jupyter-events
-pyzmq==25.0.2
+pyzmq==25.1.0
     # via
     #   ipykernel
     #   jupyter-client
@@ -480,7 +480,7 @@ rfc3986-validator==0.1.1
     # via
     #   jsonschema
     #   jupyter-events
-rich==13.3.5
+rich==13.4.1
     # via -r requirements/develop.in
 s3transfer==0.6.1
     # via boto3

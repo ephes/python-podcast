@@ -10,13 +10,13 @@ argon2-cffi==21.3.0
     # via -r requirements/production.in
 argon2-cffi-bindings==21.2.0
     # via argon2-cffi
-asgiref==3.7.1
+asgiref==3.7.2
     # via django
 beautifulsoup4==4.11.2
     # via wagtail
-boto3==1.26.141
+boto3==1.26.144
     # via -r requirements/production.in
-botocore==1.29.141
+botocore==1.29.144
     # via
     #   boto3
     #   s3transfer
@@ -42,7 +42,7 @@ crispy-bootstrap4==2022.1
     # via django-cast
 crispy-bootstrap5==0.7
     # via cast-bootstrap5
-cryptography==40.0.2
+cryptography==41.0.1
     # via pyjwt
 defusedxml==0.7.1
     # via
