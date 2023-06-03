@@ -2,6 +2,7 @@ black
 coverage
 factory-boy
 flake8
+flit
 django-debug-toolbar
 django-test-plus
 jupyter-server < 2.0.0

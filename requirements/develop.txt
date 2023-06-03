@@ -181,6 +181,7 @@ djangorestframework==3.14.0
     # via wagtail
 docutils==0.18.1
     # via
+    #   flit
     #   sphinx
     #   sphinx-rtd-theme
 draftjs-exporter==2.1.7
@@ -199,6 +200,10 @@ filetype==1.2.0
     # via willow
 flake8==6.0.0
     # via -r requirements/develop.in
+flit==3.9.0
+    # via -r requirements/develop.in
+flit-core==3.9.0
+    # via flit
 fqdn==1.5.1
     # via jsonschema
 gunicorn==20.1.0
@@ -465,6 +470,7 @@ requests==2.31.0
     #   django-allauth
     #   django-anymail
     #   django-proxy
+    #   flit
     #   jupyterlab-server
     #   python-akismet
     #   requests-oauthlib
@@ -544,6 +550,8 @@ text-unidecode==1.3
     # via python-slugify
 tinycss2==1.2.1
     # via nbconvert
+tomli-w==1.0.0
+    # via flit
 tornado==6.3.2
     # via
     #   ipykernel

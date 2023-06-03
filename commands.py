@@ -276,5 +276,20 @@ def deploy_production():
     deploy("production")
 
 
+@cli.command()
+def switch_to_dev_environment():
+    """
+    Switch to the development environment installing a list of
+    packages in development mode using flit.
+    """
+    from contextlib import chdir
+
+    projects_dir = get_project_root().parent
+    flit_install_dev = [sys.executable, "-m", "flit", "install", "-s"]
+    for project in ["django-cast", "cast-vue"]:
+        with chdir(projects_dir / project):
+            subprocess.call(flit_install_dev)
+
+
 if __name__ == "__main__":
     cli()
