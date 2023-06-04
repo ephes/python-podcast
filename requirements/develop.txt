@@ -56,6 +56,8 @@ botocore==1.29.146
     #   s3transfer
 cast-bootstrap5==0.0.6
     # via -r requirements/production.in
+cast-vue==0.0.5
+    # via -r requirements/production.in
 certifi==2023.5.7
     # via
     #   requests
@@ -114,6 +116,7 @@ django==4.2.1
     #   django-storages
     #   django-taggit
     #   django-treebeard
+    #   django-vite
     #   djangorestframework
     #   wagtail
 django-allauth==0.54.0
@@ -126,6 +129,7 @@ django-cast @ git+https://github.com/ephes/django-cast@develop
     # via
     #   -r requirements/production.in
     #   cast-bootstrap5
+    #   cast-vue
 django-contrib-comments==2.2.0
     # via
     #   django-cast
@@ -177,6 +181,8 @@ django-threadedcomments==2.0
     # via django-cast
 django-treebeard==4.7
     # via wagtail
+django-vite==2.1.2
+    # via cast-vue
 djangorestframework==3.14.0
     # via wagtail
 docutils==0.18.1
