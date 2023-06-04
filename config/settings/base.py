@@ -60,7 +60,9 @@ THIRD_PARTY_APPS = [
     "wagtail_srcset",
     "modelcluster",
     "taggit",
+    "django_vite",  # required for vue theme
     "cast_bootstrap5.apps.CastBootstrap5Config",  # bootstrap5 theme for django-cast
+    "cast_vue.apps.CastVueConfig",  # vue theme for django-cast
     "cast",  # blog/podcast package
 ]
 LOCAL_APPS = [
@@ -331,3 +333,9 @@ IPYTHON_KERNEL_DISPLAY_NAME = "Django Kernel"
 # crispy forms settings
 CRISPY_TEMPLATE_PACK = "bootstrap5"
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
+
+# Themes
+CAST_CUSTOM_THEMES = [
+    ("vue", "Vue.js"),
+    ("bootstrap5", "Bootstrap 5"),
+]
