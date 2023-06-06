@@ -14,9 +14,9 @@ asgiref==3.7.2
     # via django
 beautifulsoup4==4.11.2
     # via wagtail
-boto3==1.26.146
+boto3==1.26.147
     # via -r requirements/production.in
-botocore==1.29.146
+botocore==1.29.147
     # via
     #   boto3
     #   s3transfer
@@ -50,7 +50,7 @@ defusedxml==0.7.1
     # via
     #   python3-openid
     #   willow
-django==4.2.1
+django==4.2.2
     # via
     #   crispy-bootstrap4
     #   crispy-bootstrap5
@@ -97,7 +97,7 @@ django-crispy-forms==2.0
     #   django-fluent-comments
 django-environ==0.10.0
     # via django-cast
-django-extensions==3.2.1
+django-extensions==3.2.3
     # via -r requirements/production.in
 django-filter==22.1
     # via
