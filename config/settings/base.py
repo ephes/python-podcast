@@ -334,6 +334,9 @@ IPYTHON_KERNEL_DISPLAY_NAME = "Django Kernel"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 
+# view handling csrf failures
+CSRF_FAILURE_VIEW = "cast.views.defaults.csrf_failure"
+
 # Themes
 CAST_CUSTOM_THEMES = [
     ("vue", "Vue.js"),
