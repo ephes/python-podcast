@@ -48,9 +48,9 @@ black==23.3.0
     # via -r requirements/develop.in
 bleach==6.0.0
     # via nbconvert
-boto3==1.26.147
+boto3==1.26.150
     # via -r requirements/production.in
-botocore==1.29.147
+botocore==1.29.150
     # via
     #   boto3
     #   s3transfer
@@ -501,7 +501,7 @@ send2trash==1.8.2
     #   jupyter-server
     #   nbclassic
     #   notebook
-sentry-sdk==1.25.0
+sentry-sdk==1.25.1
     # via -r requirements/production.in
 six==1.16.0
     # via
@@ -521,7 +521,7 @@ sphinx==6.2.1
     # via
     #   sphinx-rtd-theme
     #   sphinxcontrib-jquery
-sphinx-rtd-theme==1.2.1
+sphinx-rtd-theme==1.2.2
     # via -r requirements/develop.in
 sphinxcontrib-applehelp==1.0.4
     # via sphinx
@@ -613,7 +613,7 @@ webencodings==0.5.1
     #   bleach
     #   html5lib
     #   tinycss2
-websocket-client==1.5.2
+websocket-client==1.5.3
     # via jupyter-server
 whitenoise==6.4.0
     # via -r requirements/production.in
