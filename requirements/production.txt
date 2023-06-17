@@ -14,9 +14,9 @@ asgiref==3.7.2
     # via django
 beautifulsoup4==4.11.2
     # via wagtail
-boto3==1.26.153
+boto3==1.26.154
     # via -r requirements/production.in
-botocore==1.29.153
+botocore==1.29.154
     # via
     #   boto3
     #   s3transfer
@@ -131,7 +131,7 @@ django-threadedcomments==2.0
     # via django-cast
 django-treebeard==4.7
     # via wagtail
-django-vite==2.1.2
+django-vite==2.1.3
     # via cast-vue
 djangorestframework==3.14.0
     # via wagtail
