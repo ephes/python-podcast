@@ -50,9 +50,9 @@ black==23.7.0
     # via -r requirements/develop.in
 bleach==6.0.0
     # via nbconvert
-boto3==1.28.19
+boto3==1.28.20
     # via -r requirements/production.in
-botocore==1.31.19
+botocore==1.31.20
     # via
     #   boto3
     #   s3transfer
@@ -87,9 +87,7 @@ crispy-bootstrap4==2022.1
 crispy-bootstrap5==0.7
     # via cast-bootstrap5
 cryptography==41.0.3
-    # via
-    #   django-anymail
-    #   pyjwt
+    # via pyjwt
 debugpy==1.6.7
     # via ipykernel
 decorator==5.1.1
@@ -481,7 +479,7 @@ pyzmq==24.0.1
     #   jupyter-server
     #   nbclassic
     #   notebook
-referencing==0.30.0
+referencing==0.30.1
     # via
     #   jsonschema
     #   jsonschema-specifications
@@ -638,7 +636,7 @@ websocket-client==1.6.1
     # via jupyter-server
 whitenoise==6.5.0
     # via -r requirements/production.in
-willow[heif]==1.6
+willow[heif]==1.6.1
     # via wagtail
 y-py==0.6.0
     # via
