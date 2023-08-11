@@ -50,9 +50,9 @@ black==23.7.0
     # via -r requirements/develop.in
 bleach==6.0.0
     # via nbconvert
-boto3==1.28.20
+boto3==1.28.24
     # via -r requirements/production.in
-botocore==1.31.20
+botocore==1.31.24
     # via
     #   boto3
     #   s3transfer
@@ -87,10 +87,8 @@ crispy-bootstrap4==2022.1
 crispy-bootstrap5==0.7
     # via cast-bootstrap5
 cryptography==41.0.3
-    # via
-    #   django-anymail
-    #   pyjwt
-debugpy==1.6.7
+    # via pyjwt
+debugpy==1.6.7.post1
     # via ipykernel
 decorator==5.1.1
     # via ipython
@@ -145,7 +143,7 @@ django-crispy-forms==2.0
     #   crispy-bootstrap5
     #   django-cast
     #   django-fluent-comments
-django-debug-toolbar==4.1.0
+django-debug-toolbar==4.2.0
     # via -r requirements/develop.in
 django-environ==0.10.0
     # via django-cast
@@ -204,7 +202,7 @@ executing==1.2.0
     # via stack-data
 factory-boy==3.3.0
     # via -r requirements/develop.in
-faker==19.2.0
+faker==19.3.0
     # via factory-boy
 fastjsonschema==2.18.0
     # via nbformat
@@ -231,7 +229,7 @@ imagesize==1.4.1
     # via sphinx
 iniconfig==2.0.0
     # via pytest
-ipykernel==6.25.0
+ipykernel==6.25.1
     # via
     #   jupyterlab
     #   nbclassic
@@ -268,7 +266,7 @@ json5==0.9.14
     # via jupyterlab-server
 jsonpointer==2.4
     # via jsonschema
-jsonschema[format-nongpl]==4.18.6
+jsonschema[format-nongpl]==4.19.0
     # via
     #   jupyter-events
     #   jupyterlab-server
@@ -397,7 +395,7 @@ pillow==10.0.0
     # via
     #   pillow-heif
     #   wagtail
-pillow-heif==0.12.0
+pillow-heif==0.13.0
     # via willow
 platformdirs==3.10.0
     # via
@@ -541,22 +539,27 @@ soupsieve==2.4.1
 sphinx==6.2.1
     # via
     #   sphinx-rtd-theme
+    #   sphinxcontrib-applehelp
+    #   sphinxcontrib-devhelp
+    #   sphinxcontrib-htmlhelp
     #   sphinxcontrib-jquery
+    #   sphinxcontrib-qthelp
+    #   sphinxcontrib-serializinghtml
 sphinx-rtd-theme==1.2.2
     # via -r requirements/develop.in
-sphinxcontrib-applehelp==1.0.4
+sphinxcontrib-applehelp==1.0.6
     # via sphinx
-sphinxcontrib-devhelp==1.0.2
+sphinxcontrib-devhelp==1.0.4
     # via sphinx
-sphinxcontrib-htmlhelp==2.0.1
+sphinxcontrib-htmlhelp==2.0.3
     # via sphinx
 sphinxcontrib-jquery==4.1
     # via sphinx-rtd-theme
 sphinxcontrib-jsmath==1.0.1
     # via sphinx
-sphinxcontrib-qthelp==1.0.3
+sphinxcontrib-qthelp==1.0.5
     # via sphinx
-sphinxcontrib-serializinghtml==1.1.5
+sphinxcontrib-serializinghtml==1.1.7
     # via sphinx
 sqlparse==0.4.4
     # via
