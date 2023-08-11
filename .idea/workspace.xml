@@ -6,6 +6,9 @@
   <component name="ChangeListManager">
     <list default="true" id="6bad3b53-5784-45c0-90c3-08ebf028abf5" name="Changes" comment="dunno how to fix that :/">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config/settings/base.py" beforeDir="false" afterPath="$PROJECT_DIR$/config/settings/base.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config/settings/local.py" beforeDir="false" afterPath="$PROJECT_DIR$/config/settings/local.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config/settings/production.py" beforeDir="false" afterPath="$PROJECT_DIR$/config/settings/production.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -28,6 +31,10 @@
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
   </component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "customColor": "",
+  "associatedIndex": 3
+}]]></component>
   <component name="ProjectId" id="2HnnN8CRIOT6ROncGEZlsOGIxus" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
@@ -65,6 +72,7 @@
       <workItem from="1685902678791" duration="1432000" />
       <workItem from="1686024714540" duration="283000" />
       <workItem from="1686025007356" duration="650000" />
+      <workItem from="1691756486363" duration="339000" />
     </task>
     <task id="LOCAL-00001" summary="#15 remove filepond stuff">
       <created>1670740625061</created>
