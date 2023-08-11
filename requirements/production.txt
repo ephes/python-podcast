@@ -45,7 +45,9 @@ crispy-bootstrap4==2022.1
 crispy-bootstrap5==0.7
     # via cast-bootstrap5
 cryptography==41.0.3
-    # via pyjwt
+    # via
+    #   django-anymail
+    #   pyjwt
 defusedxml==0.7.1
     # via
     #   python3-openid
