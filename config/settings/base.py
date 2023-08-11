@@ -206,8 +206,6 @@ STATICFILES_FINDERS = [
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#media-root
 MEDIA_ROOT = str(APPS_DIR("media"))
-# https://docs.djangoproject.com/en/dev/ref/settings/#media-url
-MEDIA_URL = "/media/"
 
 # URLS
 # ------------------------------------------------------------------------------
@@ -345,6 +343,17 @@ class CustomS3Boto3Storage(S3Boto3Storage):
             content_autoclose.close()
 
 
+STORAGES = {
+    "default": {"BACKEND": "config.settings.local.CustomS3Boto3Storage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    "production": {"BACKEND": "config.settings.local.CustomS3Boto3Storage"},
+    "backup": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "OPTIONS": {
+            "location": ROOT_DIR.path("backups").path("media"),
+        },
+    },
+}
 MEDIA_URL = f"https://{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/"
 
 
