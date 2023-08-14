@@ -87,7 +87,9 @@ crispy-bootstrap4==2022.1
 crispy-bootstrap5==0.7
     # via cast-bootstrap5
 cryptography==41.0.3
-    # via pyjwt
+    # via
+    #   django-anymail
+    #   pyjwt
 debugpy==1.6.7.post1
     # via ipykernel
 decorator==5.1.1
