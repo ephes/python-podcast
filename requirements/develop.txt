@@ -50,9 +50,9 @@ black==23.7.0
     # via -r requirements/develop.in
 bleach==6.0.0
     # via nbconvert
-boto3==1.28.24
+boto3==1.28.25
     # via -r requirements/production.in
-botocore==1.31.24
+botocore==1.31.25
     # via
     #   boto3
     #   s3transfer
@@ -80,16 +80,14 @@ coreapi==2.3.3
     # via django-cast
 coreschema==0.0.4
     # via coreapi
-coverage==7.2.7
+coverage==7.3.0
     # via -r requirements/develop.in
 crispy-bootstrap4==2022.1
     # via django-cast
 crispy-bootstrap5==0.7
     # via cast-bootstrap5
 cryptography==41.0.3
-    # via
-    #   django-anymail
-    #   pyjwt
+    # via pyjwt
 debugpy==1.6.7.post1
     # via ipykernel
 decorator==5.1.1
@@ -584,7 +582,7 @@ tinycss2==1.2.1
     # via nbconvert
 tomli-w==1.0.0
     # via flit
-tornado==6.3.2
+tornado==6.3.3
     # via
     #   ipykernel
     #   jupyter-client
