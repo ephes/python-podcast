@@ -50,9 +50,9 @@ black==23.7.0
     # via -r requirements/develop.in
 bleach==6.0.0
     # via nbconvert
-boto3==1.28.30
+boto3==1.28.31
     # via -r requirements/production.in
-botocore==1.31.30
+botocore==1.31.31
     # via
     #   boto3
     #   s3transfer
@@ -87,9 +87,7 @@ crispy-bootstrap4==2022.1
 crispy-bootstrap5==0.7
     # via cast-bootstrap5
 cryptography==41.0.3
-    # via
-    #   django-anymail
-    #   pyjwt
+    # via pyjwt
 debugpy==1.6.7.post1
     # via ipykernel
 decorator==5.1.1
@@ -538,7 +536,7 @@ snowballstemmer==2.2.0
     # via sphinx
 soupsieve==2.4.1
     # via beautifulsoup4
-sphinx==6.2.1
+sphinx==7.2.2
     # via
     #   sphinx-rtd-theme
     #   sphinxcontrib-applehelp
@@ -547,7 +545,7 @@ sphinx==6.2.1
     #   sphinxcontrib-jquery
     #   sphinxcontrib-qthelp
     #   sphinxcontrib-serializinghtml
-sphinx-rtd-theme==1.2.2
+sphinx-rtd-theme==1.3.0
     # via -r requirements/develop.in
 sphinxcontrib-applehelp==1.0.7
     # via sphinx
