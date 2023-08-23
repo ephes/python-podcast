@@ -415,6 +415,3 @@ CAST_CUSTOM_THEMES = [
     ("vue", "Vue.js"),
     ("bootstrap5", "Bootstrap 5"),
 ]
-
-# Tags
-CAST_FILTERSET_FACETS = ["search", "date", "date_facets"]
