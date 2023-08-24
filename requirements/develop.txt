@@ -50,15 +50,15 @@ black==23.7.0
     # via -r requirements/develop.in
 bleach==6.0.0
     # via nbconvert
-boto3==1.28.32
+boto3==1.28.33
     # via -r requirements/production.in
-botocore==1.31.32
+botocore==1.31.33
     # via
     #   boto3
     #   s3transfer
 cast-bootstrap5==0.0.6
     # via -r requirements/production.in
-cast-vue==0.0.7
+cast-vue==0.0.8
     # via -r requirements/production.in
 certifi==2023.7.22
     # via
@@ -202,7 +202,7 @@ executing==1.2.0
     # via stack-data
 factory-boy==3.3.0
     # via -r requirements/develop.in
-faker==19.3.0
+faker==19.3.1
     # via factory-boy
 fastjsonschema==2.18.0
     # via nbformat
@@ -536,7 +536,7 @@ snowballstemmer==2.2.0
     # via sphinx
 soupsieve==2.4.1
     # via beautifulsoup4
-sphinx==7.2.2
+sphinx==7.2.3
     # via
     #   sphinx-rtd-theme
     #   sphinxcontrib-applehelp
