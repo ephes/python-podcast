@@ -50,9 +50,9 @@ black==23.7.0
     # via -r requirements/develop.in
 bleach==6.0.0
     # via nbconvert
-boto3==1.28.33
+boto3==1.28.35
     # via -r requirements/production.in
-botocore==1.31.33
+botocore==1.31.35
     # via
     #   boto3
     #   s3transfer
@@ -87,7 +87,9 @@ crispy-bootstrap4==2022.1
 crispy-bootstrap5==0.7
     # via cast-bootstrap5
 cryptography==41.0.3
-    # via pyjwt
+    # via
+    #   django-anymail
+    #   pyjwt
 debugpy==1.6.7.post1
     # via ipykernel
 decorator==5.1.1
@@ -401,7 +403,7 @@ platformdirs==3.10.0
     # via
     #   black
     #   jupyter-core
-pluggy==1.2.0
+pluggy==1.3.0
     # via pytest
 prometheus-client==0.17.1
     # via
@@ -536,7 +538,7 @@ snowballstemmer==2.2.0
     # via sphinx
 soupsieve==2.4.1
     # via beautifulsoup4
-sphinx==7.2.3
+sphinx==7.2.4
     # via
     #   sphinx-rtd-theme
     #   sphinxcontrib-applehelp
