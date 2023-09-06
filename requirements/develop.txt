@@ -50,15 +50,15 @@ black==23.7.0
     # via -r requirements/develop.in
 bleach==6.0.0
     # via nbconvert
-boto3==1.28.40
+boto3==1.28.41
     # via -r requirements/production.in
-botocore==1.31.40
+botocore==1.31.41
     # via
     #   boto3
     #   s3transfer
 cast-bootstrap5==0.0.9
     # via -r requirements/production.in
-cast-vue==0.0.12
+cast-vue==0.0.13
     # via -r requirements/production.in
 certifi==2023.7.22
     # via
