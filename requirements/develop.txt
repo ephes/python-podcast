@@ -50,9 +50,9 @@ black==23.7.0
     # via -r requirements/develop.in
 bleach==6.0.0
     # via nbconvert
-boto3==1.28.41
+boto3==1.28.42
     # via -r requirements/production.in
-botocore==1.31.41
+botocore==1.31.42
     # via
     #   boto3
     #   s3transfer
@@ -80,7 +80,7 @@ coreapi==2.3.3
     # via django-cast
 coreschema==0.0.4
     # via coreapi
-coverage==7.3.0
+coverage==7.3.1
     # via -r requirements/develop.in
 crispy-bootstrap4==2022.1
     # via django-cast
@@ -641,7 +641,7 @@ websocket-client==1.6.2
     # via jupyter-server
 whitenoise==6.5.0
     # via -r requirements/production.in
-willow[heif]==1.6.1
+willow[heif]==1.6.2
     # via wagtail
 y-py==0.6.0
     # via
