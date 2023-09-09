@@ -46,13 +46,13 @@ beautifulsoup4==4.11.2
     # via
     #   nbconvert
     #   wagtail
-black==23.7.0
+black==23.9.0
     # via -r requirements/develop.in
 bleach==6.0.0
     # via nbconvert
-boto3==1.28.43
+boto3==1.28.44
     # via -r requirements/production.in
-botocore==1.31.43
+botocore==1.31.44
     # via
     #   boto3
     #   s3transfer
@@ -121,7 +121,7 @@ django==4.2.5
     #   django-vite
     #   djangorestframework
     #   wagtail
-django-allauth==0.56.0
+django-allauth==0.56.1
     # via django-cast
 django-anymail[mailgun]==10.1
     # via -r requirements/production.in
@@ -202,7 +202,7 @@ executing==1.2.0
     # via stack-data
 factory-boy==3.3.0
     # via -r requirements/develop.in
-faker==19.4.0
+faker==19.6.0
     # via factory-boy
 fastjsonschema==2.18.0
     # via nbformat
