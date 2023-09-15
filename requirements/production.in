@@ -9,7 +9,7 @@ django-proxy
 django-storages
 git+https://github.com/ephes/django-cast@develop
 gunicorn
-psycopg2
+psycopg[binary]
 python-dotenv
 sentry-sdk
 requests
