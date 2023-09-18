@@ -232,7 +232,7 @@ text-unidecode==1.3
     # via python-slugify
 typer==0.9.0
     # via -r requirements/production.in
-typing-extensions==4.7.1
+typing-extensions==4.8.0
     # via
     #   psycopg
     #   typer
