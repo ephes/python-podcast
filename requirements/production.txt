@@ -14,9 +14,9 @@ asgiref==3.7.2
     # via django
 beautifulsoup4==4.11.2
     # via wagtail
-boto3==1.28.50
+boto3==1.28.52
     # via -r requirements/production.in
-botocore==1.31.50
+botocore==1.31.52
     # via
     #   boto3
     #   s3transfer
@@ -44,7 +44,7 @@ crispy-bootstrap4==2022.1
     # via django-cast
 crispy-bootstrap5==0.7
     # via cast-bootstrap5
-cryptography==41.0.3
+cryptography==41.0.4
     # via pyjwt
 defusedxml==0.7.1
     # via
