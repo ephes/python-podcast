@@ -50,9 +50,9 @@ black==23.9.1
     # via -r requirements/develop.in
 bleach==6.0.0
     # via nbconvert
-boto3==1.28.52
+boto3==1.28.53
     # via -r requirements/production.in
-botocore==1.31.52
+botocore==1.31.53
     # via
     #   boto3
     #   s3transfer
@@ -414,9 +414,9 @@ psutil==5.9.5
     # via
     #   -r requirements/develop.in
     #   ipykernel
-psycopg[binary]==3.1.10
+psycopg[binary]==3.1.11
     # via -r requirements/production.in
-psycopg-binary==3.1.10
+psycopg-binary==3.1.11
     # via psycopg
 ptyprocess==0.7.0
     # via
