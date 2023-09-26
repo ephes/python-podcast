@@ -14,9 +14,9 @@ asgiref==3.7.2
     # via django
 beautifulsoup4==4.11.2
     # via wagtail
-boto3==1.28.53
+boto3==1.28.54
     # via -r requirements/production.in
-botocore==1.31.53
+botocore==1.31.54
     # via
     #   boto3
     #   s3transfer
@@ -73,7 +73,7 @@ django==4.2.5
     #   django-vite
     #   djangorestframework
     #   wagtail
-django-allauth==0.56.1
+django-allauth==0.57.0
     # via django-cast
 django-anymail[mailgun]==10.1
     # via -r requirements/production.in
@@ -244,7 +244,7 @@ urllib3==1.26.16
     #   django-anymail
     #   requests
     #   sentry-sdk
-wagtail==5.1.1
+wagtail==5.1.2
     # via
     #   django-cast
     #   wagtail-srcset
