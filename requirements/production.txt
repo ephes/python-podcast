@@ -14,9 +14,9 @@ asgiref==3.7.2
     # via django
 beautifulsoup4==4.11.2
     # via wagtail
-boto3==1.28.56
+boto3==1.28.57
     # via -r requirements/production.in
-botocore==1.31.56
+botocore==1.31.57
     # via
     #   boto3
     #   s3transfer
@@ -28,7 +28,7 @@ certifi==2023.7.22
     # via
     #   requests
     #   sentry-sdk
-cffi==1.15.1
+cffi==1.16.0
     # via
     #   argon2-cffi-bindings
     #   cryptography
@@ -119,7 +119,7 @@ django-permissionedforms==0.1
     # via wagtail
 django-proxy==1.2.2
     # via -r requirements/production.in
-django-storages==1.14
+django-storages==1.14.1
     # via -r requirements/production.in
 django-tag-parser==3.2
     # via
