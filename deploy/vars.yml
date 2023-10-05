@@ -6,7 +6,7 @@ postgres_user: "{{ project_name }}"
 home_path: "/home/{{ username }}"
 site_path: "{{ home_path }}/site"
 django_cache_location: "{{ site_path }}/cache"
-global_python: python3.11
+global_python: python3.12
 venv_bin: "{{ site_path }}/venv/bin"
 python: "{{ venv_bin }}/python"
 pip_sync: "{{ venv_bin }}/pip-sync"
