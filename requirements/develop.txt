@@ -87,7 +87,9 @@ crispy-bootstrap4==2022.1
 crispy-bootstrap5==0.7
     # via cast-bootstrap5
 cryptography==41.0.4
-    # via pyjwt
+    # via
+    #   django-anymail
+    #   pyjwt
 debugpy==1.8.0
     # via ipykernel
 decorator==5.1.1
@@ -169,7 +171,7 @@ django-permissionedforms==0.1
     # via wagtail
 django-proxy==1.2.2
     # via -r requirements/production.in
-django-storages==1.14.1
+django-storages==1.14.2
     # via -r requirements/production.in
 django-tag-parser==3.2
     # via
@@ -642,7 +644,7 @@ webencodings==0.5.1
     #   bleach
     #   html5lib
     #   tinycss2
-websocket-client==1.6.3
+websocket-client==1.6.4
     # via jupyter-server
 whitenoise==6.5.0
     # via -r requirements/production.in

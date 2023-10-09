@@ -45,7 +45,9 @@ crispy-bootstrap4==2022.1
 crispy-bootstrap5==0.7
     # via cast-bootstrap5
 cryptography==41.0.4
-    # via pyjwt
+    # via
+    #   django-anymail
+    #   pyjwt
 defusedxml==0.7.1
     # via
     #   python3-openid
@@ -119,7 +121,7 @@ django-permissionedforms==0.1
     # via wagtail
 django-proxy==1.2.2
     # via -r requirements/production.in
-django-storages==1.14.1
+django-storages==1.14.2
     # via -r requirements/production.in
 django-tag-parser==3.2
     # via
