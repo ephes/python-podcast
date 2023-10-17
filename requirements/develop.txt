@@ -50,13 +50,13 @@ black==23.9.1
     # via -r requirements/develop.in
 bleach==6.1.0
     # via nbconvert
-boto3==1.28.63
+boto3==1.28.64
     # via -r requirements/production.in
-botocore==1.31.63
+botocore==1.31.64
     # via
     #   boto3
     #   s3transfer
-cast-bootstrap5==0.0.9
+cast-bootstrap5==0.0.10
     # via -r requirements/production.in
 cast-vue==0.0.13
     # via -r requirements/production.in
@@ -82,7 +82,7 @@ coreschema==0.0.4
     # via coreapi
 coverage==7.3.2
     # via -r requirements/develop.in
-crispy-bootstrap4==2022.1
+crispy-bootstrap4==2023.1
     # via django-cast
 crispy-bootstrap5==0.7
     # via cast-bootstrap5
@@ -137,7 +137,7 @@ django-contrib-comments==2.2.0
     #   django-cast
     #   django-fluent-comments
     #   django-threadedcomments
-django-crispy-forms==2.0
+django-crispy-forms==2.1
     # via
     #   crispy-bootstrap4
     #   crispy-bootstrap5
@@ -289,7 +289,7 @@ jupyter-core==5.4.0
     #   nbconvert
     #   nbformat
     #   notebook
-jupyter-events==0.7.0
+jupyter-events==0.8.0
     # via jupyter-server-fileid
 jupyter-server==1.24.0
     # via
@@ -388,11 +388,11 @@ pexpect==4.8.0
     # via ipython
 pickleshare==0.7.5
     # via ipython
-pillow==10.0.1
+pillow==10.1.0
     # via
     #   pillow-heif
     #   wagtail
-pillow-heif==0.13.0
+pillow-heif==0.13.1
     # via willow
 platformdirs==3.11.0
     # via
@@ -407,7 +407,7 @@ prometheus-client==0.17.1
     #   notebook
 prompt-toolkit==3.0.39
     # via ipython
-psutil==5.9.5
+psutil==5.9.6
     # via
     #   -r requirements/develop.in
     #   ipykernel

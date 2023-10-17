@@ -14,9 +14,9 @@ asgiref==3.7.2
     # via django
 beautifulsoup4==4.11.2
     # via wagtail
-boto3==1.28.63
+boto3==1.28.64
     # via -r requirements/production.in
-botocore==1.31.63
+botocore==1.31.64
     # via
     #   boto3
     #   s3transfer
@@ -40,7 +40,7 @@ coreapi==2.3.3
     # via django-cast
 coreschema==0.0.4
     # via coreapi
-crispy-bootstrap4==2022.1
+crispy-bootstrap4==2023.1
     # via django-cast
 crispy-bootstrap5==0.7
     # via cast-bootstrap5
@@ -89,7 +89,7 @@ django-contrib-comments==2.2.0
     #   django-cast
     #   django-fluent-comments
     #   django-threadedcomments
-django-crispy-forms==2.0
+django-crispy-forms==2.1
     # via
     #   crispy-bootstrap4
     #   crispy-bootstrap5
@@ -167,11 +167,11 @@ openpyxl==3.1.2
     # via wagtail
 packaging==23.2
     # via gunicorn
-pillow==10.0.1
+pillow==10.1.0
     # via
     #   pillow-heif
     #   wagtail
-pillow-heif==0.13.0
+pillow-heif==0.13.1
     # via willow
 psycopg[binary]==3.1.12
     # via -r requirements/production.in
