@@ -36,7 +36,7 @@ attrs==23.1.0
     # via
     #   jsonschema
     #   referencing
-babel==2.13.0
+babel==2.13.1
     # via
     #   jupyterlab-server
     #   sphinx
@@ -46,13 +46,13 @@ beautifulsoup4==4.11.2
     # via
     #   nbconvert
     #   wagtail
-black==23.10.0
+black==23.10.1
     # via -r requirements/develop.in
 bleach==6.1.0
     # via nbconvert
-boto3==1.28.66
+boto3==1.28.69
     # via -r requirements/production.in
-botocore==1.31.66
+botocore==1.31.69
     # via
     #   boto3
     #   s3transfer
@@ -68,7 +68,7 @@ cffi==1.16.0
     # via
     #   argon2-cffi-bindings
     #   cryptography
-charset-normalizer==3.3.0
+charset-normalizer==3.3.1
     # via requests
 click==8.1.7
     # via
@@ -86,7 +86,7 @@ crispy-bootstrap4==2023.1
     # via django-cast
 crispy-bootstrap5==0.7
     # via cast-bootstrap5
-cryptography==41.0.4
+cryptography==41.0.5
     # via pyjwt
 debugpy==1.8.0
     # via ipykernel
@@ -200,7 +200,7 @@ executing==2.0.0
     # via stack-data
 factory-boy==3.3.0
     # via -r requirements/develop.in
-faker==19.11.0
+faker==19.12.0
     # via factory-boy
 fastjsonschema==2.18.1
     # via nbformat
@@ -657,4 +657,6 @@ ypy-websocket==0.8.4
 
 # The following packages are considered to be unsafe in a requirements file:
 setuptools==68.2.2
-    # via django-cast
+    # via
+    #   babel
+    #   django-cast
