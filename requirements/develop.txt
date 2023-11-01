@@ -40,8 +40,6 @@ babel==2.13.1
     # via
     #   jupyterlab-server
     #   sphinx
-backcall==0.2.0
-    # via ipython
 beautifulsoup4==4.11.2
     # via
     #   nbconvert
@@ -50,9 +48,9 @@ black==23.10.1
     # via -r requirements/develop.in
 bleach==6.1.0
     # via nbconvert
-boto3==1.28.73
+boto3==1.28.75
     # via -r requirements/production.in
-botocore==1.31.73
+botocore==1.31.75
     # via
     #   boto3
     #   s3transfer
@@ -68,7 +66,7 @@ cffi==1.16.0
     # via
     #   argon2-cffi-bindings
     #   cryptography
-charset-normalizer==3.3.1
+charset-normalizer==3.3.2
     # via requests
 click==8.1.7
     # via
@@ -84,7 +82,7 @@ coverage==7.3.2
     # via -r requirements/develop.in
 crispy-bootstrap4==2023.1
     # via django-cast
-crispy-bootstrap5==0.7
+crispy-bootstrap5==2023.10
     # via cast-bootstrap5
 cryptography==41.0.5
     # via pyjwt
@@ -97,7 +95,7 @@ defusedxml==0.7.1
     #   nbconvert
     #   python3-openid
     #   willow
-django==4.2.6
+django==4.2.7
     # via
     #   crispy-bootstrap4
     #   crispy-bootstrap5
@@ -121,7 +119,7 @@ django==4.2.6
     #   django-vite
     #   djangorestframework
     #   wagtail
-django-allauth==0.58.0
+django-allauth==0.58.1
     # via django-cast
 django-anymail[mailgun]==10.2
     # via -r requirements/production.in
@@ -200,7 +198,7 @@ executing==2.0.1
     # via stack-data
 factory-boy==3.3.0
     # via -r requirements/develop.in
-faker==19.12.0
+faker==19.12.1
     # via factory-boy
 fastjsonschema==2.18.1
     # via nbformat
@@ -232,7 +230,7 @@ ipykernel==6.26.0
     #   jupyterlab
     #   nbclassic
     #   notebook
-ipython==8.16.1
+ipython==8.17.2
     # via
     #   ipykernel
     #   jupyterlab
@@ -264,7 +262,7 @@ json5==0.9.14
     # via jupyterlab-server
 jsonpointer==2.4
     # via jsonschema
-jsonschema[format-nongpl]==4.19.1
+jsonschema[format-nongpl]==4.19.2
     # via
     #   jupyter-events
     #   jupyterlab-server
@@ -278,7 +276,7 @@ jupyter-client==8.5.0
     #   nbclassic
     #   nbclient
     #   notebook
-jupyter-core==5.4.0
+jupyter-core==5.5.0
     # via
     #   ipykernel
     #   jupyter-client
@@ -315,7 +313,7 @@ jupyterlab-server==2.25.0
     # via jupyterlab
 l18n==2021.3
     # via wagtail
-markdown==3.5
+markdown==3.5.1
     # via django-cast
 markdown-it-py==3.0.0
     # via rich
@@ -341,7 +339,7 @@ nbclassic==1.0.0
     #   notebook
 nbclient==0.8.0
     # via nbconvert
-nbconvert==7.9.2
+nbconvert==7.10.0
     # via
     #   jupyter-server
     #   nbclassic
@@ -386,8 +384,6 @@ pathspec==0.11.2
     # via black
 pexpect==4.8.0
     # via ipython
-pickleshare==0.7.5
-    # via ipython
 pillow==10.1.0
     # via
     #   pillow-heif
@@ -400,7 +396,7 @@ platformdirs==3.11.0
     #   jupyter-core
 pluggy==1.3.0
     # via pytest
-prometheus-client==0.17.1
+prometheus-client==0.18.0
     # via
     #   jupyter-server
     #   nbclassic
@@ -443,7 +439,7 @@ pytest==7.4.3
     #   -r requirements/develop.in
     #   pytest-django
     #   pytest-sugar
-pytest-django==4.5.2
+pytest-django==4.6.0
     # via -r requirements/develop.in
 pytest-sugar==0.9.7
     # via -r requirements/develop.in
@@ -522,7 +518,7 @@ send2trash==1.8.2
     #   jupyter-server
     #   nbclassic
     #   notebook
-sentry-sdk==1.32.0
+sentry-sdk==1.33.1
     # via -r requirements/production.in
 six==1.16.0
     # via
@@ -635,7 +631,7 @@ wagtail==5.1.3
     #   wagtail-srcset
 wagtail-srcset==0.3.0
     # via django-cast
-wcwidth==0.2.8
+wcwidth==0.2.9
     # via prompt-toolkit
 webcolors==1.13
     # via jsonschema
