@@ -14,9 +14,9 @@ asgiref==3.7.2
     # via django
 beautifulsoup4==4.11.2
     # via wagtail
-boto3==1.28.78
+boto3==1.28.79
     # via -r requirements/production.in
-botocore==1.31.78
+botocore==1.31.79
     # via
     #   boto3
     #   s3transfer
@@ -45,7 +45,9 @@ crispy-bootstrap4==2023.1
 crispy-bootstrap5==2023.10
     # via cast-bootstrap5
 cryptography==41.0.5
-    # via pyjwt
+    # via
+    #   django-anymail
+    #   pyjwt
 defusedxml==0.7.1
     # via
     #   python3-openid
@@ -182,9 +184,7 @@ pycparser==2.21
 pygments==2.16.1
     # via django-cast
 pyjwt[crypto]==2.8.0
-    # via
-    #   django-allauth
-    #   pyjwt
+    # via django-allauth
 python-akismet==0.4.3
     # via
     #   django-cast
@@ -259,9 +259,7 @@ webencodings==0.5.1
 whitenoise==6.6.0
     # via -r requirements/production.in
 willow[heif]==1.6.2
-    # via
-    #   wagtail
-    #   willow
+    # via wagtail
 
 # The following packages are considered to be unsafe in a requirements file:
 setuptools==68.2.2

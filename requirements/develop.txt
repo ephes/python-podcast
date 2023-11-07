@@ -48,9 +48,9 @@ black==23.10.1
     # via -r requirements/develop.in
 bleach==6.1.0
     # via nbconvert
-boto3==1.28.78
+boto3==1.28.79
     # via -r requirements/production.in
-botocore==1.31.78
+botocore==1.31.79
     # via
     #   boto3
     #   s3transfer
@@ -72,7 +72,7 @@ click==8.1.7
     # via
     #   black
     #   typer
-comm==0.1.4
+comm==0.2.0
     # via ipykernel
 coreapi==2.3.3
     # via django-cast
@@ -85,7 +85,9 @@ crispy-bootstrap4==2023.1
 crispy-bootstrap5==2023.10
     # via cast-bootstrap5
 cryptography==41.0.5
-    # via pyjwt
+    # via
+    #   django-anymail
+    #   pyjwt
 debugpy==1.8.0
     # via ipykernel
 decorator==5.1.1
@@ -269,7 +271,7 @@ jsonschema[format-nongpl]==4.19.2
     #   nbformat
 jsonschema-specifications==2023.7.1
     # via jsonschema
-jupyter-client==8.5.0
+jupyter-client==8.6.0
     # via
     #   ipykernel
     #   jupyter-server
@@ -287,7 +289,7 @@ jupyter-core==5.5.0
     #   nbconvert
     #   nbformat
     #   notebook
-jupyter-events==0.8.0
+jupyter-events==0.9.0
     # via jupyter-server-fileid
 jupyter-server==1.24.0
     # via
@@ -339,7 +341,7 @@ nbclassic==1.0.0
     #   notebook
 nbclient==0.8.0
     # via nbconvert
-nbconvert==7.10.0
+nbconvert==7.11.0
     # via
     #   jupyter-server
     #   nbclassic
@@ -431,9 +433,7 @@ pygments==2.16.1
     #   rich
     #   sphinx
 pyjwt[crypto]==2.8.0
-    # via
-    #   django-allauth
-    #   pyjwt
+    # via django-allauth
 pytest==7.4.3
     # via
     #   -r requirements/develop.in
@@ -645,9 +645,7 @@ websocket-client==1.6.4
 whitenoise==6.6.0
     # via -r requirements/production.in
 willow[heif]==1.6.2
-    # via
-    #   wagtail
-    #   willow
+    # via wagtail
 y-py==0.6.2
     # via
     #   jupyter-ydoc
