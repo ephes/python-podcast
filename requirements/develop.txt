@@ -44,13 +44,13 @@ beautifulsoup4==4.11.2
     # via
     #   nbconvert
     #   wagtail
-black==23.10.1
+black==23.11.0
     # via -r requirements/develop.in
 bleach==6.1.0
     # via nbconvert
-boto3==1.28.79
+boto3==1.28.82
     # via -r requirements/production.in
-botocore==1.31.79
+botocore==1.31.82
     # via
     #   boto3
     #   s3transfer
@@ -85,9 +85,7 @@ crispy-bootstrap4==2023.1
 crispy-bootstrap5==2023.10
     # via cast-bootstrap5
 cryptography==41.0.5
-    # via
-    #   django-anymail
-    #   pyjwt
+    # via pyjwt
 debugpy==1.8.0
     # via ipykernel
 decorator==5.1.1
@@ -311,7 +309,7 @@ jupyterlab==3.6.6
     # via -r requirements/develop.in
 jupyterlab-pygments==0.2.2
     # via nbconvert
-jupyterlab-server==2.25.0
+jupyterlab-server==2.25.1
     # via jupyterlab
 l18n==2021.3
     # via wagtail
@@ -339,7 +337,7 @@ nbclassic==1.0.0
     # via
     #   jupyterlab
     #   notebook
-nbclient==0.8.0
+nbclient==0.9.0
     # via nbconvert
 nbconvert==7.11.0
     # via
@@ -433,13 +431,15 @@ pygments==2.16.1
     #   rich
     #   sphinx
 pyjwt[crypto]==2.8.0
-    # via django-allauth
+    # via
+    #   django-allauth
+    #   pyjwt
 pytest==7.4.3
     # via
     #   -r requirements/develop.in
     #   pytest-django
     #   pytest-sugar
-pytest-django==4.6.0
+pytest-django==4.7.0
     # via -r requirements/develop.in
 pytest-sugar==0.9.7
     # via -r requirements/develop.in
@@ -645,7 +645,9 @@ websocket-client==1.6.4
 whitenoise==6.6.0
     # via -r requirements/production.in
 willow[heif]==1.6.2
-    # via wagtail
+    # via
+    #   wagtail
+    #   willow
 y-py==0.6.2
     # via
     #   jupyter-ydoc
