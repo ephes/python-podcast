@@ -48,9 +48,9 @@ black==23.11.0
     # via -r requirements/develop.in
 bleach==6.1.0
     # via nbconvert
-boto3==1.28.82
+boto3==1.28.84
     # via -r requirements/production.in
-botocore==1.31.82
+botocore==1.31.84
     # via
     #   boto3
     #   s3transfer
@@ -198,7 +198,7 @@ executing==2.0.1
     # via stack-data
 factory-boy==3.3.0
     # via -r requirements/develop.in
-faker==19.13.0
+faker==20.0.0
     # via factory-boy
 fastjsonschema==2.18.1
     # via nbformat
@@ -390,7 +390,7 @@ pillow==10.1.0
     #   wagtail
 pillow-heif==0.13.1
     # via willow
-platformdirs==3.11.0
+platformdirs==4.0.0
     # via
     #   black
     #   jupyter-core
@@ -401,7 +401,7 @@ prometheus-client==0.18.0
     #   jupyter-server
     #   nbclassic
     #   notebook
-prompt-toolkit==3.0.39
+prompt-toolkit==3.0.40
     # via ipython
 psutil==5.9.6
     # via
@@ -569,7 +569,7 @@ telepath==0.3.1
     # via wagtail
 termcolor==2.3.0
     # via pytest-sugar
-terminado==0.17.1
+terminado==0.18.0
     # via
     #   jupyter-server
     #   nbclassic
