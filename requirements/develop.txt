@@ -50,9 +50,9 @@ black==23.11.0
     # via -r requirements/develop.in
 bleach==6.1.0
     # via nbconvert
-boto3==1.29.2
+boto3==1.29.3
     # via -r requirements/production.in
-botocore==1.32.2
+botocore==1.32.3
     # via
     #   boto3
     #   s3transfer
@@ -60,7 +60,7 @@ cast-bootstrap5==0.0.12
     # via -r requirements/production.in
 cast-vue==0.0.13
     # via -r requirements/production.in
-certifi==2023.7.22
+certifi==2023.11.17
     # via
     #   requests
     #   sentry-sdk
@@ -311,7 +311,7 @@ jupyterlab==3.6.6
     # via -r requirements/develop.in
 jupyterlab-pygments==0.2.2
     # via nbconvert
-jupyterlab-server==2.25.1
+jupyterlab-server==2.25.2
     # via jupyterlab
 l18n==2021.3
     # via wagtail
@@ -409,9 +409,9 @@ psutil==5.9.6
     # via
     #   -r requirements/develop.in
     #   ipykernel
-psycopg[binary]==3.1.12
+psycopg[binary]==3.1.13
     # via -r requirements/production.in
-psycopg-binary==3.1.12
+psycopg-binary==3.1.13
     # via psycopg
 ptyprocess==0.7.0
     # via
@@ -425,7 +425,7 @@ pycparser==2.21
     # via cffi
 pyflakes==3.1.0
     # via flake8
-pygments==2.16.1
+pygments==2.17.0
     # via
     #   django-cast
     #   ipython

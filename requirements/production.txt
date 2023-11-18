@@ -16,9 +16,9 @@ asgiref==3.7.2
     #   django-htmx
 beautifulsoup4==4.11.2
     # via wagtail
-boto3==1.29.2
+boto3==1.29.3
     # via -r requirements/production.in
-botocore==1.32.2
+botocore==1.32.3
     # via
     #   boto3
     #   s3transfer
@@ -26,7 +26,7 @@ cast-bootstrap5==0.0.12
     # via -r requirements/production.in
 cast-vue==0.0.13
     # via -r requirements/production.in
-certifi==2023.7.22
+certifi==2023.11.17
     # via
     #   requests
     #   sentry-sdk
@@ -175,13 +175,13 @@ pillow==10.1.0
     #   wagtail
 pillow-heif==0.13.1
     # via willow
-psycopg[binary]==3.1.12
+psycopg[binary]==3.1.13
     # via -r requirements/production.in
-psycopg-binary==3.1.12
+psycopg-binary==3.1.13
     # via psycopg
 pycparser==2.21
     # via cffi
-pygments==2.16.1
+pygments==2.17.0
     # via django-cast
 pyjwt[crypto]==2.8.0
     # via
