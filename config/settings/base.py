@@ -58,7 +58,6 @@ THIRD_PARTY_APPS = [
     "wagtail.search",
     "wagtail.admin",
     "wagtail",
-    "wagtail_srcset",
     "modelcluster",
     "taggit",
     "django_vite",  # required for vue theme
@@ -380,8 +379,9 @@ WAGTAILADMIN_BASE_URL = "cms/"
 # Disable wagtail post_delete_file_cleanup signal to avoid deleting files from S3
 DELETE_WAGTAIL_IMAGES = False
 
-# wagtail_srcset settings
-WAGTAILIMAGES_JPEG_QUALITY = 60
+# image compression settings
+WAGTAILIMAGES_AVIF_QUALITY = 60
+WAGTAILIMAGES_JPEG_QUALITY = 70
 
 # Jupyter
 PATH_TO_NOTEBOOK_DIR = "notebooks"
