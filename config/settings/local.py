@@ -80,4 +80,15 @@ LOGGING = {
 
 # Django Vite
 DJANGO_VITE_ASSETS_PATH = "need to be set but doesn't matter"
-DJANGO_VITE_DEV_MODE = True
+
+DJANGO_VITE = {
+    "cast_vue": {
+        "dev_mode": True,
+    },
+    "cast-bootstrap5": {
+        "dev_mode": True,
+    },
+    "cast": {
+        "dev_mode": True,
+    },
+}

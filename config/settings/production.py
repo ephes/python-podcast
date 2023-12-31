@@ -184,7 +184,20 @@ LOGGING = {
 }
 
 # Vite
-DJANGO_VITE_DEV_MODE = False
-DJANGO_VITE_STATIC_URL_PREFIX = "cast_vue/"
-DJANGO_VITE_ASSETS_PATH = ROOT_DIR.path("staticfiles").path("cast_vue")
-DJANGO_VITE_MANIFEST_PATH = DJANGO_VITE_ASSETS_PATH.path("manifest.json")
+DJANGO_VITE = {
+    "cast_vue": {
+        "dev_mode": False,
+        "static_url_prefix": "cast_vue/",
+        "manifest_path": ROOT_DIR.path("staticfiles").path("cast_vue").path("manifest.json"),
+    },
+    "cast-bootstrap5": {
+        "dev_mode": False,
+        "static_url_prefix": "cast_bootstrap5/vite/",
+        "manifest_path": ROOT_DIR.path("staticfiles").path("cast_bootstrap5").path("vite").path("manifest.json"),
+    },
+    "cast": {
+        "dev_mode": False,
+        "static_url_prefix": "cast/vite/",
+        "manifest_path": ROOT_DIR.path("staticfiles").path("cast").path("vite").path("manifest.json"),
+    },
+}
