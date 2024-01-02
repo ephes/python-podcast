@@ -286,7 +286,7 @@ def switch_to_dev_environment():
 
     projects_dir = get_project_root().parent
     flit_install_dev = [sys.executable, "-m", "flit", "install", "-s"]
-    for project in ["django-cast", "cast-vue"]:
+    for project in ["django-cast", "cast-vue", "cast-bootstrap5"]:
         with chdir(projects_dir / project):
             subprocess.call(flit_install_dev)
 
