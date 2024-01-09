@@ -8,7 +8,7 @@ aiofiles==22.1.0
     # via ypy-websocket
 aiosqlite==0.19.0
     # via ypy-websocket
-alabaster==0.7.13
+alabaster==0.7.15
     # via sphinx
 anyascii==0.3.2
     # via wagtail
@@ -48,9 +48,9 @@ black==23.12.1
     # via -r requirements/develop.in
 bleach==6.1.0
     # via nbconvert
-boto3==1.34.11
+boto3==1.34.14
     # via -r requirements/production.in
-botocore==1.34.11
+botocore==1.34.14
     # via
     #   boto3
     #   s3transfer
@@ -121,7 +121,7 @@ django==5.0.1
     #   django-vite
     #   djangorestframework
     #   wagtail
-django-allauth==0.59.0
+django-allauth==0.60.0
     # via django-cast
 django-anymail[mailgun]==10.2
     # via -r requirements/production.in
@@ -163,7 +163,7 @@ django-model-utils==4.3.1
     # via
     #   django-cast
     #   django-indieweb
-django-modelcluster==6.1
+django-modelcluster==6.2.1
     # via wagtail
 django-permissionedforms==0.1
     # via wagtail
@@ -202,13 +202,13 @@ executing==2.0.1
     # via stack-data
 factory-boy==3.3.0
     # via -r requirements/develop.in
-faker==22.0.0
+faker==22.1.0
     # via factory-boy
 fastjsonschema==2.19.1
     # via nbformat
 filetype==1.2.0
     # via willow
-flake8==6.1.0
+flake8==7.0.0
     # via -r requirements/develop.in
 flit==3.9.0
     # via -r requirements/develop.in
@@ -234,7 +234,7 @@ ipykernel==6.28.0
     #   jupyterlab
     #   nbclassic
     #   notebook
-ipython==8.19.0
+ipython==8.20.0
     # via
     #   ipykernel
     #   jupyterlab
@@ -280,7 +280,7 @@ jupyter-client==8.6.0
     #   nbclassic
     #   nbclient
     #   notebook
-jupyter-core==5.6.1
+jupyter-core==5.7.1
     # via
     #   ipykernel
     #   jupyter-client
@@ -411,9 +411,9 @@ psutil==5.9.7
     # via
     #   -r requirements/develop.in
     #   ipykernel
-psycopg[binary]==3.1.16
+psycopg[binary]==3.1.17
     # via -r requirements/production.in
-psycopg-binary==3.1.16
+psycopg-binary==3.1.17
     # via psycopg
 ptyprocess==0.7.0
     # via
@@ -425,7 +425,7 @@ pycodestyle==2.11.1
     # via flake8
 pycparser==2.21
     # via cffi
-pyflakes==3.1.0
+pyflakes==3.2.0
     # via flake8
 pygments==2.17.2
     # via
@@ -481,7 +481,7 @@ pyzmq==25.1.2
     #   jupyter-server
     #   nbclassic
     #   notebook
-referencing==0.32.0
+referencing==0.32.1
     # via
     #   jsonschema
     #   jsonschema-specifications
@@ -615,7 +615,7 @@ typer==0.9.0
     # via
     #   -r requirements/develop.in
     #   -r requirements/production.in
-types-python-dateutil==2.8.19.14
+types-python-dateutil==2.8.19.20240106
     # via arrow
 typing-extensions==4.9.0
     # via
@@ -633,7 +633,7 @@ urllib3==2.0.7
     #   sentry-sdk
 wagtail==5.2.2
     # via django-cast
-wcwidth==0.2.12
+wcwidth==0.2.13
     # via prompt-toolkit
 webcolors==1.13
     # via jsonschema
