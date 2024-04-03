@@ -14,4 +14,4 @@ psutil
 rich
 sphinx_rtd_theme
 traitlets < 5.10.0
-typer
+typer <= 0.11
