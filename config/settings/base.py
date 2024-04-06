@@ -416,3 +416,5 @@ CAST_CUSTOM_THEMES = [
     ("vue", "Vue.js"),
     ("bootstrap5", "Bootstrap 5"),
 ]
+
+CAST_USE_POST_DATA = False
