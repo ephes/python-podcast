@@ -44,13 +44,13 @@ beautifulsoup4==4.12.3
     # via
     #   nbconvert
     #   wagtail
-black==24.3.0
+black==24.4.0
     # via -r requirements/develop.in
 bleach==6.1.0
     # via nbconvert
-boto3==1.34.79
+boto3==1.34.90
     # via -r requirements/production.in
-botocore==1.34.79
+botocore==1.34.90
     # via
     #   boto3
     #   s3transfer
@@ -63,9 +63,7 @@ certifi==2024.2.2
     #   requests
     #   sentry-sdk
 cffi==1.16.0
-    # via
-    #   argon2-cffi-bindings
-    #   cryptography
+    # via argon2-cffi-bindings
 charset-normalizer==3.3.2
     # via requests
 click==8.1.7
@@ -78,14 +76,12 @@ coreapi==2.3.3
     # via django-cast
 coreschema==0.0.4
     # via coreapi
-coverage==7.4.4
+coverage==7.5.0
     # via -r requirements/develop.in
 crispy-bootstrap4==2024.1
     # via django-cast
 crispy-bootstrap5==2024.2
     # via cast-bootstrap5
-cryptography==42.0.5
-    # via pyjwt
 debugpy==1.8.1
     # via ipykernel
 decorator==5.1.1
@@ -93,7 +89,6 @@ decorator==5.1.1
 defusedxml==0.7.1
     # via
     #   nbconvert
-    #   python3-openid
     #   willow
 django==5.0.4
     # via
@@ -120,7 +115,7 @@ django==5.0.4
     #   djangorestframework
     #   laces
     #   wagtail
-django-allauth==0.61.1
+django-allauth==0.62.0
     # via django-cast
 django-anymail[mailgun]==10.3
     # via -r requirements/production.in
@@ -182,7 +177,7 @@ django-threadedcomments==2.0
     # via django-cast
 django-treebeard==4.7.1
     # via wagtail
-django-vite==3.0.3
+django-vite==3.0.4
     # via
     #   cast-vue
     #   django-cast
@@ -201,7 +196,7 @@ executing==2.0.1
     # via stack-data
 factory-boy==3.3.0
     # via -r requirements/develop.in
-faker==24.7.1
+faker==24.11.0
     # via factory-boy
 fastjsonschema==2.19.1
     # via nbformat
@@ -215,11 +210,11 @@ flit-core==3.9.0
     # via flit
 fqdn==1.5.1
     # via jsonschema
-gunicorn==21.2.0
+gunicorn==22.0.0
     # via -r requirements/production.in
 html5lib==1.1
     # via wagtail
-idna==3.6
+idna==3.7
     # via
     #   anyio
     #   jsonschema
@@ -261,7 +256,7 @@ jmespath==1.0.1
     # via
     #   boto3
     #   botocore
-json5==0.9.24
+json5==0.9.25
     # via jupyterlab-server
 jsonpointer==2.4
     # via jsonschema
@@ -300,7 +295,7 @@ jupyter-server==1.24.0
     #   jupyterlab-server
     #   nbclassic
     #   notebook-shim
-jupyter-server-fileid==0.9.1
+jupyter-server-fileid==0.9.2
     # via jupyter-server-ydoc
 jupyter-server-ydoc==0.8.0
     # via jupyterlab
@@ -312,7 +307,7 @@ jupyterlab==3.6.7
     # via -r requirements/develop.in
 jupyterlab-pygments==0.3.0
     # via nbconvert
-jupyterlab-server==2.25.4
+jupyterlab-server==2.27.1
     # via jupyterlab
 l18n==2021.3
     # via wagtail
@@ -326,7 +321,7 @@ markupsafe==2.1.5
     # via
     #   jinja2
     #   nbconvert
-matplotlib-inline==0.1.6
+matplotlib-inline==0.1.7
     # via
     #   ipykernel
     #   ipython
@@ -365,8 +360,6 @@ notebook==6.5.4
     # via jupyterlab
 notebook-shim==0.2.4
     # via nbclassic
-oauthlib==3.2.2
-    # via requests-oauthlib
 openpyxl==3.1.2
     # via wagtail
 packaging==24.0
@@ -395,11 +388,11 @@ pillow==10.3.0
     #   wagtail
 pillow-heif==0.16.0
     # via willow
-platformdirs==4.2.0
+platformdirs==4.2.1
     # via
     #   black
     #   jupyter-core
-pluggy==1.4.0
+pluggy==1.5.0
     # via pytest
 prometheus-client==0.20.0
     # via
@@ -435,8 +428,6 @@ pygments==2.17.2
     #   nbconvert
     #   rich
     #   sphinx
-pyjwt[crypto]==2.8.0
-    # via django-allauth
 pytest==8.1.1
     # via
     #   -r requirements/develop.in
@@ -462,8 +453,6 @@ python-json-logger==2.0.7
     # via jupyter-events
 python-slugify==8.0.4
     # via django-cast
-python3-openid==3.2.0
-    # via django-allauth
 pytz==2024.1
     # via
     #   django-indieweb
@@ -471,7 +460,7 @@ pytz==2024.1
     #   l18n
 pyyaml==6.0.1
     # via jupyter-events
-pyzmq==25.1.2
+pyzmq==26.0.2
     # via
     #   -r requirements/production.in
     #   ipykernel
@@ -479,7 +468,7 @@ pyzmq==25.1.2
     #   jupyter-server
     #   nbclassic
     #   notebook
-referencing==0.34.0
+referencing==0.35.0
     # via
     #   jsonschema
     #   jsonschema-specifications
@@ -488,17 +477,13 @@ requests==2.31.0
     # via
     #   -r requirements/production.in
     #   coreapi
-    #   django-allauth
     #   django-anymail
     #   django-proxy
     #   flit
     #   jupyterlab-server
     #   python-akismet
-    #   requests-oauthlib
     #   sphinx
     #   wagtail
-requests-oauthlib==2.0.0
-    # via django-allauth
 rfc3339-validator==0.1.4
     # via
     #   jsonschema
@@ -517,12 +502,12 @@ rpds-py==0.18.0
     #   referencing
 s3transfer==0.10.1
     # via boto3
-send2trash==1.8.2
+send2trash==1.8.3
     # via
     #   jupyter-server
     #   nbclassic
     #   notebook
-sentry-sdk==1.44.1
+sentry-sdk==1.45.0
     # via -r requirements/production.in
 six==1.16.0
     # via
@@ -538,7 +523,7 @@ snowballstemmer==2.2.0
     # via sphinx
 soupsieve==2.5
     # via beautifulsoup4
-sphinx==7.2.6
+sphinx==7.3.7
     # via
     #   sphinx-rtd-theme
     #   sphinxcontrib-jquery
@@ -558,7 +543,7 @@ sphinxcontrib-qthelp==1.0.7
     # via sphinx
 sphinxcontrib-serializinghtml==1.1.10
     # via sphinx
-sqlparse==0.4.4
+sqlparse==0.5.0
     # via
     #   django
     #   django-debug-toolbar
@@ -575,7 +560,7 @@ terminado==0.18.1
     #   notebook
 text-unidecode==1.3
     # via python-slugify
-tinycss2==1.2.1
+tinycss2==1.3.0
     # via nbconvert
 tomli-w==1.0.0
     # via flit
@@ -636,7 +621,7 @@ webencodings==0.5.1
     #   bleach
     #   html5lib
     #   tinycss2
-websocket-client==1.7.0
+websocket-client==1.8.0
     # via jupyter-server
 whitenoise==6.6.0
     # via -r requirements/production.in
@@ -652,5 +637,5 @@ ypy-websocket==0.8.4
     # via jupyter-server-ydoc
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==69.2.0
+setuptools==69.5.1
     # via django-cast
