@@ -348,4 +348,4 @@ databases
 .vault_password
 
 # PyCharm
-.idea
+.idea/
