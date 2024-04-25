@@ -415,6 +415,7 @@ CSRF_FAILURE_VIEW = "cast.views.defaults.csrf_failure"
 CAST_CUSTOM_THEMES = [
     ("vue", "Vue.js"),
     ("bootstrap5", "Bootstrap 5"),
+    ("pp", "Python Podcast"),
 ]
 
 CAST_USE_POST_DATA = False

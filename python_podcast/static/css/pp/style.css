@@ -1,0 +1,24 @@
+@font-face {
+    font-family: 'Mona-Sans';
+    src: url('../../fonts/pp/Mona-Sans.woff2') format('woff2');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Hubot-Sans';
+    src: url('../../fonts/pp/Hubot-Sans.woff2') format('woff2');
+    font-weight: normal;
+    font-style: normal;
+}
+
+
+body {
+    font-family: 'Mona-Sans', sans-serif;
+}
+
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Hubot-Sans', sans-serif;
+    font-weight: normal; /* or any appropriate weight */
+}
