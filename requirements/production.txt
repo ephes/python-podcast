@@ -22,7 +22,7 @@ botocore==1.34.92
     # via
     #   boto3
     #   s3transfer
-cast-bootstrap5==0.0.34
+cast-bootstrap5==0.0.35
     # via -r requirements/production.in
 cast-vue==0.0.22
     # via -r requirements/production.in
@@ -217,7 +217,7 @@ rich==13.7.1
     #   typer
 s3transfer==0.10.1
     # via boto3
-sentry-sdk==2.0.0
+sentry-sdk==2.0.1
     # via -r requirements/production.in
 shellingham==1.5.4
     # via typer

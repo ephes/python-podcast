@@ -54,7 +54,7 @@ botocore==1.34.92
     # via
     #   boto3
     #   s3transfer
-cast-bootstrap5==0.0.34
+cast-bootstrap5==0.0.35
     # via -r requirements/production.in
 cast-vue==0.0.22
     # via -r requirements/production.in
@@ -507,7 +507,7 @@ send2trash==1.8.3
     #   jupyter-server
     #   nbclassic
     #   notebook
-sentry-sdk==2.0.0
+sentry-sdk==2.0.1
     # via -r requirements/production.in
 six==1.16.0
     # via
