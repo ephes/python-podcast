@@ -48,9 +48,9 @@ black==24.4.2
     # via -r requirements/develop.in
 bleach==6.1.0
     # via nbconvert
-boto3==1.34.92
+boto3==1.34.93
     # via -r requirements/production.in
-botocore==1.34.92
+botocore==1.34.93
     # via
     #   boto3
     #   s3transfer
@@ -428,7 +428,7 @@ pygments==2.17.2
     #   nbconvert
     #   rich
     #   sphinx
-pytest==8.1.1
+pytest==8.1.2
     # via
     #   -r requirements/develop.in
     #   pytest-django
