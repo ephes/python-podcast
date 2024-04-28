@@ -13,7 +13,6 @@ command_line = "-m pytest"
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings.test"
 filterwarnings = [
-    "ignore::django.utils.deprecation.RemovedInDjango50Warning",
 ]
 addopts = [
     "-ra",
