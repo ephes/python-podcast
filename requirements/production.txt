@@ -249,9 +249,7 @@ urllib3==2.2.1
     #   requests
     #   sentry-sdk
 wagtail==6.0.3
-    # via
-    #   -r requirements/production.in
-    #   django-cast
+    # via django-cast
 webencodings==0.5.1
     # via html5lib
 whitenoise==6.6.0

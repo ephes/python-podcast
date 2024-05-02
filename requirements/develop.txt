@@ -614,9 +614,7 @@ urllib3==2.2.1
     #   requests
     #   sentry-sdk
 wagtail==6.0.3
-    # via
-    #   -r requirements/production.in
-    #   django-cast
+    # via django-cast
 wcwidth==0.2.13
     # via prompt-toolkit
 webcolors==1.13
