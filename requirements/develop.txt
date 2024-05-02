@@ -143,7 +143,7 @@ django-environ==0.11.2
     # via django-cast
 django-extensions==3.2.3
     # via -r requirements/production.in
-django-filter==24.2
+django-filter==23.5
     # via
     #   django-cast
     #   wagtail
@@ -214,6 +214,8 @@ fqdn==1.5.1
     # via jsonschema
 gunicorn==22.0.0
     # via -r requirements/production.in
+html5lib==1.1
+    # via wagtail
 idna==3.7
     # via
     #   anyio
@@ -514,6 +516,7 @@ six==1.16.0
     # via
     #   asttokens
     #   bleach
+    #   html5lib
     #   l18n
     #   python-dateutil
     #   rfc3339-validator
@@ -610,8 +613,10 @@ urllib3==2.2.1
     #   django-anymail
     #   requests
     #   sentry-sdk
-wagtail==6.1
-    # via django-cast
+wagtail==6.0.3
+    # via
+    #   -r requirements/production.in
+    #   django-cast
 wcwidth==0.2.13
     # via prompt-toolkit
 webcolors==1.13
@@ -619,6 +624,7 @@ webcolors==1.13
 webencodings==0.5.1
     # via
     #   bleach
+    #   html5lib
     #   tinycss2
 websocket-client==1.8.0
     # via jupyter-server

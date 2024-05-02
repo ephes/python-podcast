@@ -96,7 +96,7 @@ django-environ==0.11.2
     # via django-cast
 django-extensions==3.2.3
     # via -r requirements/production.in
-django-filter==24.2
+django-filter==23.5
     # via
     #   django-cast
     #   wagtail
@@ -142,6 +142,8 @@ filetype==1.2.0
     # via willow
 gunicorn==22.0.0
     # via -r requirements/production.in
+html5lib==1.1
+    # via wagtail
 idna==3.7
     # via requests
 itypes==1.2.0
@@ -221,6 +223,7 @@ shellingham==1.5.4
     # via typer
 six==1.16.0
     # via
+    #   html5lib
     #   l18n
     #   python-dateutil
 soupsieve==2.5
@@ -245,8 +248,12 @@ urllib3==2.2.1
     #   django-anymail
     #   requests
     #   sentry-sdk
-wagtail==6.1
-    # via django-cast
+wagtail==6.0.3
+    # via
+    #   -r requirements/production.in
+    #   django-cast
+webencodings==0.5.1
+    # via html5lib
 whitenoise==6.6.0
     # via -r requirements/production.in
 willow[heif]==1.8.0
