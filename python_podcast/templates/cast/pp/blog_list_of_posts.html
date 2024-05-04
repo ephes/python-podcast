@@ -58,3 +58,19 @@
     {% include "./pagination.html" %}
   </footer>
 {% endblock footer %}
+
+{% block javascript %}
+  <!-- block.super does not work? -->
+  {{ block.super }}
+
+  {% if use_audio_player %}
+    <script src={% static 'cast/js/web-player/embed.5.js' %}></script>
+    {% for post in posts %}
+      {% for pk, audio in post.media_lookup.audio.items %}
+        <script>
+          podlovePlayer("#audio_{{ audio.pk }}", "{% url 'cast:api:audio_podlove_detail' pk=audio.pk post_id=post.pk %}", "{% url 'podlove-player-config' %}");
+        </script>
+      {% endfor %}
+    {% endfor %}
+  {% endif %}
+{% endblock javascript %}

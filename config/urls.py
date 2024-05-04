@@ -11,6 +11,8 @@ from wagtail.admin import urls as wagtailadmin_urls
 from wagtail.api.v2.views import PagesAPIViewSet
 from wagtail.documents import urls as wagtaildocs_urls
 
+from python_podcast.pp import views as pp_views
+
 handler404 = default_views_cast.page_not_found
 handler500 = default_views_cast.server_error
 handler400 = default_views_cast.bad_request
@@ -56,6 +58,9 @@ urlpatterns = [
     path("docs/", include_docs_urls(title="API service", public=False)),
     # Cast
     path("", include("cast.urls", namespace="cast")),
+    # Podlove Player Config for Python Podcast Theme
+    path("podlove-player-config/", pp_views.podlove_player_config, name="podlove-player-config"),
+    path("podlove-player-template/", pp_views.podlove_player_template, name="podlove-player-template"),
     # Fediverse redirects etc.
     path("", include("python_podcast.fedi.urls", namespace="fedi")),
     # Wagtail
