@@ -125,8 +125,8 @@ def jupyterlab():
     project_root = get_project_root()
     notebook_dir = project_root / "notebooks"
     notebook_dir.mkdir(exist_ok=True)
-    env = env_with_pythonpath() | {"DJANGO_ALLOW_ASYNC_UNSAFE": "true"}
-    subprocess.call([sys.executable, "manage.py", "shell_plus", "--notebook"], env=env)
+    env = env_with_pythonpath()
+    subprocess.call([sys.executable, "-m", "jupyter", "lab", "--notebook-dir", "notebooks/"], env=env)
 
 
 @cli.command()

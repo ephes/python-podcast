@@ -5,13 +5,11 @@ flake8
 flit
 django-debug-toolbar
 django-test-plus
-jupyter-server < 2.0.0
-jupyterlab
+dj-notebook
 pytest
 pytest-sugar
 pytest-django
 psutil
 rich
 sphinx_rtd_theme
-traitlets < 5.10.0
 typer <= 0.11

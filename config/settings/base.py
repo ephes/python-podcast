@@ -384,27 +384,6 @@ DELETE_WAGTAIL_IMAGES = False
 WAGTAILIMAGES_AVIF_QUALITY = 60
 WAGTAILIMAGES_JPEG_QUALITY = 70
 
-# Jupyter
-PATH_TO_NOTEBOOK_DIR = "notebooks"
-try:
-    import jupyterlab  # noqa
-
-    notebook_default_url = "/lab"  # Using JupyterLab
-except ImportError:
-    notebook_default_url = "/tree"  # Using Jupyter
-
-NOTEBOOK_ARGUMENTS = [
-    "--ip",
-    "127.0.0.1",
-    "--port",
-    "8888",
-    "--notebook-dir",
-    PATH_TO_NOTEBOOK_DIR,
-    "--NotebookApp.default_url",
-    notebook_default_url,
-]
-IPYTHON_KERNEL_DISPLAY_NAME = "Django Kernel"
-
 # crispy forms settings
 CRISPY_TEMPLATE_PACK = "bootstrap5"
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
