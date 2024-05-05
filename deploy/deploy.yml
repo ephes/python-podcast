@@ -133,6 +133,16 @@
       environment:
         DJANGO_SETTINGS_MODULE: "{{ django_settings_module }}"
 
+    - name: Update wagtail index
+      community.general.django_manage:
+        command: update_index
+        project_path: "{{ site_path }}"
+        virtualenv: "{{ site_path }}/venv"
+      become: true
+      become_user: "{{ username }}"
+      environment:
+        DJANGO_SETTINGS_MODULE: "{{ django_settings_module }}"
+
     - name: Create directory for traefik config
       file:
         path: "{{ traefik_config_dir }}"
