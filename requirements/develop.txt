@@ -530,6 +530,7 @@ rich==13.7.1
     #   -r requirements/develop.in
     #   dj-notebook
     #   django-cast
+    #   typer
 rpds-py==0.18.0
     # via
     #   jsonschema
@@ -540,6 +541,8 @@ send2trash==1.8.3
     # via jupyter-server
 sentry-sdk==2.0.1
     # via -r requirements/production.in
+shellingham==1.5.4
+    # via typer
 six==1.16.0
     # via
     #   asttokens
@@ -621,10 +624,8 @@ traitlets==5.14.3
     #   nbconvert
     #   nbformat
     #   qtconsole
-typer==0.11.0
-    # via
-    #   -r requirements/develop.in
-    #   -r requirements/production.in
+typer==0.12.3
+    # via -r requirements/production.in
 types-python-dateutil==2.9.0.20240316
     # via arrow
 typing-extensions==4.11.0
