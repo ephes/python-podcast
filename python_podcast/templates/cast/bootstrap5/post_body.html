@@ -3,7 +3,7 @@
 {% load i18n %}
 
 {% block detail_link %}
-  <a href="{% pageurl page %}">
+  <a href="{{ page.page_url }}">
     Shownotes | {% trans "Comments" %} | Permalink
   </a>
 {% endblock detail_link %}

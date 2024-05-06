@@ -36,7 +36,7 @@ def podlove_player_config(request: HttpRequest) -> JsonResponse:
                         "Hubot-Sans",
                     ],
                     "src": [],
-                    "weight": 800,
+                    # "weight": 800,
                 },
                 "regular": {
                     "name": "regular",
@@ -44,7 +44,7 @@ def podlove_player_config(request: HttpRequest) -> JsonResponse:
                         "Mona-Sans",
                     ],
                     "src": [],
-                    "weight": 300,
+                    # "weight": 300,
                 },
                 "bold": {
                     "name": "bold",
@@ -52,7 +52,7 @@ def podlove_player_config(request: HttpRequest) -> JsonResponse:
                         "Mona-Sans",
                     ],
                     "src": [],
-                    "weight": 700,
+                    # "weight": 700,
                 },
             },
         },
