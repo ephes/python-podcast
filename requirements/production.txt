@@ -46,7 +46,7 @@ crispy-bootstrap5==2024.2
     # via cast-bootstrap5
 defusedxml==0.7.1
     # via willow
-django==5.0.5
+django==5.0.4
     # via
     #   crispy-bootstrap4
     #   crispy-bootstrap5
