@@ -48,9 +48,9 @@ black==24.4.2
     # via -r requirements/develop.in
 bleach==6.1.0
     # via nbconvert
-boto3==1.34.99
+boto3==1.34.100
     # via -r requirements/production.in
-botocore==1.34.99
+botocore==1.34.100
     # via
     #   boto3
     #   s3transfer
@@ -98,7 +98,7 @@ defusedxml==0.7.1
     #   willow
 dj-notebook==0.7.0
     # via -r requirements/develop.in
-django==5.0.4
+django==5.0.6
     # via
     #   crispy-bootstrap4
     #   crispy-bootstrap5
