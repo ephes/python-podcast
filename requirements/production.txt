@@ -16,9 +16,9 @@ asgiref==3.8.1
     #   django-htmx
 beautifulsoup4==4.12.3
     # via wagtail
-boto3==1.34.103
+boto3==1.34.106
     # via -r requirements/production.in
-botocore==1.34.103
+botocore==1.34.106
     # via
     #   boto3
     #   s3transfer
@@ -70,7 +70,7 @@ django==5.0.6
     #   djangorestframework
     #   laces
     #   wagtail
-django-allauth==0.62.1
+django-allauth==0.63.0
     # via django-cast
 django-anymail[mailgun]==10.3
     # via -r requirements/production.in
@@ -215,7 +215,7 @@ rich==13.7.1
     #   typer
 s3transfer==0.10.1
     # via boto3
-sentry-sdk==2.1.1
+sentry-sdk==2.2.0
     # via -r requirements/production.in
 shellingham==1.5.4
     # via typer
