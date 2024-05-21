@@ -48,9 +48,9 @@ black==24.4.2
     # via -r requirements/develop.in
 bleach==6.1.0
     # via nbconvert
-boto3==1.34.106
+boto3==1.34.109
     # via -r requirements/production.in
-botocore==1.34.106
+botocore==1.34.109
     # via
     #   boto3
     #   s3transfer
@@ -124,7 +124,7 @@ django==5.0.6
     #   djangorestframework
     #   laces
     #   wagtail
-django-allauth==0.63.0
+django-allauth==0.63.1
     # via django-cast
 django-anymail[mailgun]==10.3
     # via -r requirements/production.in
@@ -453,7 +453,7 @@ pygments==2.18.0
     #   qtconsole
     #   rich
     #   sphinx
-pytest==8.2.0
+pytest==8.2.1
     # via
     #   -r requirements/develop.in
     #   pytest-django
@@ -506,7 +506,7 @@ referencing==0.35.1
     #   jsonschema
     #   jsonschema-specifications
     #   jupyter-events
-requests==2.31.0
+requests==2.32.1
     # via
     #   -r requirements/production.in
     #   coreapi

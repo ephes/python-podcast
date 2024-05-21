@@ -16,9 +16,9 @@ asgiref==3.8.1
     #   django-htmx
 beautifulsoup4==4.12.3
     # via wagtail
-boto3==1.34.106
+boto3==1.34.109
     # via -r requirements/production.in
-botocore==1.34.106
+botocore==1.34.109
     # via
     #   boto3
     #   s3transfer
@@ -70,7 +70,7 @@ django==5.0.6
     #   djangorestframework
     #   laces
     #   wagtail
-django-allauth==0.63.0
+django-allauth==0.63.1
     # via django-cast
 django-anymail[mailgun]==10.3
     # via -r requirements/production.in
@@ -201,7 +201,7 @@ pytz==2024.1
     #   l18n
 pyzmq==26.0.3
     # via -r requirements/production.in
-requests==2.31.0
+requests==2.32.1
     # via
     #   -r requirements/production.in
     #   coreapi
