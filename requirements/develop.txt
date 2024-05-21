@@ -539,7 +539,7 @@ s3transfer==0.10.1
     # via boto3
 send2trash==1.8.3
     # via jupyter-server
-sentry-sdk==2.2.0
+sentry-sdk==2.2.1
     # via -r requirements/production.in
 shellingham==1.5.4
     # via typer
@@ -644,7 +644,7 @@ urllib3==2.2.1
     #   django-anymail
     #   requests
     #   sentry-sdk
-wagtail==6.1
+wagtail==6.1.1
     # via django-cast
 wcwidth==0.2.13
     # via prompt-toolkit
@@ -666,5 +666,5 @@ willow[heif]==1.8.0
     #   willow
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==69.5.1
+setuptools==70.0.0
     # via django-cast
