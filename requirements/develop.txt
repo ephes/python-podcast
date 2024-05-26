@@ -48,9 +48,9 @@ black==24.4.2
     # via -r requirements/develop.in
 bleach==6.1.0
     # via nbconvert
-boto3==1.34.111
+boto3==1.34.113
     # via -r requirements/production.in
-botocore==1.34.111
+botocore==1.34.113
     # via
     #   boto3
     #   s3transfer
@@ -124,7 +124,7 @@ django==5.0.6
     #   djangorestframework
     #   laces
     #   wagtail
-django-allauth==0.63.1
+django-allauth==0.63.2
     # via django-cast
 django-anymail[mailgun]==10.3
     # via -r requirements/production.in
@@ -154,7 +154,7 @@ django-extensions==3.2.3
     # via
     #   -r requirements/production.in
     #   dj-notebook
-django-filter==24.2
+django-filter==23.5
     # via
     #   django-cast
     #   wagtail
@@ -229,6 +229,8 @@ gunicorn==22.0.0
     # via -r requirements/production.in
 h11==0.14.0
     # via httpcore
+html5lib==1.1
+    # via wagtail
 httpcore==1.0.5
     # via httpx
 httpx==0.27.0
@@ -288,7 +290,7 @@ jsonschema-specifications==2023.12.1
     # via jsonschema
 jupyter==1.0.0
     # via dj-notebook
-jupyter-client==8.6.1
+jupyter-client==8.6.2
     # via
     #   ipykernel
     #   jupyter-console
@@ -321,7 +323,7 @@ jupyter-server==2.14.0
     #   notebook-shim
 jupyter-server-terminals==0.5.3
     # via jupyter-server
-jupyterlab==4.2.0
+jupyterlab==4.2.1
     # via notebook
 jupyterlab-pygments==0.3.0
     # via nbconvert
@@ -539,7 +541,7 @@ s3transfer==0.10.1
     # via boto3
 send2trash==1.8.3
     # via jupyter-server
-sentry-sdk==2.2.1
+sentry-sdk==2.3.1
     # via -r requirements/production.in
 shellingham==1.5.4
     # via typer
@@ -548,6 +550,7 @@ six==1.16.0
     #   asttokens
     #   bleach
     #   django-pandas
+    #   html5lib
     #   l18n
     #   python-dateutil
     #   rfc3339-validator
@@ -628,7 +631,7 @@ typer==0.12.3
     # via -r requirements/production.in
 types-python-dateutil==2.9.0.20240316
     # via arrow
-typing-extensions==4.11.0
+typing-extensions==4.12.0
     # via
     #   psycopg
     #   typer
@@ -644,7 +647,7 @@ urllib3==2.2.1
     #   django-anymail
     #   requests
     #   sentry-sdk
-wagtail==6.1.1
+wagtail==6.0.4
     # via django-cast
 wcwidth==0.2.13
     # via prompt-toolkit
@@ -653,6 +656,7 @@ webcolors==1.13
 webencodings==0.5.1
     # via
     #   bleach
+    #   html5lib
     #   tinycss2
 websocket-client==1.8.0
     # via jupyter-server
