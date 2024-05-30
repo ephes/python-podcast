@@ -8,7 +8,7 @@ alabaster==0.7.16
     # via sphinx
 anyascii==0.3.2
     # via wagtail
-anyio==4.3.0
+anyio==4.4.0
     # via
     #   httpx
     #   jupyter-server
@@ -48,9 +48,9 @@ black==24.4.2
     # via -r requirements/develop.in
 bleach==6.1.0
     # via nbconvert
-boto3==1.34.113
+boto3==1.34.115
     # via -r requirements/production.in
-botocore==1.34.113
+botocore==1.34.115
     # via
     #   boto3
     #   s3transfer
@@ -82,7 +82,7 @@ coreapi==2.3.3
     # via django-cast
 coreschema==0.0.4
     # via coreapi
-coverage==7.5.1
+coverage==7.5.3
     # via -r requirements/develop.in
 crispy-bootstrap4==2024.1
     # via django-cast
@@ -146,7 +146,7 @@ django-crispy-forms==2.1
     #   crispy-bootstrap5
     #   django-cast
     #   django-fluent-comments
-django-debug-toolbar==4.3.0
+django-debug-toolbar==4.4.2
     # via -r requirements/develop.in
 django-environ==0.11.2
     # via django-cast
@@ -211,7 +211,7 @@ executing==2.0.1
     # via stack-data
 factory-boy==3.3.0
     # via -r requirements/develop.in
-faker==25.2.0
+faker==25.3.0
     # via factory-boy
 fastjsonschema==2.19.1
     # via nbformat
@@ -257,7 +257,7 @@ ipython==8.24.0
     #   ipykernel
     #   ipywidgets
     #   jupyter-console
-ipywidgets==8.1.2
+ipywidgets==8.1.3
     # via jupyter
 isoduration==20.11.0
     # via jsonschema
@@ -331,7 +331,7 @@ jupyterlab-server==2.27.2
     # via
     #   jupyterlab
     #   notebook
-jupyterlab-widgets==3.0.10
+jupyterlab-widgets==3.0.11
     # via ipywidgets
 l18n==2021.3
     # via wagtail
@@ -378,7 +378,7 @@ notebook-shim==0.2.4
     #   notebook
 numpy==1.26.4
     # via pandas
-openpyxl==3.1.2
+openpyxl==3.1.3
     # via wagtail
 overrides==7.7.0
     # via jupyter-server
@@ -422,7 +422,7 @@ pluggy==1.5.0
     # via pytest
 prometheus-client==0.20.0
     # via jupyter-server
-prompt-toolkit==3.0.43
+prompt-toolkit==3.0.45
     # via
     #   ipython
     #   jupyter-console
@@ -508,7 +508,7 @@ referencing==0.35.1
     #   jsonschema
     #   jsonschema-specifications
     #   jupyter-events
-requests==2.32.2
+requests==2.32.3
     # via
     #   -r requirements/production.in
     #   coreapi
@@ -662,7 +662,7 @@ websocket-client==1.8.0
     # via jupyter-server
 whitenoise==6.6.0
     # via -r requirements/production.in
-widgetsnbextension==4.0.10
+widgetsnbextension==4.0.11
     # via ipywidgets
 willow[heif]==1.8.0
     # via
