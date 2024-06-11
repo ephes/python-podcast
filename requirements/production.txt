@@ -16,17 +16,17 @@ asgiref==3.8.1
     #   django-htmx
 beautifulsoup4==4.12.3
     # via wagtail
-boto3==1.34.115
+boto3==1.34.124
     # via -r requirements/production.in
-botocore==1.34.115
+botocore==1.34.124
     # via
     #   boto3
     #   s3transfer
-cast-bootstrap5==0.0.41
+cast-bootstrap5==0.0.42
     # via -r requirements/production.in
 cast-vue==0.0.25
     # via -r requirements/production.in
-certifi==2024.2.2
+certifi==2024.6.2
     # via
     #   requests
     #   sentry-sdk
@@ -70,7 +70,7 @@ django==5.0.6
     #   djangorestframework
     #   laces
     #   wagtail
-django-allauth==0.63.2
+django-allauth==0.63.3
     # via django-cast
 django-anymail[mailgun]==10.3
     # via -r requirements/production.in
@@ -168,7 +168,7 @@ mdurl==0.1.2
     # via markdown-it-py
 openpyxl==3.1.3
     # via wagtail
-packaging==24.0
+packaging==24.1
     # via gunicorn
 pillow==10.3.0
     # via
@@ -217,7 +217,7 @@ rich==13.7.1
     #   typer
 s3transfer==0.10.1
     # via boto3
-sentry-sdk==2.3.1
+sentry-sdk==2.5.1
     # via -r requirements/production.in
 shellingham==1.5.4
     # via typer
@@ -236,7 +236,7 @@ text-unidecode==1.3
     # via python-slugify
 typer==0.12.3
     # via -r requirements/production.in
-typing-extensions==4.12.0
+typing-extensions==4.12.2
     # via
     #   psycopg
     #   typer
@@ -248,7 +248,7 @@ urllib3==2.2.1
     #   django-anymail
     #   requests
     #   sentry-sdk
-wagtail==6.0.4
+wagtail==6.0.5
     # via django-cast
 webencodings==0.5.1
     # via html5lib
