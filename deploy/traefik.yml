@@ -1,4 +1,4 @@
-- hosts: production
+- hosts: all
   pre_tasks:
     - include_vars: secrets.yml
   roles:
@@ -6,5 +6,5 @@
       tags: traefik
       vars:
         - traefik_update: yes
-        - traefik_binary_url: https://github.com/traefik/traefik/releases/download/v2.9.4/traefik_v2.9.4_linux_amd64.tar.gz
+        - traefik_binary_url: https://github.com/traefik/traefik/releases/download/v3.0.2/traefik_v3.0.2_linux_amd64.tar.gz
         - dashboard_hostname: traefik.wersdoerfer.de
