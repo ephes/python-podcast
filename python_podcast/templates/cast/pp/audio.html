@@ -1,1 +1,6 @@
-<div id="audio_{{  value.pk }}" data-template="{% url 'podlove-player-template' %}"></div>
+<div
+  id="audio_{{ value.pk }}"
+  data-template="{% url 'podlove-player-template' %}"
+  data-url="{% url 'cast:api:audio_podlove_detail' pk=value.pk post_id=page.pk %}"
+>
+</div>
