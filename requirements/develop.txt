@@ -48,13 +48,13 @@ black==24.4.2
     # via -r requirements/develop.in
 bleach==6.1.0
     # via nbconvert
-boto3==1.34.131
+boto3==1.34.132
     # via -r requirements/production.in
-botocore==1.34.131
+botocore==1.34.132
     # via
     #   boto3
     #   s3transfer
-cast-bootstrap5==0.0.43
+cast-bootstrap5==0.0.44
     # via -r requirements/production.in
 cast-vue==0.0.25
     # via -r requirements/production.in
@@ -82,7 +82,7 @@ coreapi==2.3.3
     # via django-cast
 coreschema==0.0.4
     # via coreapi
-coverage==7.5.3
+coverage==7.5.4
     # via -r requirements/develop.in
 crispy-bootstrap4==2024.1
     # via django-cast
@@ -126,7 +126,7 @@ django==5.0.6
     #   wagtail
 django-allauth==0.63.3
     # via -r requirements/production.in
-django-anymail[mailgun]==10.3
+django-anymail[mailgun]==11.0
     # via -r requirements/production.in
 django-braces==1.15.0
     # via django-indieweb
@@ -186,7 +186,7 @@ django-tag-parser==3.2
     #   django-fluent-comments
 django-taggit==5.0.1
     # via wagtail
-django-test-plus==2.2.3
+django-test-plus==2.2.4
     # via -r requirements/develop.in
 django-threadedcomments==2.0
     # via django-cast
@@ -533,7 +533,7 @@ rpds-py==0.18.1
     # via
     #   jsonschema
     #   referencing
-s3transfer==0.10.1
+s3transfer==0.10.2
     # via boto3
 send2trash==1.8.3
     # via jupyter-server
@@ -664,7 +664,7 @@ willow[heif]==1.8.0
     #   willow
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==70.1.0
+setuptools==70.1.1
     # via
     #   django-cast
     #   jupyterlab
