@@ -10,6 +10,11 @@
   {% endif %}
 {% endblock robots %}
 
+{% block meta %}
+  {{ block.super }}
+  <link rel="canonical" href="{{ canonical_url }}">
+{% endblock %}
+
 {% block title %}
   <title>{{ page.seo_title }}</title>
 {% endblock %}
