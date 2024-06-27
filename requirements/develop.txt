@@ -209,7 +209,7 @@ executing==2.0.1
     # via stack-data
 factory-boy==3.3.0
     # via -r requirements/develop.in
-faker==25.9.2
+faker==26.0.0
     # via factory-boy
 fastjsonschema==2.20.0
     # via nbformat
