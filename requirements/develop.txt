@@ -247,7 +247,7 @@ ipykernel==6.29.4
     #   jupyter-console
     #   jupyterlab
     #   qtconsole
-ipython==8.25.0
+ipython==8.26.0
     # via
     #   dj-notebook
     #   ipykernel
