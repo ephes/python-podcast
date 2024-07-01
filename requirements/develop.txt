@@ -241,7 +241,7 @@ imagesize==1.4.1
     # via sphinx
 iniconfig==2.0.0
     # via pytest
-ipykernel==6.29.4
+ipykernel==6.29.5
     # via
     #   jupyter
     #   jupyter-console
@@ -402,7 +402,7 @@ pathspec==0.12.1
     # via black
 pexpect==4.9.0
     # via ipython
-pillow==10.3.0
+pillow==10.4.0
     # via
     #   pillow-heif
     #   wagtail
@@ -424,9 +424,9 @@ psutil==6.0.0
     # via
     #   -r requirements/develop.in
     #   ipykernel
-psycopg[binary]==3.1.19
+psycopg[binary]==3.2.1
     # via -r requirements/production.in
-psycopg-binary==3.1.19
+psycopg-binary==3.2.1
     # via psycopg
 ptyprocess==0.7.0
     # via

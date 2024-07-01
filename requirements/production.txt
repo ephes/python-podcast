@@ -164,15 +164,15 @@ openpyxl==3.1.5
     # via wagtail
 packaging==24.1
     # via gunicorn
-pillow==10.3.0
+pillow==10.4.0
     # via
     #   pillow-heif
     #   wagtail
 pillow-heif==0.16.0
     # via willow
-psycopg[binary]==3.1.19
+psycopg[binary]==3.2.1
     # via -r requirements/production.in
-psycopg-binary==3.1.19
+psycopg-binary==3.2.1
     # via psycopg
 pycparser==2.22
     # via cffi
