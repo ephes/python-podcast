@@ -48,9 +48,9 @@ black==24.4.2
     # via -r requirements/develop.in
 bleach==6.1.0
     # via nbconvert
-boto3==1.34.136
+boto3==1.34.138
     # via -r requirements/production.in
-botocore==1.34.136
+botocore==1.34.138
     # via
     #   boto3
     #   s3transfer
@@ -406,7 +406,7 @@ pillow==10.4.0
     # via
     #   pillow-heif
     #   wagtail
-pillow-heif==0.16.0
+pillow-heif==0.17.0
     # via willow
 platformdirs==4.2.2
     # via
@@ -662,7 +662,7 @@ willow[heif]==1.8.0
     #   willow
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==70.1.1
+setuptools==70.2.0
     # via
     #   django-cast
     #   jupyterlab
