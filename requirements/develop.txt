@@ -48,9 +48,9 @@ black==24.4.2
     # via -r requirements/develop.in
 bleach==6.1.0
     # via nbconvert
-boto3==1.34.138
+boto3==1.34.140
     # via -r requirements/production.in
-botocore==1.34.138
+botocore==1.34.140
     # via
     #   boto3
     #   s3transfer
@@ -60,7 +60,7 @@ cast-vue==0.0.25
     # via -r requirements/production.in
 cattrs==23.2.3
     # via django-schema-graph
-certifi==2024.6.2
+certifi==2024.7.4
     # via
     #   httpcore
     #   httpx
@@ -146,7 +146,7 @@ django-crispy-forms==2.2
     #   crispy-bootstrap5
     #   django-cast
     #   django-fluent-comments
-django-debug-toolbar==4.4.2
+django-debug-toolbar==4.4.5
     # via -r requirements/develop.in
 django-environ==0.11.2
     # via django-cast

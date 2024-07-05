@@ -16,9 +16,9 @@ asgiref==3.8.1
     #   django-htmx
 beautifulsoup4==4.12.3
     # via wagtail
-boto3==1.34.138
+boto3==1.34.140
     # via -r requirements/production.in
-botocore==1.34.138
+botocore==1.34.140
     # via
     #   boto3
     #   s3transfer
@@ -26,7 +26,7 @@ cast-bootstrap5==0.0.44
     # via -r requirements/production.in
 cast-vue==0.0.25
     # via -r requirements/production.in
-certifi==2024.6.2
+certifi==2024.7.4
     # via
     #   requests
     #   sentry-sdk
