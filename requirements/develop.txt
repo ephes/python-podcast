@@ -48,9 +48,9 @@ black==24.4.2
     # via -r requirements/develop.in
 bleach==6.1.0
     # via nbconvert
-boto3==1.34.142
+boto3==1.34.143
     # via -r requirements/production.in
-botocore==1.34.142
+botocore==1.34.143
     # via
     #   boto3
     #   s3transfer
@@ -82,7 +82,7 @@ coreapi==2.3.3
     # via django-cast
 coreschema==0.0.4
     # via coreapi
-coverage==7.5.4
+coverage==7.6.0
     # via -r requirements/develop.in
 crispy-bootstrap4==2024.1
     # via django-cast
@@ -124,9 +124,9 @@ django==5.0.7
     #   djangorestframework
     #   laces
     #   wagtail
-django-allauth==0.63.3
+django-allauth==0.63.5
     # via -r requirements/production.in
-django-anymail[mailgun]==11.0
+django-anymail[mailgun]==11.0.1
     # via -r requirements/production.in
 django-braces==1.15.0
     # via django-indieweb
@@ -146,7 +146,7 @@ django-crispy-forms==2.2
     #   crispy-bootstrap5
     #   django-cast
     #   django-fluent-comments
-django-debug-toolbar==4.4.5
+django-debug-toolbar==4.4.6
     # via -r requirements/develop.in
 django-environ==0.11.2
     # via django-cast
@@ -640,7 +640,7 @@ urllib3==2.2.2
     #   django-anymail
     #   requests
     #   sentry-sdk
-wagtail==6.1.2
+wagtail==6.1.3
     # via django-cast
 wcwidth==0.2.13
     # via prompt-toolkit
