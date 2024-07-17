@@ -323,7 +323,7 @@ jupyterlab==4.2.3
     # via notebook
 jupyterlab-pygments==0.3.0
     # via nbconvert
-jupyterlab-server==2.27.2
+jupyterlab-server==2.27.3
     # via
     #   jupyterlab
     #   notebook
@@ -555,7 +555,7 @@ snowballstemmer==2.2.0
     # via sphinx
 soupsieve==2.5
     # via beautifulsoup4
-sphinx==7.4.4
+sphinx==7.4.5
     # via
     #   sphinx-rtd-theme
     #   sphinxcontrib-jquery
