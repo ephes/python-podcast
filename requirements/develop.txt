@@ -319,7 +319,7 @@ jupyter-server==2.14.2
     #   notebook-shim
 jupyter-server-terminals==0.5.3
     # via jupyter-server
-jupyterlab==4.2.3
+jupyterlab==4.2.4
     # via notebook
 jupyterlab-pygments==0.3.0
     # via nbconvert
@@ -555,7 +555,7 @@ snowballstemmer==2.2.0
     # via sphinx
 soupsieve==2.5
     # via beautifulsoup4
-sphinx==7.4.5
+sphinx==7.4.6
     # via
     #   sphinx-rtd-theme
     #   sphinxcontrib-jquery
@@ -662,7 +662,7 @@ willow[heif]==1.8.0
     #   willow
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==70.3.0
+setuptools==71.0.3
     # via
     #   django-cast
     #   jupyterlab
