@@ -140,7 +140,7 @@ django-contrib-comments==2.2.0
     #   django-cast
     #   django-fluent-comments
     #   django-threadedcomments
-django-crispy-forms==2.2
+django-crispy-forms==2.3
     # via
     #   crispy-bootstrap4
     #   crispy-bootstrap5
