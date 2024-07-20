@@ -54,7 +54,7 @@ botocore==1.34.145
     # via
     #   boto3
     #   s3transfer
-cast-bootstrap5==0.0.44
+cast-bootstrap5==0.0.45
     # via -r requirements/production.in
 cast-vue==0.0.25
     # via -r requirements/production.in
@@ -662,7 +662,7 @@ willow[heif]==1.8.0
     #   willow
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==71.0.3
+setuptools==71.0.4
     # via
     #   django-cast
     #   jupyterlab
