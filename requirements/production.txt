@@ -16,9 +16,9 @@ asgiref==3.8.1
     #   django-htmx
 beautifulsoup4==4.12.3
     # via wagtail
-boto3==1.34.152
+boto3==1.34.153
     # via -r requirements/production.in
-botocore==1.34.152
+botocore==1.34.153
     # via
     #   boto3
     #   s3transfer
@@ -96,13 +96,13 @@ django-environ==0.11.2
     # via django-cast
 django-extensions==3.2.3
     # via -r requirements/production.in
-django-filter==24.2
+django-filter==24.3
     # via
     #   django-cast
     #   wagtail
 django-fluent-comments==3.0
     # via django-cast
-django-htmx==1.18.0
+django-htmx==1.19.0
     # via django-cast
 django-indieweb==0.0.7
     # via -r requirements/production.in
@@ -195,7 +195,7 @@ pytz==2024.1
     #   django-indieweb
     #   django-modelcluster
     #   l18n
-pyzmq==26.0.3
+pyzmq==26.1.0
     # via -r requirements/production.in
 requests==2.32.3
     # via
