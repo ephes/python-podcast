@@ -48,9 +48,9 @@ black==24.8.0
     # via -r requirements/develop.in
 bleach==6.1.0
     # via nbconvert
-boto3==1.35.1
+boto3==1.35.3
     # via -r requirements/production.in
-botocore==1.35.1
+botocore==1.35.3
     # via
     #   boto3
     #   s3transfer
@@ -209,7 +209,7 @@ executing==2.0.1
     # via stack-data
 factory-boy==3.3.1
     # via -r requirements/develop.in
-faker==27.0.0
+faker==27.4.0
     # via factory-boy
 fastjsonschema==2.20.0
     # via nbformat
@@ -622,7 +622,7 @@ traitlets==5.14.3
     #   qtconsole
 typer==0.12.4
     # via -r requirements/production.in
-types-python-dateutil==2.9.0.20240316
+types-python-dateutil==2.9.0.20240821
     # via arrow
 typing-extensions==4.12.2
     # via
@@ -640,7 +640,7 @@ urllib3==2.2.2
     #   django-anymail
     #   requests
     #   sentry-sdk
-wagtail==6.2
+wagtail==6.2.1
     # via django-cast
 wcwidth==0.2.13
     # via prompt-toolkit
@@ -662,7 +662,7 @@ willow[heif]==1.8.0
     #   willow
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==73.0.0
+setuptools==73.0.1
     # via
     #   django-cast
     #   jupyterlab

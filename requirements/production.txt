@@ -16,9 +16,9 @@ asgiref==3.8.1
     #   django-htmx
 beautifulsoup4==4.12.3
     # via wagtail
-boto3==1.35.1
+boto3==1.35.3
     # via -r requirements/production.in
-botocore==1.35.1
+botocore==1.35.3
     # via
     #   boto3
     #   s3transfer
@@ -241,7 +241,7 @@ urllib3==2.2.2
     #   django-anymail
     #   requests
     #   sentry-sdk
-wagtail==6.2
+wagtail==6.2.1
     # via django-cast
 whitenoise==6.7.0
     # via -r requirements/production.in
@@ -251,5 +251,5 @@ willow[heif]==1.8.0
     #   willow
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==73.0.0
+setuptools==73.0.1
     # via django-cast
