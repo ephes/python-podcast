@@ -48,9 +48,9 @@ black==24.8.0
     # via -r requirements/develop.in
 bleach==6.1.0
     # via nbconvert
-boto3==1.35.6
+boto3==1.35.8
     # via -r requirements/production.in
-botocore==1.35.6
+botocore==1.35.8
     # via
     #   boto3
     #   s3transfer
@@ -58,7 +58,7 @@ cast-bootstrap5==0.0.45
     # via -r requirements/production.in
 cast-vue==0.0.25
     # via -r requirements/production.in
-cattrs==23.2.3
+cattrs==24.1.0
     # via django-schema-graph
 certifi==2024.7.4
     # via
@@ -246,7 +246,6 @@ ipykernel==6.29.5
     #   jupyter
     #   jupyter-console
     #   jupyterlab
-    #   qtconsole
 ipython==8.26.0
     # via
     #   dj-notebook
@@ -284,7 +283,7 @@ jsonschema[format-nongpl]==4.23.0
     #   nbformat
 jsonschema-specifications==2023.12.1
     # via jsonschema
-jupyter==1.0.0
+jupyter==1.1.0
     # via dj-notebook
 jupyter-client==8.6.2
     # via
@@ -292,7 +291,6 @@ jupyter-client==8.6.2
     #   jupyter-console
     #   jupyter-server
     #   nbclient
-    #   qtconsole
 jupyter-console==6.6.3
     # via jupyter
 jupyter-core==5.7.2
@@ -305,7 +303,6 @@ jupyter-core==5.7.2
     #   nbclient
     #   nbconvert
     #   nbformat
-    #   qtconsole
 jupyter-events==0.10.0
     # via jupyter-server
 jupyter-lsp==2.2.5
@@ -320,7 +317,9 @@ jupyter-server==2.14.2
 jupyter-server-terminals==0.5.3
     # via jupyter-server
 jupyterlab==4.2.5
-    # via notebook
+    # via
+    #   jupyter
+    #   notebook
 jupyterlab-pygments==0.3.0
     # via nbconvert
 jupyterlab-server==2.27.3
@@ -387,8 +386,6 @@ packaging==24.1
     #   nbconvert
     #   pytest
     #   pytest-sugar
-    #   qtconsole
-    #   qtpy
     #   sphinx
 pandas==2.2.2
     # via
@@ -446,7 +443,6 @@ pygments==2.18.0
     #   ipython
     #   jupyter-console
     #   nbconvert
-    #   qtconsole
     #   rich
     #   sphinx
 pytest==8.3.2
@@ -492,11 +488,6 @@ pyzmq==26.2.0
     #   jupyter-client
     #   jupyter-console
     #   jupyter-server
-    #   qtconsole
-qtconsole==5.5.2
-    # via jupyter
-qtpy==2.4.1
-    # via qtconsole
 referencing==0.35.1
     # via
     #   jsonschema
@@ -619,7 +610,6 @@ traitlets==5.14.3
     #   nbclient
     #   nbconvert
     #   nbformat
-    #   qtconsole
 typer==0.12.5
     # via -r requirements/production.in
 types-python-dateutil==2.9.0.20240821
@@ -662,7 +652,7 @@ willow[heif]==1.8.0
     #   willow
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==73.0.1
+setuptools==74.0.0
     # via
     #   django-cast
     #   jupyterlab
