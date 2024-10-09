@@ -16,9 +16,9 @@ asgiref==3.8.1
     #   django-htmx
 beautifulsoup4==4.12.3
     # via wagtail
-boto3==1.35.8
+boto3==1.35.36
     # via -r requirements/production.in
-botocore==1.35.8
+botocore==1.35.36
     # via
     #   boto3
     #   s3transfer
@@ -26,13 +26,13 @@ cast-bootstrap5==0.0.45
     # via -r requirements/production.in
 cast-vue==0.0.25
     # via -r requirements/production.in
-certifi==2024.7.4
+certifi==2024.8.30
     # via
     #   requests
     #   sentry-sdk
-cffi==1.17.0
+cffi==1.17.1
     # via argon2-cffi-bindings
-charset-normalizer==3.3.2
+charset-normalizer==3.4.0
     # via requests
 click==8.1.7
     # via typer
@@ -40,13 +40,13 @@ coreapi==2.3.3
     # via django-cast
 coreschema==0.0.4
     # via coreapi
-crispy-bootstrap4==2024.1
+crispy-bootstrap4==2024.10
     # via django-cast
-crispy-bootstrap5==2024.2
+crispy-bootstrap5==2024.10
     # via cast-bootstrap5
 defusedxml==0.7.1
     # via willow
-django==5.1
+django==5.1.2
     # via
     #   crispy-bootstrap4
     #   crispy-bootstrap5
@@ -70,9 +70,9 @@ django==5.1
     #   djangorestframework
     #   laces
     #   wagtail
-django-allauth==64.1.0
+django-allauth==65.0.2
     # via -r requirements/production.in
-django-anymail[mailgun]==11.1
+django-anymail[mailgun]==12.0
     # via -r requirements/production.in
 django-braces==1.15.0
     # via django-indieweb
@@ -106,7 +106,7 @@ django-htmx==1.19.0
     # via django-cast
 django-indieweb==0.0.7
     # via -r requirements/production.in
-django-model-utils==4.5.1
+django-model-utils==5.0.0
     # via
     #   django-cast
     #   django-indieweb
@@ -126,7 +126,7 @@ django-threadedcomments==2.0
     # via django-cast
 django-treebeard==4.7.1
     # via wagtail
-django-vite==3.0.4
+django-vite==3.0.5
     # via
     #   cast-vue
     #   django-cast
@@ -140,7 +140,7 @@ filetype==1.2.0
     # via willow
 gunicorn==23.0.0
     # via -r requirements/production.in
-idna==3.8
+idna==3.10
     # via requests
 itypes==1.2.0
     # via coreapi
@@ -156,7 +156,7 @@ laces==0.1.1
     # via wagtail
 markdown-it-py==3.0.0
     # via rich
-markupsafe==2.1.5
+markupsafe==3.0.1
     # via jinja2
 mdurl==0.1.2
     # via markdown-it-py
@@ -170,9 +170,9 @@ pillow==10.4.0
     #   wagtail
 pillow-heif==0.18.0
     # via willow
-psycopg[binary]==3.2.1
+psycopg[binary]==3.2.3
     # via -r requirements/production.in
-psycopg-binary==3.2.1
+psycopg-binary==3.2.3
     # via psycopg
 pycparser==2.22
     # via cffi
@@ -190,7 +190,7 @@ python-dotenv==1.0.1
     # via -r requirements/production.in
 python-slugify==8.0.4
     # via django-cast
-pytz==2024.1
+pytz==2024.2
     # via
     #   django-indieweb
     #   django-modelcluster
@@ -205,13 +205,13 @@ requests==2.32.3
     #   django-proxy
     #   python-akismet
     #   wagtail
-rich==13.8.0
+rich==13.9.2
     # via
     #   django-cast
     #   typer
-s3transfer==0.10.2
+s3transfer==0.10.3
     # via boto3
-sentry-sdk==2.13.0
+sentry-sdk==2.16.0
     # via -r requirements/production.in
 shellingham==1.5.4
     # via typer
@@ -235,13 +235,13 @@ typing-extensions==4.12.2
     #   typer
 uritemplate==4.1.1
     # via coreapi
-urllib3==2.2.2
+urllib3==2.2.3
     # via
     #   botocore
     #   django-anymail
     #   requests
     #   sentry-sdk
-wagtail==6.2.1
+wagtail==6.2.2
     # via django-cast
 whitenoise==6.7.0
     # via -r requirements/production.in
@@ -251,5 +251,5 @@ willow[heif]==1.8.0
     #   willow
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==74.0.0
+setuptools==75.1.0
     # via django-cast
