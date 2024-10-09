@@ -5,7 +5,6 @@ from django.contrib import admin
 from django.urls import include, path
 from django.views.generic import RedirectView, TemplateView
 from rest_framework.authtoken import views as authtokenviews
-from rest_framework.documentation import include_docs_urls
 from wagtail import urls as wagtail_urls
 from wagtail.admin import urls as wagtailadmin_urls
 from wagtail.api.v2.views import PagesAPIViewSet
@@ -55,7 +54,7 @@ urlpatterns = [
     path("show/comments/", include("fluent_comments.urls")),
     # rest
     path("api/api-token-auth/", authtokenviews.obtain_auth_token),
-    path("docs/", include_docs_urls(title="API service", public=False)),
+    # path("docs/", include_docs_urls(title="API service", public=False)),
     # Cast
     path("", include("cast.urls", namespace="cast")),
     # Podlove Player Config for Python Podcast Theme
