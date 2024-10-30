@@ -55,7 +55,7 @@ botocore==1.35.51
     # via
     #   boto3
     #   s3transfer
-cast-bootstrap5==0.0.45
+cast-bootstrap5==0.0.46
     # via -r requirements/production.in
 cast-vue==0.0.25
     # via -r requirements/production.in
