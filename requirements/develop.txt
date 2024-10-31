@@ -49,13 +49,13 @@ black==24.10.0
     # via -r requirements/develop.in
 bleach==6.2.0
     # via nbconvert
-boto3==1.35.51
+boto3==1.35.52
     # via -r requirements/production.in
-botocore==1.35.51
+botocore==1.35.52
     # via
     #   boto3
     #   s3transfer
-cast-bootstrap5==0.0.47
+cast-bootstrap5==0.0.53
     # via -r requirements/production.in
 cast-vue==0.0.25
     # via -r requirements/production.in
@@ -206,7 +206,7 @@ executing==2.1.0
     # via stack-data
 factory-boy==3.3.1
     # via -r requirements/develop.in
-faker==30.8.1
+faker==30.8.2
     # via factory-boy
 fastjsonschema==2.20.0
     # via nbformat
@@ -214,9 +214,9 @@ filetype==1.2.0
     # via willow
 flake8==7.1.1
     # via -r requirements/develop.in
-flit==3.9.0
+flit==3.10.0
     # via -r requirements/develop.in
-flit-core==3.9.0
+flit-core==3.10.0
     # via flit
 fqdn==1.5.1
     # via jsonschema
@@ -511,7 +511,7 @@ rich==13.9.3
     #   dj-notebook
     #   django-cast
     #   typer
-rpds-py==0.20.0
+rpds-py==0.20.1
     # via
     #   jsonschema
     #   referencing
@@ -643,6 +643,8 @@ willow[heif]==1.9.0
     #   willow
 
 # The following packages are considered to be unsafe in a requirements file:
+pip==24.3.1
+    # via flit
 setuptools==75.3.0
     # via
     #   django-cast
