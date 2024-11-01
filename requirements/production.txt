@@ -17,13 +17,13 @@ asgiref==3.8.1
     #   django-htmx
 beautifulsoup4==4.12.3
     # via wagtail
-boto3==1.35.52
+boto3==1.35.53
     # via -r requirements/production.in
-botocore==1.35.52
+botocore==1.35.53
     # via
     #   boto3
     #   s3transfer
-cast-bootstrap5==0.0.53
+cast-bootstrap5==0.0.55
     # via -r requirements/production.in
 cast-vue==0.0.25
     # via -r requirements/production.in
