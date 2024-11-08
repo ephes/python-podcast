@@ -45,6 +45,7 @@
           - "--exclude=python-podcast/media"
           - "--exclude=backups"
           - "--exclude=databases"
+          - "--exclude=.venv"
       become: true
       become_user: "{{ username }}"
 
@@ -69,22 +70,19 @@
         owner: "{{ username }}"
 
     - name: Create virtualenv for python
-      shell: "{{ global_python }} -m venv {{ site_path }}/venv"
+      shell: "{{uv_path}} venv -p {{ global_python }} {{ site_path }}/.venv"
       become: true
       become_user: "{{ username }}"
 
-    - name: Upgrade pip prod venv
-      shell: "{{ python }} -m pip install --upgrade pip"
-      become: true
-      become_user: "{{ username }}"
-
-    - name: Install pip-tools
-      shell: "{{ python }} -m pip install -U pip-tools"
+    - name: Link .venv to venv
+      shell: "ln -s .venv venv"
+      args:
+        chdir: "{{ site_path }}"
       become: true
       become_user: "{{ username }}"
 
     - name: Install app production requirements
-      shell: "{{ pip_sync }} requirements/production.txt"
+      shell: "{{ uv_path }} sync --no-dev"
       args:
         chdir: "{{ site_path }}"
       become: true

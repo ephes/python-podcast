@@ -4,11 +4,19 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="6bad3b53-5784-45c0-90c3-08ebf028abf5" name="Changes" comment="dunno how to fix that :/">
+    <list default="true" id="6bad3b53-5784-45c0-90c3-08ebf028abf5" name="Changes" comment="use podlove player web component">
       <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/python_podcast.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/python_podcast.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/notebooks/debug_filter_pages_api_with_garbage_slug.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/notebooks/debug_filter_pages_api_with_garbage_slug.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Procfile" beforeDir="false" afterPath="$PROJECT_DIR$/Procfile" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/commands.py" beforeDir="false" afterPath="$PROJECT_DIR$/commands.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config/settings/local.py" beforeDir="false" afterPath="$PROJECT_DIR$/config/settings/local.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/deploy/deploy.yml" beforeDir="false" afterPath="$PROJECT_DIR$/deploy/deploy.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/deploy/vars.yml" beforeDir="false" afterPath="$PROJECT_DIR$/deploy/vars.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pyproject.toml" beforeDir="false" afterPath="$PROJECT_DIR$/pyproject.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/requirements/develop.in" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/requirements/develop.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/requirements/production.in" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/requirements/production.txt" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -27,6 +35,7 @@
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="UPDATE_TYPE" value="REBASE" />
   </component>
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
@@ -40,29 +49,30 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "WebServerToolWindowFactoryState": "false",
-    "django.template.preview.state": "SHOW_EDITOR",
-    "git-widget-placeholder": "main",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.OpenDjangoStructureViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
+    &quot;django.template.preview.state&quot;: &quot;SHOW_EDITOR&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RunManager" selected="Django Server.migrate" />
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-1d06a55b98c1-0b3e54e931b4-JavaScript-PY-241.17011.127" />
-        <option value="bundled-python-sdk-48aec45f0201-7e9c3bbb6e34-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-241.17011.127" />
+        <option value="bundled-js-predefined-d6986cc7102b-5c90d61e3bab-JavaScript-PY-242.23726.102" />
+        <option value="bundled-python-sdk-5e1850174b45-399fe30bd8c1-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-242.23726.102" />
       </set>
     </attachedChunks>
   </component>
@@ -86,6 +96,10 @@
       <workItem from="1691756486363" duration="583000" />
       <workItem from="1718368320991" duration="101000" />
       <workItem from="1718368435845" duration="2873000" />
+      <workItem from="1730293540863" duration="5305000" />
+      <workItem from="1730395081593" duration="2342000" />
+      <workItem from="1730443590240" duration="2031000" />
+      <workItem from="1731074438724" duration="1307000" />
     </task>
     <task id="LOCAL-00001" summary="#15 remove filepond stuff">
       <created>1670740625061</created>
@@ -115,7 +129,55 @@
       <option name="project" value="LOCAL" />
       <updated>1670745329528</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="use load event + intersection observer performance improvements">
+      <option name="closed" value="true" />
+      <created>1730295090321</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1730295090321</updated>
+    </task>
+    <task id="LOCAL-00006" summary="wait for finish scrolling">
+      <option name="closed" value="true" />
+      <created>1730309553351</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1730309553351</updated>
+    </task>
+    <task id="LOCAL-00007" summary="use class instead of id prefix">
+      <option name="closed" value="true" />
+      <created>1730310461704</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1730310461704</updated>
+    </task>
+    <task id="LOCAL-00008" summary="update cast-bootstrap">
+      <option name="closed" value="true" />
+      <created>1730310477786</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1730310477786</updated>
+    </task>
+    <task id="LOCAL-00009" summary="updates">
+      <option name="closed" value="true" />
+      <created>1730396884247</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1730396884247</updated>
+    </task>
+    <task id="LOCAL-00010" summary="use podlove player web component">
+      <option name="closed" value="true" />
+      <created>1730396907817</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1730396907817</updated>
+    </task>
+    <option name="localTasksCounter" value="11" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -137,6 +199,12 @@
     <MESSAGE value="#16 factory boy interface changed" />
     <MESSAGE value="#16 use faker directly + migrations don't work in tests with wagtail" />
     <MESSAGE value="dunno how to fix that :/" />
-    <option name="LAST_COMMIT_MESSAGE" value="dunno how to fix that :/" />
+    <MESSAGE value="use load event + intersection observer performance improvements" />
+    <MESSAGE value="wait for finish scrolling" />
+    <MESSAGE value="use class instead of id prefix" />
+    <MESSAGE value="update cast-bootstrap" />
+    <MESSAGE value="updates" />
+    <MESSAGE value="use podlove player web component" />
+    <option name="LAST_COMMIT_MESSAGE" value="use podlove player web component" />
   </component>
 </project>

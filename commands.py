@@ -11,61 +11,20 @@ def get_project_root():
     return Path(__file__).parent.resolve()
 
 
-def update_via_pip_tools(upgrade: bool):
-    base_command = [sys.executable, "-m", "piptools", "compile"]
-    if upgrade:
-        base_command.append("--upgrade")
-    base_command.extend(
-        [
-            "--resolver=backtracking",
-            "--allow-unsafe",
-            # "--generate-hashes",  # FIXME does not work with repo urls (django-cast)
-            "requirements/production.in",
-        ]
-    )
-
-    subprocess.call(  # develop + production
-        [
-            *base_command,
-            "requirements/develop.in",
-            "--output-file",
-            "requirements/develop.txt",
-        ]
-    )
-    subprocess.call(  # production only
-        [
-            *base_command,
-            "--output-file",
-            "requirements/production.txt",
-        ]
-    )
-    subprocess.call([sys.executable, "-m", "piptools", "sync", "requirements/develop.txt"])
-
-
 def bootstrap():
     """
     Called when first non-standard lib import fails.
 
-    We need at least pip-tools, typer and rich to use this script.
+    Given uv is installed, we need at least typer and rich to use this script.
     """
-
-    def get_base_prefix_compat():
-        """Get base/real prefix, or sys.prefix if there is none."""
-        return getattr(sys, "base_prefix", None) or getattr(sys, "real_prefix", None) or sys.prefix
-
-    def in_virtualenv():
-        return get_base_prefix_compat() != sys.prefix
-
-    def pip_install(package):
-        subprocess.run([sys.executable, "-m", "pip", "install", package], check=True)
-
-    if not in_virtualenv():
-        print("Please create a virtual environment first and activate it!")
+    if not (Path.cwd() / ".venv").exists():
+        print("No .venv found, creating one using uv...")
+        subprocess.run(["uv", "venv", ".venv"], check=True)
+        print("Please activate the virtual environment and run the script again.")
         sys.exit(1)
 
-    print("Empty virtualenv, installing development requirements..")
-    pip_install("pip-tools")
-    update_via_pip_tools(upgrade=True)
+    print("Sync requirements via uv...")
+    subprocess.run(["uv", "sync"], check=True)
 
 
 try:
@@ -132,12 +91,10 @@ def jupyterlab():
 @cli.command()
 def update(upgrade: bool = typer.Option(True, "--upgrade/--no-upgrade")):
     """
-    Update the development environment by calling:
-    - pip-compile production.in develop.in -> develop.txt
-    - pip-compile production.in -> production.txt
-    - pip-sync develop.txt
+    Update the requirements using uv.
     """
-    update_via_pip_tools(upgrade)
+    print("Updating requirements via uv...")
+    subprocess.call(["uv", "lock", "--upgrade"])
 
 
 @cli.command()

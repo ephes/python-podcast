@@ -1,3 +1,53 @@
+[project]
+name = "lead"
+version = "0.1.0"
+description = "Generate leads"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "argon2-cffi",
+    "boto3",
+    "cast-bootstrap5",
+    "cast-vue",
+    "django-allauth",
+    "django-anymail[mailgun]",
+    "django-extensions",
+    "django-indieweb",
+    "django-proxy",
+    "django-storages",
+    "django-cast",
+    "gunicorn",
+    "psycopg[binary]",
+    "python-dotenv",
+    "pyzmq>=25.1.1",  # needed for Python >= 3.12
+    "sentry-sdk",
+    "whitenoise",
+]
+
+[tool.uv]
+dev-dependencies = [
+    "black",
+    "coverage",
+    "factory-boy",
+    "flake8",
+    "flit",
+    "django-debug-toolbar",
+    "django-test-plus",
+    "dj-notebook",
+    "pytest",
+    "pytest-sugar",
+    "pytest-django",
+    "psutil",
+    "rich",
+    "sphinx_rtd_theme",
+    "typer",
+]
+
+[tool.uv.sources]
+cast-vue = { git = "https://github.com/ephes/cast-vue" }
+cast-bootstrap5 = { git = "https://github.com/ephes/cast-bootstrap5" }
+django-cast = { git = "https://github.com/ephes/django-cast", branch="develop" }
+
 [tool.black]
 line-length = 119
 
