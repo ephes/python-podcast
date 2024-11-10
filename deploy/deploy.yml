@@ -46,6 +46,7 @@
           - "--exclude=backups"
           - "--exclude=databases"
           - "--exclude=.venv"
+          - "--exclude=notebooks"
       become: true
       become_user: "{{ username }}"
 
