@@ -185,36 +185,36 @@ wheels = [
 
 [[package]]
 name = "boto3"
-version = "1.35.56"
+version = "1.35.57"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "botocore" },
     { name = "jmespath" },
     { name = "s3transfer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/45/a7/1fc5a2567f1d42f7fcc903381b5fc550b4bd6fcfb82a1a50b72cae250e1f/boto3-1.35.56.tar.gz", hash = "sha256:6fcc510a4e747e85f84046b0ba0e5b178e89ba0f8ac9e2b6ebb4cc925c68c23b", size = 111003 }
+sdist = { url = "https://files.pythonhosted.org/packages/c5/73/fb880ce301129a7116ff47b1aab1ca7427c7d63a163676701abc168309eb/boto3-1.35.57.tar.gz", hash = "sha256:db58348849a5af061f0f5ec9c3b699da5221ca83354059fdccb798e3ddb6b62a", size = 111010 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7c/87/0f93b9f91afa0f11d98dc8ee9c0c6c56de0f22c63a20eb10096d55b12beb/boto3-1.35.56-py3-none-any.whl", hash = "sha256:d04608cf40f429025eb66b52b835bdc333436022918788853ed0bbbba6dd2f09", size = 139179 },
+    { url = "https://files.pythonhosted.org/packages/5a/b4/2aa8168bb1d80c238538ff523d8902a48b0946aafd3cbd6c72754209ae8a/boto3-1.35.57-py3-none-any.whl", hash = "sha256:9edf49640c79a05b0a72f4c2d1e24dfc164344b680535a645f455ac624dc3680", size = 139178 },
 ]
 
 [[package]]
 name = "botocore"
-version = "1.35.56"
+version = "1.35.57"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jmespath" },
     { name = "python-dateutil" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8d/e5/222add2085839bdf738c8d039fc1773e409c0dc5ed085774f4645e9efbc8/botocore-1.35.56.tar.gz", hash = "sha256:8a9e752c8e87a423575ac528340a35d4318b8576ae4c6e0acfe5a3867f6bbccf", size = 12946406 }
+sdist = { url = "https://files.pythonhosted.org/packages/61/17/65b0a3bb507b19a7a1c6cc7c63e374906891798986f0ba2b6ad174ece86a/botocore-1.35.57.tar.gz", hash = "sha256:d96306558085baf0bcb3b022d7a8c39c93494f031edb376694d2b2dcd0e81327", size = 12951200 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5d/6f/8a4987a28c2482eb0dd9bc05211e1e1f907759c9f4b7fbc2e80467ce3f75/botocore-1.35.56-py3-none-any.whl", hash = "sha256:4be97f7bc1fbf33ad71ee1b678cea0ecf9638e61d5f566a46f261cde969dd690", size = 12733479 },
+    { url = "https://files.pythonhosted.org/packages/f6/29/6c3a0f688e7c19e2a3734ab0f50cbf85138c1d7a432db8ef4f51f7bae892/botocore-1.35.57-py3-none-any.whl", hash = "sha256:92ddd02469213766872cb2399269dd20948f90348b42bf08379881d5e946cc34", size = 12740042 },
 ]
 
 [[package]]
 name = "cast-bootstrap5"
-version = "0.0.55"
-source = { git = "https://github.com/ephes/cast-bootstrap5#ecbac980537fb93dfce7847b8e32d660a6ad1314" }
+version = "0.0.56"
+source = { git = "https://github.com/ephes/cast-bootstrap5#600b50b93c7e3059c047cbd68b822bbd961f628d" }
 dependencies = [
     { name = "crispy-bootstrap5" },
     { name = "django-cast" },
@@ -527,7 +527,7 @@ wheels = [
 [[package]]
 name = "django-cast"
 version = "0.2.41"
-source = { git = "https://github.com/ephes/django-cast?branch=develop#81dfd88b5b696a67e59b91c6b19b00de8535f243" }
+source = { git = "https://github.com/ephes/django-cast?branch=develop#3360a1c7857ee9f3600aaee837fe4015f9f2f719" }
 dependencies = [
     { name = "crispy-bootstrap4" },
     { name = "django" },
