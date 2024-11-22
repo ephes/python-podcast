@@ -41,6 +41,7 @@ dev-dependencies = [
     "rich",
     "sphinx_rtd_theme",
     "typer",
+    "django-removals",
 ]
 
 [tool.uv.sources]

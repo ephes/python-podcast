@@ -724,6 +724,18 @@ wheels = [
 ]
 
 [[package]]
+name = "django-removals"
+version = "1.0.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "django" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ac/70/93dc46dc3786e57950edf9ddb216ce2a66007f39293a0e618833084b87d5/django_removals-1.0.4.tar.gz", hash = "sha256:6465683d53fbd4ebee73435d73f6c0b4d71112fa8ae0fe547f116a18fbadb8f6", size = 52954 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c9/1e/3c83ad4ecbd54e7c2862a86a040fba7edad24c35784928c54dd5cc40300b/django_removals-1.0.4-py2.py3-none-any.whl", hash = "sha256:2d00f93313dc25aeb3feb9811317ec5d8f31f0ca311423db678e870f6c1dd4b9", size = 6671 },
+]
+
+[[package]]
 name = "django-schema-graph"
 version = "3.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1446,6 +1458,7 @@ dev = [
     { name = "coverage" },
     { name = "dj-notebook" },
     { name = "django-debug-toolbar" },
+    { name = "django-removals" },
     { name = "django-test-plus" },
     { name = "factory-boy" },
     { name = "flake8" },
@@ -1486,6 +1499,7 @@ dev = [
     { name = "coverage" },
     { name = "dj-notebook" },
     { name = "django-debug-toolbar" },
+    { name = "django-removals", specifier = ">=1.0.4" },
     { name = "django-test-plus" },
     { name = "factory-boy" },
     { name = "flake8" },
