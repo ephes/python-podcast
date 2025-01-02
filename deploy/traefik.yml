@@ -5,6 +5,23 @@
     - role: ephes.traefik
       tags: traefik
       vars:
-        - traefik_update: yes
-        - traefik_binary_url: https://github.com/traefik/traefik/releases/download/v3.0.2/traefik_v3.0.2_linux_amd64.tar.gz
-        - dashboard_hostname: traefik.wersdoerfer.de
+        traefik_update: yes
+        traefik_binary_url: https://github.com/traefik/traefik/releases/download/v3.2.3/traefik_v3.2.3_linux_amd64.tar.gz
+        dashboard_hostname: traefik.wersdoerfer.de
+
+  tasks:
+    - name: Copy Traefik static configuration
+      template:
+        src: templates/traefik.toml.j2
+        dest: /etc/traefik/traefik.toml
+        owner: root
+        group: root
+        mode: '0644'
+      notify:
+        - Restart Traefik
+
+  handlers:
+    - name: Restart Traefik
+      service:
+        name: traefik
+        state: restarted
