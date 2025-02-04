@@ -19,14 +19,14 @@ repos:
         args: [--target-version, "5.0"]
   - repo: https://github.com/psf/black
     # black config is in pyproject.toml
-    rev: 24.10.0
+    rev: 25.1.0
     hooks:
       - id: black
         language_version: python3.12
         exclude: ^docs
   - repo: https://github.com/timothycrosley/isort
     # isort config in pyproject.toml does not work FIXME
-    rev: 5.13.2
+    rev: 6.0.0
     hooks:
       - id: isort
         language_version: python3
