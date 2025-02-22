@@ -242,8 +242,15 @@ def switch_to_dev_environment():
     from contextlib import chdir
 
     projects_dir = get_project_root().parent
+
+    uv_install_dev = ["uv", "pip", "install", "-e"]
+    for project in ["django-cast"]:
+        uv_args = uv_install_dev.copy()
+        uv_args.append(projects_dir / project)
+        subprocess.call(uv_args)
+
     flit_install_dev = [sys.executable, "-m", "flit", "install", "-s"]
-    for project in ["django-cast", "cast-vue", "cast-bootstrap5"]:
+    for project in ["cast-vue", "cast-bootstrap5"]:
         with chdir(projects_dir / project):
             subprocess.call(flit_install_dev)
 
