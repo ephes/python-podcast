@@ -26,7 +26,7 @@ repos:
         exclude: ^docs
   - repo: https://github.com/timothycrosley/isort
     # isort config in pyproject.toml does not work FIXME
-    rev: 6.0.0
+    rev: 6.0.1
     hooks:
       - id: isort
         language_version: python3
