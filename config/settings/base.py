@@ -376,6 +376,28 @@ WAGTAIL_SITE_NAME = "python-podcast"
 WAGTAILIMAGES_MAX_UPLOAD_SIZE = 30 * 1024 * 1024
 WAGTAILADMIN_BASE_URL = "cms/"
 
+WAGTAILADMIN_RICH_TEXT_EDITORS = {
+    "default": {
+        "WIDGET": "wagtail.admin.rich_text.DraftailRichTextArea",
+        "OPTIONS": {
+            "features": [
+                "bold",
+                "italic",
+                "h2",
+                "h3",
+                "h4",
+                "ol",
+                "ul",
+                "hr",
+                "blockquote",
+                "link",
+                "document-link",
+                "code",
+            ]
+        },
+    },
+}
+
 # Disable wagtail post_delete_file_cleanup signal to avoid deleting files from S3
 DELETE_WAGTAIL_IMAGES = False
 
