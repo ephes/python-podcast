@@ -85,7 +85,7 @@ def jupyterlab():
     notebook_dir = project_root / "notebooks"
     notebook_dir.mkdir(exist_ok=True)
     env = env_with_pythonpath()
-    subprocess.call([sys.executable, "-m", "jupyter", "lab", "--notebook-dir", "notebooks/"], env=env)
+    subprocess.call([sys.executable, "-m", "jupyterlab", "--notebook-dir", "notebooks/"], env=env)
 
 
 @cli.command()
@@ -106,7 +106,7 @@ def clean_build():
         ["rm", "-fr", "__pycache__"],
     ]
     for command in commands:
-        subprocess.call(*command)
+        subprocess.call(command)
 
 
 @cli.command()
@@ -117,7 +117,7 @@ def clean_pyc():
         ["find", ".", "-name", "*~", "-exec", "rm -f {} +"],
     ]
     for command in commands:
-        subprocess.call(*command)
+        subprocess.call(command)
 
 
 @cli.command()
@@ -143,7 +143,7 @@ def docs():
         ["make", "-C", "docs", "html"],
     ]
     for command in commands:
-        subprocess.call(*command)
+        subprocess.call(command)
     file_url = "file://" + str(Path("docs/_build/html/index.html").resolve())
     webbrowser.open_new_tab(file_url)
 
@@ -170,7 +170,7 @@ def production_db_to_local():
     import psutil
 
     for proc in psutil.process_iter(["pid", "name", "username"]):
-        if "python" not in proc.info["name"]:
+        if proc.info["name"] is None or "python" not in proc.info["name"]:
             continue
         try:
             cmdline = " ".join(proc.cmdline())
@@ -236,23 +236,106 @@ def deploy_production():
 @cli.command()
 def switch_to_dev_environment():
     """
-    Switch to the development environment installing a list of
-    packages in development mode using flit.
+    Switch to development mode using local editable packages.
+
+    Modifies pyproject.toml to use local paths in tool.uv.sources.
     """
-    from contextlib import chdir
+    import toml
 
-    projects_dir = get_project_root().parent
+    project_root = get_project_root()
+    projects_dir = project_root.parent
+    pyproject_path = project_root / "pyproject.toml"
 
-    uv_install_dev = ["uv", "pip", "install", "-e"]
-    for project in ["django-cast"]:
-        uv_args = uv_install_dev.copy()
-        uv_args.append(projects_dir / project)
-        subprocess.call(uv_args)
+    # Read current pyproject.toml
+    with open(pyproject_path) as f:
+        pyproject = toml.load(f)
 
-    flit_install_dev = [sys.executable, "-m", "flit", "install", "-s"]
-    for project in ["cast-vue", "cast-bootstrap5"]:
-        with chdir(projects_dir / project):
-            subprocess.call(flit_install_dev)
+    # Ensure tool.uv.sources exists
+    if "tool" not in pyproject:
+        pyproject["tool"] = {}
+    if "uv" not in pyproject["tool"]:
+        pyproject["tool"]["uv"] = {}
+    if "sources" not in pyproject["tool"]["uv"]:
+        pyproject["tool"]["uv"]["sources"] = {}
+
+    # Define local package mappings
+    packages = [
+        ("cast-vue", projects_dir / "cast-vue"),
+        ("cast-bootstrap5", projects_dir / "cast-bootstrap5"),
+        ("django-cast", projects_dir / "django-cast"),
+        ("django-indieweb", projects_dir / "django-indieweb"),
+    ]
+
+    print("Switching to local development sources in pyproject.toml...")
+
+    sources_modified = False
+    for package_name, package_path in packages:
+        if package_path.exists():
+            # Update to local editable source
+            pyproject["tool"]["uv"]["sources"][package_name] = {"path": f"../{package_path.name}", "editable": True}
+            print(f"✓ {package_name} -> {package_path}")
+            sources_modified = True
+        else:
+            print(f"Warning: {package_path} does not exist, skipping")
+
+    if sources_modified:
+        # Write updated pyproject.toml
+        with open(pyproject_path, "w") as f:
+            toml.dump(pyproject, f)
+
+        print("\nRunning uv sync to apply changes...")
+        subprocess.call(["uv", "sync"])
+
+        print("\nDevelopment environment activated!")
+        print("Local packages are now installed in editable mode.")
+        print("Changes to the source code will be reflected immediately.")
+        print("\nIMPORTANT: Remember to run pre-commit hooks before committing!")
+        print("To switch back to git sources, run: uv run python commands.py switch-to-git-sources")
+
+
+@cli.command()
+def switch_to_git_sources():
+    """
+    Switch back to git sources from local development mode.
+
+    Restores original git sources in pyproject.toml.
+    """
+    import toml
+
+    project_root = get_project_root()
+    pyproject_path = project_root / "pyproject.toml"
+
+    # Read current pyproject.toml
+    with open(pyproject_path) as f:
+        pyproject = toml.load(f)
+
+    # Define default git sources
+    default_sources = {
+        "cast-vue": {"git": "https://github.com/ephes/cast-vue"},
+        "cast-bootstrap5": {"git": "https://github.com/ephes/cast-bootstrap5"},
+        "django-cast": {"git": "https://github.com/ephes/django-cast", "branch": "develop"},
+        "django-indieweb": {"git": "https://github.com/ephes/django-indieweb", "branch": "develop"},
+    }
+
+    print("Restoring git sources in pyproject.toml...")
+
+    if "tool" in pyproject and "uv" in pyproject["tool"] and "sources" in pyproject["tool"]["uv"]:
+        for package_name, git_source in default_sources.items():
+            if package_name in pyproject["tool"]["uv"]["sources"]:
+                pyproject["tool"]["uv"]["sources"][package_name] = git_source
+                print(f"✓ {package_name} -> {git_source}")
+
+        # Write updated pyproject.toml
+        with open(pyproject_path, "w") as f:
+            toml.dump(pyproject, f)
+
+        print("\nRunning uv sync to apply changes...")
+        subprocess.call(["uv", "sync", "--reinstall"])
+
+        print("\nSwitched back to git sources!")
+        print("All packages are now installed from their git repositories.")
+    else:
+        print("No tool.uv.sources found in pyproject.toml, nothing to restore.")
 
 
 if __name__ == "__main__":
