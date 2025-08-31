@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
@@ -8,12 +8,12 @@ repos:
       - id: check-added-large-files
       - id: check-toml
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.19.1
+    rev: v3.20.0
     hooks:
       - id: pyupgrade
         args: [--py312-plus]
   - repo: https://github.com/adamchainz/django-upgrade
-    rev: 1.24.0
+    rev: 1.27.0
     hooks:
       - id: django-upgrade
         args: [--target-version, "5.0"]
@@ -33,13 +33,13 @@ repos:
         args: [--profile=black, --line-length=120]
   - repo: https://github.com/PyCQA/flake8
     # flake8 config is in .flake8
-    rev: 7.2.0
+    rev: 7.3.0
     hooks:
       - id: flake8
         language_version: python3
         exclude: (^docs|^config.settings)
   - repo: https://github.com/rtts/djhtml
-    rev: "3.0.7"  # replace with the latest tag on GitHub
+    rev: "3.0.9"  # replace with the latest tag on GitHub
     hooks:
       - id: djhtml
         args: [-t, "2"]
