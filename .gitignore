@@ -349,3 +349,5 @@ databases
 
 # PyCharm
 .idea/
+# Added by specsync
+specs

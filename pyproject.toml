@@ -70,3 +70,11 @@ addopts = [
     "--reuse-db",
     "--no-migrations",
 ]
+
+[tool.specsync]
+workspace_subdir = "specs"
+repo_specs_dir = "specs"
+
+[tool.specsync.filter]
+require_expose = true
+match_project = true
