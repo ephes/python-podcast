@@ -623,8 +623,8 @@ wheels = [
 
 [[package]]
 name = "django-cast"
-version = "0.2.49"
-source = { git = "https://github.com/ephes/django-cast?branch=develop#f0446020a06729fb5caf0ad61fa4bd907ad48679" }
+version = "0.2.50"
+source = { git = "https://github.com/ephes/django-cast?branch=develop#365dea52bbf5785c36f3b5bdc2707fededeb1f54" }
 dependencies = [
     { name = "crispy-bootstrap4" },
     { name = "django" },
@@ -632,13 +632,11 @@ dependencies = [
     { name = "django-crispy-forms" },
     { name = "django-environ" },
     { name = "django-filter" },
-    { name = "django-fluent-comments" },
     { name = "django-htmx" },
     { name = "django-model-utils" },
     { name = "django-threadedcomments" },
     { name = "django-vite" },
     { name = "pygments" },
-    { name = "python-akismet" },
     { name = "python-slugify" },
     { name = "rich" },
     { name = "setuptools" },
@@ -713,21 +711,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/2c/e4/465d2699cd388c0005fb8d6ae6709f239917c6d8790ac35719676fffdcf3/django_filter-25.2.tar.gz", hash = "sha256:760e984a931f4468d096f5541787efb8998c61217b73006163bf2f9523fe8f23", size = 143818, upload-time = "2025-10-05T09:51:31.521Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c1/40/6a02495c5658beb1f31eb09952d8aa12ef3c2a66342331ce3a35f7132439/django_filter-25.2-py3-none-any.whl", hash = "sha256:9c0f8609057309bba611062fe1b720b4a873652541192d232dd28970383633e3", size = 94145, upload-time = "2025-10-05T09:51:29.728Z" },
-]
-
-[[package]]
-name = "django-fluent-comments"
-version = "3.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "django-contrib-comments" },
-    { name = "django-crispy-forms" },
-    { name = "django-tag-parser" },
-    { name = "python-akismet" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/06/e8/2b70e7a38b7aa70807f73ae58a44aae16a76eacd5c405df0c8776ee66ef1/django-fluent-comments-3.0.tar.gz", hash = "sha256:f7d0bc19281d0d8e45e4d932b0695c5573cb741619104cb754895d256c1a1633", size = 40556, upload-time = "2021-05-11T09:21:23.961Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/d5/70/f789742b26c362b873c3fad924f4d11dc7eb16a7555765c5d40fe12b5e9a/django_fluent_comments-3.0-py2.py3-none-any.whl", hash = "sha256:4387ac81ba5eeea79f143d3930e9a275104ad7551196d5cfb4af1b66481c2a44", size = 59445, upload-time = "2021-05-11T09:21:22.356Z" },
 ]
 
 [[package]]
@@ -864,15 +847,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/14/a2/d67f4a5200ff7626b104eddceaf529761cba4ed318a73ffdb0677551be73/django_stubs_ext-5.2.8.tar.gz", hash = "sha256:b39938c46d7a547cd84e4a6378dbe51a3dd64d70300459087229e5fee27e5c6b", size = 6487, upload-time = "2025-12-01T08:12:37.486Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/da/2d/cb0151b780c3730cf0f2c0fcb1b065a5e88f877cf7a9217483c375353af1/django_stubs_ext-5.2.8-py3-none-any.whl", hash = "sha256:1dd5470c9675591362c78a157a3cf8aec45d0e7a7f0cf32f227a1363e54e0652", size = 9949, upload-time = "2025-12-01T08:12:36.397Z" },
-]
-
-[[package]]
-name = "django-tag-parser"
-version = "3.2"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/30/54/42caebce5b09aa8e630c088eed06e58e287f51845b08bef276cd618e4933/django-tag-parser-3.2.tar.gz", hash = "sha256:903cd4bf3692c8c060770ca2b9d6e74e4ee52d6078308852acffe1ef4a49e0f7", size = 15170, upload-time = "2019-12-18T07:47:13.109Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/16/7f/fedeec26fa0fa27d0d8cd3169894ea447e6bd7ff3a21154ee0d54804661c/django_tag_parser-3.2-py2.py3-none-any.whl", hash = "sha256:92e5da35d8774a6ab4e0ac0b3b2229b8a0b78a61c5a3b0fd159255f0a66c08d7", size = 17438, upload-time = "2019-12-18T07:47:11.135Z" },
 ]
 
 [[package]]
@@ -2388,18 +2362,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/0b/4e/60fed105549297ba1a700e1ea7b828044842ea27d72c898990510b79b0e2/pytest-sugar-1.1.1.tar.gz", hash = "sha256:73b8b65163ebf10f9f671efab9eed3d56f20d2ca68bda83fa64740a92c08f65d", size = 16533, upload-time = "2025-08-23T12:19:35.737Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/87/d5/81d38a91c1fdafb6711f053f5a9b92ff788013b19821257c2c38c1e132df/pytest_sugar-1.1.1-py3-none-any.whl", hash = "sha256:2f8319b907548d5b9d03a171515c1d43d2e38e32bd8182a1781eb20b43344cc8", size = 11440, upload-time = "2025-08-23T12:19:34.894Z" },
-]
-
-[[package]]
-name = "python-akismet"
-version = "0.4.3"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "requests" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/ba/bf/7f48b09be314a68e1ededb847fd1069821bd7230f06204ea16d844491c7f/python-akismet-0.4.3.tar.gz", hash = "sha256:83e3d73d9835b31ab4a2725860a940739e252ef55144f65c3b66982bf33e2939", size = 9843, upload-time = "2022-01-25T00:00:36.046Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/de/6b/57a7bd7c9d092699386fb2173e56fb6876f0b2cccdfeed648b483089f17a/python_akismet-0.4.3-py2.py3-none-any.whl", hash = "sha256:767572cb82d860c5c74026fafbf9992a02d2cfe140a932ef90f8274bb419befc", size = 7129, upload-time = "2022-01-25T00:00:34.106Z" },
 ]
 
 [[package]]
