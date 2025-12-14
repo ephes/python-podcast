@@ -1,6 +1,7 @@
 import contextlib
 import os
 import platform
+import re
 import subprocess
 import sys
 import webbrowser
@@ -233,6 +234,81 @@ def deploy_production():
     deploy("production")
 
 
+_SECTION_HEADER_RE = re.compile(r"^\s*\[.*\]\s*(?:#.*)?$")
+
+
+def _format_toml_value(value):
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, str):
+        escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+        return f'"{escaped}"'
+    raise TypeError(f"Unsupported TOML value type: {type(value)!r}")
+
+
+def _format_inline_table(table):
+    parts = [f"{key} = {_format_toml_value(value)}" for key, value in table.items()]
+    return "{ " + ", ".join(parts) + " }"
+
+
+def _find_table_range(lines, header):
+    start_idx = None
+    for i, line in enumerate(lines):
+        if line.split("#", 1)[0].strip() == header:
+            start_idx = i
+            break
+    if start_idx is None:
+        return None, None
+
+    end_idx = len(lines)
+    for i in range(start_idx + 1, len(lines)):
+        if _SECTION_HEADER_RE.match(lines[i]) and lines[i].lstrip().startswith("["):
+            end_idx = i
+            break
+    return start_idx, end_idx
+
+
+def _upsert_single_line_entries_in_table(pyproject_text, header, entries):
+    lines = pyproject_text.splitlines(keepends=True)
+    start_idx, end_idx = _find_table_range(lines, header)
+
+    if start_idx is None:
+        if lines and not lines[-1].endswith("\n"):
+            lines[-1] = lines[-1] + "\n"
+        if lines and lines[-1].strip():
+            lines.append("\n")
+        lines.append(f"{header}\n")
+        for key, value in entries.items():
+            lines.append(f"{key} = {value}\n")
+        return "".join(lines)
+
+    table_start = start_idx + 1
+    table_end = end_idx
+
+    keys = set(entries.keys())
+    for i in range(table_end - 1, table_start - 1, -1):
+        line = lines[i]
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        match = re.match(r"^\s*([A-Za-z0-9_.-]+)\s*=", line)
+        if not match:
+            continue
+        if match.group(1) in keys:
+            del lines[i]
+            table_end -= 1
+
+    insert_at = table_end
+    while insert_at > table_start and not lines[insert_at - 1].strip():
+        insert_at -= 1
+
+    new_lines = [f"{key} = {value}\n" for key, value in entries.items()]
+    lines[insert_at:insert_at] = new_lines
+    return "".join(lines)
+
+
 @cli.command()
 def switch_to_dev_environment():
     """
@@ -240,23 +316,9 @@ def switch_to_dev_environment():
 
     Modifies pyproject.toml to use local paths in tool.uv.sources.
     """
-    import toml
-
     project_root = get_project_root()
     projects_dir = project_root.parent
     pyproject_path = project_root / "pyproject.toml"
-
-    # Read current pyproject.toml
-    with open(pyproject_path) as f:
-        pyproject = toml.load(f)
-
-    # Ensure tool.uv.sources exists
-    if "tool" not in pyproject:
-        pyproject["tool"] = {}
-    if "uv" not in pyproject["tool"]:
-        pyproject["tool"]["uv"] = {}
-    if "sources" not in pyproject["tool"]["uv"]:
-        pyproject["tool"]["uv"]["sources"] = {}
 
     # Define local package mappings
     packages = [
@@ -269,19 +331,19 @@ def switch_to_dev_environment():
     print("Switching to local development sources in pyproject.toml...")
 
     sources_modified = False
+    updates = {}
     for package_name, package_path in packages:
         if package_path.exists():
-            # Update to local editable source
-            pyproject["tool"]["uv"]["sources"][package_name] = {"path": f"../{package_path.name}", "editable": True}
+            updates[package_name] = _format_inline_table({"path": f"../{package_path.name}", "editable": True})
             print(f"✓ {package_name} -> {package_path}")
             sources_modified = True
         else:
             print(f"Warning: {package_path} does not exist, skipping")
 
     if sources_modified:
-        # Write updated pyproject.toml
-        with open(pyproject_path, "w") as f:
-            toml.dump(pyproject, f)
+        pyproject_text = pyproject_path.read_text(encoding="utf-8")
+        updated = _upsert_single_line_entries_in_table(pyproject_text, "[tool.uv.sources]", updates)
+        pyproject_path.write_text(updated, encoding="utf-8")
 
         print("\nRunning uv sync to apply changes...")
         subprocess.call(["uv", "sync"])
@@ -300,14 +362,8 @@ def switch_to_git_sources():
 
     Restores original git sources in pyproject.toml.
     """
-    import toml
-
     project_root = get_project_root()
     pyproject_path = project_root / "pyproject.toml"
-
-    # Read current pyproject.toml
-    with open(pyproject_path) as f:
-        pyproject = toml.load(f)
 
     # Define default git sources
     default_sources = {
@@ -318,24 +374,20 @@ def switch_to_git_sources():
     }
 
     print("Restoring git sources in pyproject.toml...")
+    updates = {}
+    for package_name, git_source in default_sources.items():
+        updates[package_name] = _format_inline_table(git_source)
+        print(f"✓ {package_name} -> {git_source}")
 
-    if "tool" in pyproject and "uv" in pyproject["tool"] and "sources" in pyproject["tool"]["uv"]:
-        for package_name, git_source in default_sources.items():
-            if package_name in pyproject["tool"]["uv"]["sources"]:
-                pyproject["tool"]["uv"]["sources"][package_name] = git_source
-                print(f"✓ {package_name} -> {git_source}")
+    pyproject_text = pyproject_path.read_text(encoding="utf-8")
+    updated = _upsert_single_line_entries_in_table(pyproject_text, "[tool.uv.sources]", updates)
+    pyproject_path.write_text(updated, encoding="utf-8")
 
-        # Write updated pyproject.toml
-        with open(pyproject_path, "w") as f:
-            toml.dump(pyproject, f)
+    print("\nRunning uv sync to apply changes...")
+    subprocess.call(["uv", "sync", "--reinstall"])
 
-        print("\nRunning uv sync to apply changes...")
-        subprocess.call(["uv", "sync", "--reinstall"])
-
-        print("\nSwitched back to git sources!")
-        print("All packages are now installed from their git repositories.")
-    else:
-        print("No tool.uv.sources found in pyproject.toml, nothing to restore.")
+    print("\nSwitched back to git sources!")
+    print("All packages are now installed from their git repositories.")
 
 
 if __name__ == "__main__":
