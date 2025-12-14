@@ -24,6 +24,7 @@ if READ_DOT_ENV_FILE:
 DJANGO_APPS = [
     "django.contrib.auth",
     "django.contrib.contenttypes",
+    "django.contrib.postgres",
     "django.contrib.sessions",
     "django.contrib.sites",
     "django.contrib.messages",
@@ -42,7 +43,7 @@ THIRD_PARTY_APPS = [
     "django_filters",  # filter posts
     "django_extensions",  # shell_plus etc
     "indieweb",  # indieauth etc
-    "fluent_comments",
+    "cast.comments.apps.CastCommentsConfig",  # must be before django_comments
     "threadedcomments",
     "django_comments",
     "storages",  # store media on s3
@@ -358,7 +359,7 @@ MEDIA_URL = f"https://{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/"
 
 
 # Comments
-COMMENTS_APP = "fluent_comments"
+COMMENTS_APP = "cast.comments"
 FLUENT_COMMENTS_EXCLUDE_FIELDS = ("url", "title")
 CAST_COMMENTS_ENABLED = True
 # needed to set via env because analytics cron breaks on cast.moderation

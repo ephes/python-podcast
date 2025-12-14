@@ -51,7 +51,7 @@ urlpatterns = [
     path("accounts/", include("allauth.urls")),
     # Your stuff: custom urls includes go here
     # Threadedcomments
-    path("show/comments/", include("fluent_comments.urls")),
+    path("show/comments/", include("cast.comments.urls")),
     # rest
     path("api/api-token-auth/", authtokenviews.obtain_auth_token),
     # path("docs/", include_docs_urls(title="API service", public=False)),

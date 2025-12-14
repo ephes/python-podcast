@@ -47,7 +47,8 @@ dev-dependencies = [
 [tool.uv.sources]
 cast-vue = { git = "https://github.com/ephes/cast-vue" }
 cast-bootstrap5 = { git = "https://github.com/ephes/cast-bootstrap5" }
-django-cast = { git = "https://github.com/ephes/django-cast", branch="develop" }
+django-cast = { git = "https://github.com/ephes/django-cast", branch = "develop" }
+django-indieweb = { git = "https://github.com/ephes/django-indieweb", branch = "develop" }
 
 [tool.black]
 line-length = 119
