@@ -80,7 +80,9 @@ You must set the DSN url in production.
 Deployment
 ----------
 
-The following details how to deploy this application.
+Production deployments run via ops-control (SOPS-backed). Use ``just deploy-production`` or
+``uv run python commands.py deploy_production``. The ``deploy/`` directory is kept as a legacy
+reference (staging still uses it).
 
 
 
@@ -90,6 +92,5 @@ Docker
 See detailed `cookiecutter-django Docker documentation`_.
 
 .. _`cookiecutter-django Docker documentation`: http://cookiecutter-django.readthedocs.io/en/latest/deployment-with-docker.html
-
 
 

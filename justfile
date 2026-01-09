@@ -1,5 +1,12 @@
 # Justfile for python-podcast project development
 
+# ========= Deploy Config (override via .envrc or environment) =========
+# Path to your local ops-control clone
+OPS_CONTROL := env_var_or_default("OPS_CONTROL", "/Users/jochen/projects/ops-control")
+PROJECTS_ROOT := env_var_or_default("PROJECTS_ROOT", "/Users/jochen/projects")
+SOPS_AGE_KEY_FILE := env_var_or_default("SOPS_AGE_KEY_FILE", "~/.config/sops/age/keys.txt")
+ANSIBLE_PLAYBOOK := env_var_or_default("ANSIBLE_PLAYBOOK", "ansible-playbook")
+
 # Default recipe - show available commands
 default:
     @just --list
@@ -126,6 +133,10 @@ deploy-staging:
     uv run python commands.py deploy-staging
 
 deploy-production:
+    OPS_CONTROL={{OPS_CONTROL}} \
+    PROJECTS_ROOT={{PROJECTS_ROOT}} \
+    SOPS_AGE_KEY_FILE={{SOPS_AGE_KEY_FILE}} \
+    ANSIBLE_PLAYBOOK={{ANSIBLE_PLAYBOOK}} \
     uv run python commands.py deploy-production
 
 # Help for common issues

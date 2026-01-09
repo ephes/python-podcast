@@ -12,6 +12,56 @@ def get_project_root():
     return Path(__file__).parent.resolve()
 
 
+def _resolve_ops_control_path() -> Path:
+    ops_control = os.environ.get("OPS_CONTROL")
+    if ops_control:
+        return Path(ops_control).expanduser()
+    return get_project_root().parent / "ops-control"
+
+
+def _ops_control_env() -> dict[str, str]:
+    env = os.environ.copy()
+    env.setdefault("PROJECTS_ROOT", str(get_project_root().parent))
+    env.setdefault("SOPS_AGE_KEY_FILE", str(Path("~/.config/sops/age/keys.txt").expanduser()))
+    return env
+
+
+def _run_ops_control_playbook(
+    playbook_name: str,
+    *,
+    target_host: str | None = None,
+    extra_vars: dict[str, str] | None = None,
+) -> None:
+    ops_control_path = _resolve_ops_control_path()
+    if not ops_control_path.exists():
+        print(f"ops-control not found at {ops_control_path}. Set OPS_CONTROL to your clone path.")
+        sys.exit(1)
+
+    inventory_path = ops_control_path / "inventories" / "prod" / "hosts.yml"
+    playbook_path = ops_control_path / "playbooks" / playbook_name
+    if not inventory_path.exists():
+        print(f"Missing ops-control inventory at {inventory_path}.")
+        sys.exit(1)
+    if not playbook_path.exists():
+        print(f"Missing ops-control playbook at {playbook_path}.")
+        sys.exit(1)
+
+    ansible_playbook = os.environ.get("ANSIBLE_PLAYBOOK", "ansible-playbook")
+    command = [ansible_playbook, "-i", str(inventory_path), str(playbook_path)]
+    resolved_target_host = target_host or os.environ.get("OPS_CONTROL_HOST") or os.environ.get("TARGET_HOST")
+    if resolved_target_host:
+        command.extend(["-l", resolved_target_host])
+
+    if resolved_target_host:
+        extra_vars = dict(extra_vars or {})
+        extra_vars.setdefault("target_host", resolved_target_host)
+    if extra_vars:
+        for key, value in extra_vars.items():
+            command.extend(["-e", f"{key}={value}"])
+
+    subprocess.call(command, cwd=ops_control_path, env=_ops_control_env())
+
+
 def bootstrap():
     """
     Called when first non-standard lib import fails.
@@ -217,7 +267,7 @@ def make_local_db_restorable():
 
 def deploy(environment):
     """
-    Use ansible-playbook to deploy the site to the staging server.
+    Use legacy ansible-playbook flow under deploy/ (kept for reference).
     """
     deploy_root = Path(__file__).parent / "deploy"
     with working_directory(deploy_root):
@@ -226,12 +276,22 @@ def deploy(environment):
 
 @cli.command()
 def deploy_staging():
-    deploy("staging")
+    """
+    Deploy staging using ops-control playbooks + SOPS.
+    """
+    _run_ops_control_playbook(
+        "deploy-python-podcast.yml",
+        target_host="staging",
+        extra_vars={"service_secrets_env": "staging"},
+    )
 
 
 @cli.command()
 def deploy_production():
-    deploy("production")
+    """
+    Deploy production using ops-control playbooks + SOPS.
+    """
+    _run_ops_control_playbook("deploy-python-podcast.yml")
 
 
 _SECTION_HEADER_RE = re.compile(r"^\s*\[.*\]\s*(?:#.*)?$")
