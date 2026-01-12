@@ -35,3 +35,14 @@ $red: #b94a48;
   border-color: $dark-pink;
   color: $red;
 }
+
+podlove-player {
+  display: block;
+  min-height: 294px;
+}
+
+@media (max-width: 768px) {
+  podlove-player {
+    min-height: 514px;
+  }
+}

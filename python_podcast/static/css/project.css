@@ -11,3 +11,14 @@
   background-color: #f2dede;
   border-color: #eed3d7;
 }
+
+podlove-player {
+  display: block;
+  min-height: 294px;
+}
+
+@media (max-width: 768px) {
+  podlove-player {
+    min-height: 514px;
+  }
+}
