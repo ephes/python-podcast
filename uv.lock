@@ -240,65 +240,20 @@ wheels = [
 [[package]]
 name = "cast-bootstrap5"
 version = "0.0.63"
-source = { editable = "../cast-bootstrap5" }
+source = { git = "https://github.com/ephes/cast-bootstrap5#e2b3a1387084bacd3e0c59175d4658542a828193" }
 dependencies = [
     { name = "crispy-bootstrap5" },
     { name = "django-cast" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "black", marker = "extra == 'dev'" },
-    { name = "crispy-bootstrap5" },
-    { name = "django-cast" },
-    { name = "django-environ", marker = "extra == 'dev'" },
-    { name = "django-extensions", marker = "extra == 'dev'" },
-    { name = "django-stubs", extras = ["compatible-mypy"], marker = "extra == 'dev'" },
-    { name = "flake8", marker = "extra == 'dev'" },
-    { name = "furo", marker = "extra == 'doc'" },
-    { name = "isort", marker = "extra == 'dev'" },
-    { name = "jupyter", marker = "extra == 'dev'" },
-    { name = "mypy", marker = "extra == 'dev'" },
-    { name = "pytest", marker = "extra == 'test'", specifier = ">=6" },
-    { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=3" },
-    { name = "pytest-django", marker = "extra == 'test'" },
-    { name = "pytest-mock", marker = "extra == 'test'" },
-    { name = "rich", marker = "extra == 'dev'" },
-    { name = "tox", marker = "extra == 'dev'" },
-    { name = "typer", marker = "extra == 'dev'" },
-]
-provides-extras = ["test", "doc", "dev"]
 
 [[package]]
 name = "cast-vue"
-source = { editable = "../cast-vue" }
+version = "0.0.25"
+source = { git = "https://github.com/ephes/cast-vue#025a9c3391b1b256b716f8463924f8c1215d9e51" }
 dependencies = [
     { name = "django-cast" },
     { name = "django-vite" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "black", marker = "extra == 'dev'" },
-    { name = "django-cast" },
-    { name = "django-environ", marker = "extra == 'dev'" },
-    { name = "django-extensions", marker = "extra == 'dev'" },
-    { name = "django-stubs", extras = ["compatible-mypy"], marker = "extra == 'dev'" },
-    { name = "django-vite" },
-    { name = "flake8", marker = "extra == 'dev'" },
-    { name = "furo", marker = "extra == 'doc'" },
-    { name = "isort", marker = "extra == 'dev'" },
-    { name = "jupyter", marker = "extra == 'dev'" },
-    { name = "mypy", marker = "extra == 'dev'" },
-    { name = "pytest", marker = "extra == 'test'", specifier = ">=6" },
-    { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=3" },
-    { name = "pytest-django", marker = "extra == 'test'" },
-    { name = "pytest-mock", marker = "extra == 'test'" },
-    { name = "rich", marker = "extra == 'dev'" },
-    { name = "tox", marker = "extra == 'dev'" },
-    { name = "typer", marker = "extra == 'dev'" },
-]
-provides-extras = ["dev", "doc", "test"]
 
 [[package]]
 name = "cattrs"
@@ -670,7 +625,7 @@ wheels = [
 [[package]]
 name = "django-cast"
 version = "0.2.51"
-source = { editable = "../django-cast" }
+source = { git = "https://github.com/ephes/django-cast?branch=develop#d5cd4aa4f37dfbcf800fa3c3369de45e009bf98b" }
 dependencies = [
     { name = "crispy-bootstrap4" },
     { name = "django" },
@@ -687,51 +642,6 @@ dependencies = [
     { name = "rich" },
     { name = "setuptools" },
     { name = "wagtail" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "crispy-bootstrap4" },
-    { name = "django" },
-    { name = "django-contrib-comments" },
-    { name = "django-crispy-forms" },
-    { name = "django-environ" },
-    { name = "django-filter" },
-    { name = "django-htmx" },
-    { name = "django-model-utils" },
-    { name = "django-threadedcomments" },
-    { name = "django-vite" },
-    { name = "pygments" },
-    { name = "python-slugify" },
-    { name = "rich" },
-    { name = "setuptools" },
-    { name = "wagtail" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "django-allauth" },
-    { name = "django-environ" },
-    { name = "django-extensions" },
-    { name = "django-stubs", extras = ["compatible-mypy"] },
-    { name = "factory-boy" },
-    { name = "feedparser" },
-    { name = "furo" },
-    { name = "jupyter" },
-    { name = "mypy" },
-    { name = "pre-commit" },
-    { name = "pytest", specifier = ">=6" },
-    { name = "pytest-cov", specifier = ">=3" },
-    { name = "pytest-django" },
-    { name = "pytest-mock" },
-    { name = "pytest-randomly" },
-    { name = "pytz" },
-    { name = "ruff" },
-    { name = "tox" },
-    { name = "tox-uv" },
-    { name = "typer" },
-    { name = "types-python-slugify" },
-    { name = "types-requests" },
 ]
 
 [[package]]
@@ -820,39 +730,13 @@ wheels = [
 [[package]]
 name = "django-indieweb"
 version = "0.5.3"
-source = { editable = "../django-indieweb" }
+source = { git = "https://github.com/ephes/django-indieweb?branch=develop#1a56007ad97667af636c39a638afefddc6bc2e9c" }
 dependencies = [
     { name = "beautifulsoup4" },
     { name = "django" },
     { name = "django-model-utils" },
     { name = "httpx" },
     { name = "mf2py" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "beautifulsoup4" },
-    { name = "django" },
-    { name = "django-model-utils" },
-    { name = "httpx" },
-    { name = "mf2py" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "django-environ" },
-    { name = "django-stubs", extras = ["compatible-mypy"] },
-    { name = "furo" },
-    { name = "mypy" },
-    { name = "pre-commit" },
-    { name = "pytest", specifier = ">=6" },
-    { name = "pytest-cov", specifier = ">=3" },
-    { name = "pytest-django" },
-    { name = "requests" },
-    { name = "ruff" },
-    { name = "sphinxcontrib-mermaid", specifier = ">=1.0.0" },
-    { name = "tox" },
-    { name = "types-requests" },
 ]
 
 [[package]]
@@ -1710,13 +1594,13 @@ dev = [
 requires-dist = [
     { name = "argon2-cffi" },
     { name = "boto3" },
-    { name = "cast-bootstrap5", editable = "../cast-bootstrap5" },
-    { name = "cast-vue", editable = "../cast-vue" },
+    { name = "cast-bootstrap5", git = "https://github.com/ephes/cast-bootstrap5" },
+    { name = "cast-vue", git = "https://github.com/ephes/cast-vue" },
     { name = "django-allauth" },
     { name = "django-anymail", extras = ["mailgun"] },
-    { name = "django-cast", editable = "../django-cast" },
+    { name = "django-cast", git = "https://github.com/ephes/django-cast?branch=develop" },
     { name = "django-extensions" },
-    { name = "django-indieweb", editable = "../django-indieweb" },
+    { name = "django-indieweb", git = "https://github.com/ephes/django-indieweb?branch=develop" },
     { name = "django-proxy" },
     { name = "django-storages" },
     { name = "gunicorn" },
