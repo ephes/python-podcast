@@ -4,7 +4,7 @@
 {% load i18n %}
 
 {% block feeds %}
-  <p>
+  <p class="cast-subscribe-button-slot">
     <script>window.podcastData={"title":"Python Podcast","subtitle":"Ein deutschsprachiger Podcast rund um die Programmiersprache Python","description":"","cover":"{{ page.podcast.itunes_artwork.original.url }}","feeds":[{"type":"audio","format":"aac","url":"https://python-podcast.de/show/feed/podcast/m4a/rss.xml","directory-url-itunes":"https://podcasts.apple.com/de/podcast/python-podcast/id1445331513"},{"type":"audio","format":"mp3","url":"https://python-podcast.de/show/feed/podcast/mp3/rss.xml","directory-url-itunes":"https://podcasts.apple.com/de/podcast/python-podcast/id1445331513"},{"type":"audio","format":"ogg","url":"https://python-podcast.de/show/feed/podcast/oga/rss.xml","directory-url-itunes":"https://podcasts.apple.com/de/podcast/python-podcast/id1445331513"},{"type":"audio","format":"opus","url":"https://python-podcast.de/show/feed/podcast/opus/rss.xml","directory-url-itunes":"https://podcasts.apple.com/de/podcast/python-podcast/id1445331513"}]}</script><script class="podlove-subscribe-button" src="{% static 'subscribe_button/javascripts/app.js' %}" async data-language="de" data-size="big" data-json-data="podcastData" data-color="#469cd1" data-format="cover" data-style="filled"></script><noscript><a href="https://python-podcast.de/show/feed/podcast/m4a/rss.xml">Subscribe to feed</a></noscript>
   </p>
 {% endblock feeds %}
