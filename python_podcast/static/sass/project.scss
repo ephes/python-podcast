@@ -41,6 +41,11 @@ podlove-player {
   min-height: 294px;
 }
 
+// Avoid expensive rendering below the fold on long lists.
+#paging-area {
+  content-visibility: auto;
+}
+
 .cast-subscribe-button-slot {
   // Reserve space for the subscribe button iframe (big + cover = 234px).
   min-height: 234px;
