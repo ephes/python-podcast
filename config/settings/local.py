@@ -37,7 +37,7 @@ EMAIL_PORT = 1025
 
 # django-debug-toolbar
 # ------------------------------------------------------------------------------
-ENABLE_DEBUG_TOOLBAR = env.bool("DJANGO_DEBUG_TOOLBAR", default=True)
+ENABLE_DEBUG_TOOLBAR = env.bool("DJANGO_DEBUG_TOOLBAR", default=False)
 if ENABLE_DEBUG_TOOLBAR:
     # https://django-debug-toolbar.readthedocs.io/en/latest/installation.html#prerequisites
     INSTALLED_APPS += ["debug_toolbar"]  # noqa F405
@@ -89,6 +89,7 @@ DJANGO_VITE = {
     },
     "cast-bootstrap5": {
         "dev_mode": True,
+        "dev_server_port": 5174,
     },
     "cast": {
         "dev_mode": True,
