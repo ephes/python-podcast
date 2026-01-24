@@ -253,7 +253,7 @@ dependencies = [
 [[package]]
 name = "cast-vue"
 version = "0.0.26"
-source = { git = "https://github.com/ephes/cast-vue#194af6905dca9bc7b4c8196e2e9422b0861b7c8d" }
+source = { git = "https://github.com/ephes/cast-vue#d996c4f173ffb57b88f1390844033ac4cd24f9f2" }
 dependencies = [
     { name = "django-cast" },
     { name = "django-vite" },
