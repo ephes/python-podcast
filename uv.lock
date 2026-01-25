@@ -253,7 +253,7 @@ dependencies = [
 [[package]]
 name = "cast-vue"
 version = "0.0.26"
-source = { git = "https://github.com/ephes/cast-vue#9de89352984f25652640ca619edcc2980ba4601c" }
+source = { git = "https://github.com/ephes/cast-vue#b0ccb991aec2df84877c0d74b496d04adb4eaa6b" }
 dependencies = [
     { name = "django-cast" },
     { name = "django-vite" },
@@ -629,7 +629,7 @@ wheels = [
 [[package]]
 name = "django-cast"
 version = "0.2.53"
-source = { git = "https://github.com/ephes/django-cast?branch=develop#e0c45740cc32d9be55216664224172827d7a1113" }
+source = { git = "https://github.com/ephes/django-cast?branch=develop#52223ce1ff08f9f89c8152644f1fdd4b636802bf" }
 dependencies = [
     { name = "crispy-bootstrap4" },
     { name = "django" },
@@ -3100,11 +3100,11 @@ wheels = [
 
 [[package]]
 name = "wcwidth"
-version = "0.3.3"
+version = "0.3.5"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/b5/3a/c63d2afd6dc2cad55a44bea48c7db75edde859e320bdceb9351ba63fceb6/wcwidth-0.3.3.tar.gz", hash = "sha256:f8f7d42c8a067d909b80b425342d02c423c5edc546347475e1d402fe3d35bb63", size = 233784, upload-time = "2026-01-24T16:23:58.578Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/95/fc/44799c4a51ff0da0de0ff27e68c9dea3454f3d9bf15ffb606aeb6943e672/wcwidth-0.3.5.tar.gz", hash = "sha256:7c3463f312540cf21ddd527ea34f3ae95c057fa191aa7a9e043898d20d636e59", size = 234185, upload-time = "2026-01-25T04:37:23.942Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4f/bc/ab575ebf0254577034d23908299b0d13ea5d7ceb35f43a5c08acf2252826/wcwidth-0.3.3-py3-none-any.whl", hash = "sha256:8e9056c446f21c7393514946d143a748c56aad72476844d3f215f7915276508f", size = 86509, upload-time = "2026-01-24T16:23:56.966Z" },
+    { url = "https://files.pythonhosted.org/packages/7a/86/7f461495625145a99d60f14cdac142a11db5d501c86d48aad165575d1e06/wcwidth-0.3.5-py3-none-any.whl", hash = "sha256:b0a0245130566939a24ab8432e625b38272fbc62ecbe5aecbdcb50b8f02ce993", size = 86681, upload-time = "2026-01-25T04:37:22.585Z" },
 ]
 
 [[package]]
