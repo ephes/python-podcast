@@ -75,10 +75,12 @@
               <a id="log-in-link" class="nav-link" href="{% url 'account_login' %}">{% trans "Sign In" %}</a>
             </li>
           {% endif %}
-          {% if has_selectable_themes %}
-            {% include "cast/bootstrap5/select_theme.html" %}
-          {% endif %}
         </ul>
+        {% if has_selectable_themes %}
+          <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+            {% include "cast/bootstrap5/select_theme.html" %}
+          </ul>
+        {% endif %}
       </div>
     </div>
   </nav>
