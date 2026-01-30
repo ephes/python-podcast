@@ -1,0 +1,52 @@
+/* Host-site overrides for cast-bootstrap5 tokens. */
+:root {
+  --cast-bg: #ffffff;
+  --cast-bg-alt: #f8f9fa;
+  --cast-surface: #ffffff;
+
+  --cast-text: #212529;
+  --cast-text-muted: #6c757d;
+  --cast-text-light: #adb5bd;
+
+  --cast-accent: #0066cc;
+  --cast-accent-hover: #004c99;
+  --cast-accent-light: #e6f0ff;
+  --cast-link-on-white: #004c99;
+
+  --cast-border: #e9ecef;
+  --cast-border-strong: #dee2e6;
+
+  --cast-code-bg: #f8f9fa;
+  --cast-code-text: #212529;
+
+  --cast-modal-backdrop: rgba(0, 0, 0, 0.85);
+  --cast-gallery-body-bg: rgba(255, 255, 255, 0.8);
+  --cast-gallery-header-bg: rgba(255, 255, 255, 1);
+  --cast-gallery-footer-bg: rgba(255, 255, 255, 1);
+}
+
+[data-bs-theme="dark"] {
+  --cast-bg: #0f172a;
+  --cast-bg-alt: #1e293b;
+  --cast-surface: #1e293b;
+
+  --cast-text: #f8fafc;
+  --cast-text-muted: #94a3b8;
+  --cast-text-light: #64748b;
+
+  --cast-accent: #38bdf8;
+  --cast-accent-hover: #0ea5e9;
+  --cast-accent-light: #0b1f34;
+  --cast-link-on-white: #38bdf8;
+
+  --cast-border: #334155;
+  --cast-border-strong: #475569;
+
+  --cast-code-bg: #1e293b;
+  --cast-code-text: #f8fafc;
+
+  --cast-modal-backdrop: rgba(0, 0, 0, 0.85);
+  --cast-gallery-body-bg: rgba(15, 23, 42, 0.9);
+  --cast-gallery-header-bg: rgba(30, 41, 59, 1);
+  --cast-gallery-footer-bg: rgba(30, 41, 59, 1);
+}
