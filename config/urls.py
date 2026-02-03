@@ -10,6 +10,7 @@ from wagtail.admin import urls as wagtailadmin_urls
 from wagtail.api.v2.views import PagesAPIViewSet
 from wagtail.documents import urls as wagtaildocs_urls
 
+from python_podcast.core import views as core_views
 from python_podcast.pp import views as pp_views
 
 handler404 = default_views_cast.page_not_found
@@ -24,6 +25,7 @@ PagesAPIViewSet.schema = None
 
 
 urlpatterns = [
+    path("robots.txt", core_views.robots_txt, name="robots_txt"),
     # path("", TemplateView.as_view(template_name="pages/home.html"), name="home"),
     path("", RedirectView.as_view(url="/show"), name="home"),
     path(
