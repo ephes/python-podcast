@@ -10,7 +10,7 @@
         "title": "Python Podcast",
         "subtitle": "Ein deutschsprachiger Podcast rund um die Programmiersprache Python",
         "description": "",
-        "cover": "{{ page.podcast.itunes_artwork.original.url }}",
+        "cover": "{{ page.podcast.itunes_artwork.original.url|default:'' }}",
         "feeds": [
           {
             "type": "audio",
