@@ -77,11 +77,10 @@
             </li>
           {% endif %}
         </ul>
-        {% if has_selectable_themes %}
-          <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
-            {% include "cast/bootstrap5/select_theme.html" %}
-          </ul>
-        {% endif %}
+        <ul class="navbar-nav ms-auto mb-2 mb-lg-0 cast-nav-actions">
+          {% include "cast/bootstrap5/select_theme.html" %}
+          {% include "cast/bootstrap5/follow_links.html" with follow_links=follow_links|default:default_follow_links %}
+        </ul>
       </div>
     </div>
   </nav>

@@ -183,6 +183,7 @@ TEMPLATES = [
                 "django.template.context_processors.tz",
                 "django.contrib.messages.context_processors.messages",
                 "cast.context_processors.site_template_base_dir",
+                "python_podcast.pp.context_processors.default_follow_links",
             ],
         },
     },
@@ -364,6 +365,12 @@ FLUENT_COMMENTS_EXCLUDE_FIELDS = ("url", "title")
 CAST_COMMENTS_ENABLED = True
 # needed to set via env because analytics cron breaks on cast.moderation
 FLUENT_COMMENTS_DEFAULT_MODERATOR = env("FLUENT_COMMENTS_DEFAULT_MODERATOR", default="cast.moderation.Moderator")
+
+CAST_FOLLOW_LINKS = {
+    "rss": "/show/feed/podcast/m4a/rss.xml",
+    "mastodon": "https://fedi.wersdoerfer.de/@jochen",
+    "github": "https://github.com/ephes",
+}
 
 # Default auto primary key field (Django 3.2)
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
