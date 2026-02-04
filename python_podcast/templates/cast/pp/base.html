@@ -26,7 +26,10 @@
       <header>The header</header>
     {% endblock header %}
     {% block navigation %}
-      <nav>The navigation</nav>
+      <nav>
+        {% include "./select_theme.html" %}
+        {% block nav_extra %}{% endblock nav_extra %}
+      </nav>
     {% endblock navigation %}
     <div id="paging-area">
       {% block main %}
