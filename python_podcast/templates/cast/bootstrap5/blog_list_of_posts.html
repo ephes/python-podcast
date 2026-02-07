@@ -4,80 +4,16 @@
 {% load i18n %}
 
 {% block feeds %}
-  <div class="cast-subscribe-button-slot">
-    <script>
-      window.podcastData = {
-        "title": "Python Podcast",
-        "subtitle": "Ein deutschsprachiger Podcast rund um die Programmiersprache Python",
-        "description": "",
-        "cover": "{{ page.podcast.itunes_artwork.original.url|default:'' }}",
-        "feeds": [
-          {
-            "type": "audio",
-            "format": "aac",
-            "url": "https://python-podcast.de/show/feed/podcast/m4a/rss.xml",
-            "directory-url-itunes": "https://podcasts.apple.com/de/podcast/python-podcast/id1445331513"
-          },
-          {
-            "type": "audio",
-            "format": "mp3",
-            "url": "https://python-podcast.de/show/feed/podcast/mp3/rss.xml",
-            "directory-url-itunes": "https://podcasts.apple.com/de/podcast/python-podcast/id1445331513"
-          },
-          {
-            "type": "audio",
-            "format": "ogg",
-            "url": "https://python-podcast.de/show/feed/podcast/oga/rss.xml",
-            "directory-url-itunes": "https://podcasts.apple.com/de/podcast/python-podcast/id1445331513"
-          },
-          {
-            "type": "audio",
-            "format": "opus",
-            "url": "https://python-podcast.de/show/feed/podcast/opus/rss.xml",
-            "directory-url-itunes": "https://podcasts.apple.com/de/podcast/python-podcast/id1445331513"
-          }
-        ]
-      };
-    </script>
-    <button class="btn btn-outline-secondary cast-subscribe-button" type="button">
-      {% trans "Subscribe" %}
-    </button>
-    <noscript>
-      <a href="https://python-podcast.de/show/feed/podcast/m4a/rss.xml">Subscribe to feed</a>
-    </noscript>
+  <div class="cast-subscribe-links">
+    <a class="btn btn-primary" href="https://podcasts.apple.com/de/podcast/python-podcast/id1445331513" target="_blank" rel="noopener noreferrer">
+      Apple Podcasts
+    </a>
+    <span class="cast-subscribe-feeds">
+      <span class="cast-subscribe-feeds-label">RSS:</span>
+      <a href="/show/feed/podcast/m4a/rss.xml">M4A</a>
+      <a href="/show/feed/podcast/mp3/rss.xml">MP3</a>
+      <a href="/show/feed/podcast/oga/rss.xml">OGG</a>
+      <a href="/show/feed/podcast/opus/rss.xml">OPUS</a>
+    </span>
   </div>
-  <script>
-    (function () {
-      var slot = document.querySelector('.cast-subscribe-button-slot');
-      if (!slot) {
-        return;
-      }
-      var button = slot.querySelector('.cast-subscribe-button');
-      if (!button) {
-        return;
-      }
-      button.addEventListener(
-        'click',
-        function () {
-          if (slot.dataset.subscribeLoaded === 'true') {
-            return;
-          }
-          slot.dataset.subscribeLoaded = 'true';
-          var script = document.createElement('script');
-          script.className = 'podlove-subscribe-button';
-          script.src = "{% static 'subscribe_button/javascripts/app.js' %}";
-          script.async = true;
-          script.dataset.language = 'de';
-          script.dataset.size = 'big';
-          script.dataset.jsonData = 'podcastData';
-          script.dataset.color = '#469cd1';
-          script.dataset.format = 'cover';
-          script.dataset.style = 'filled';
-          slot.innerHTML = '';
-          slot.appendChild(script);
-        },
-        { once: true },
-      );
-    })();
-  </script>
 {% endblock feeds %}

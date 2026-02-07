@@ -367,7 +367,6 @@ CAST_COMMENTS_ENABLED = True
 FLUENT_COMMENTS_DEFAULT_MODERATOR = env("FLUENT_COMMENTS_DEFAULT_MODERATOR", default="cast.moderation.Moderator")
 
 CAST_FOLLOW_LINKS = {
-    "rss": "/show/feed/podcast/m4a/rss.xml",
     "mastodon": "https://fedi.wersdoerfer.de/@jochen",
     "github": "https://github.com/ephes",
 }

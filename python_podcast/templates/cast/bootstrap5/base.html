@@ -13,9 +13,6 @@
     #paging-area {
       content-visibility: auto;
     }
-    .cast-subscribe-button-slot {
-      min-height: 234px;
-    }
     @media (max-width: 768px) {
       podlove-player {
         min-height: 514px;
@@ -65,15 +62,6 @@
             <li class="nav-item">
               {# URL provided by django-allauth/account/urls.py #}
               <a class="nav-link" href="{% url 'account_logout' %}">{% trans "Sign Out" %}</a>
-            </li>
-          {% else %}
-            <li class="nav-item">
-              {# URL provided by django-allauth/account/urls.py #}
-              <a id="sign-up-link" class="nav-link" href="{% url 'account_signup' %}">{% trans "Sign Up" %}</a>
-            </li>
-            <li class="nav-item">
-              {# URL provided by django-allauth/account/urls.py #}
-              <a id="log-in-link" class="nav-link" href="{% url 'account_login' %}">{% trans "Sign In" %}</a>
             </li>
           {% endif %}
         </ul>
