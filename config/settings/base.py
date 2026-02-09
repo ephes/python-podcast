@@ -367,8 +367,8 @@ CAST_COMMENTS_ENABLED = True
 FLUENT_COMMENTS_DEFAULT_MODERATOR = env("FLUENT_COMMENTS_DEFAULT_MODERATOR", default="cast.moderation.Moderator")
 
 CAST_FOLLOW_LINKS = {
-    "mastodon": "https://fedi.wersdoerfer.de/@jochen",
-    "github": "https://github.com/ephes",
+    "mastodon": "https://fedi.python-podcast.de/@show@python-podcast.de/",
+    "linkedin": "https://www.linkedin.com/company/105560994/",
 }
 
 # Default auto primary key field (Django 3.2)
