@@ -1,0 +1,36 @@
+{% extends "cast/bootstrap5/feed_detail.html" %}
+{% load static %}
+
+{% block podlove_subscribe_button %}
+  <script>
+    window.podcastData = {
+      "title": "{{ blog.title|escapejs }}",
+      "subtitle": "{{ blog.subtitle|escapejs }}",
+      "description": "{{ blog.description|striptags|escapejs }}",
+      {% if blog.itunes_artwork %}
+        "cover": "{{ blog.itunes_artwork.original.url|escapejs }}",
+      {% endif %}
+      "feeds": [
+        {% for feed in podcast_feeds %}
+          {
+            "type": "audio",
+            "format": "{% if feed.format == 'mp3' %}mp3{% elif feed.format == 'm4a' %}aac{% elif feed.format == 'oga' %}ogg{% elif feed.format == 'opus' %}opus{% endif %}",
+            "url": "{{ feed.rss_url|escapejs }}",
+            {% if apple_podcasts_url %}
+              "directory-url-itunes": "{{ apple_podcasts_url|escapejs }}"
+            {% endif %}
+          }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+      ]
+    };
+  </script>
+  <script class="podlove-subscribe-button"
+          src="{% static 'subscribe_button/javascripts/app.js' %}"
+          data-language="en"
+          data-size="big"
+          data-json-data="podcastData"
+          data-colors="#FC6E51"
+          data-buttonid="podlove-subscribe-button"
+          data-hide="true">
+  </script>
+{% endblock podlove_subscribe_button %}
