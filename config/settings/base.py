@@ -369,6 +369,9 @@ FLUENT_COMMENTS_DEFAULT_MODERATOR = env("FLUENT_COMMENTS_DEFAULT_MODERATOR", def
 CAST_FOLLOW_LINKS = {
     "mastodon": "https://fedi.python-podcast.de/@show@python-podcast.de/",
     "linkedin": "https://www.linkedin.com/company/105560994/",
+    "apple_podcasts": "https://podcasts.apple.com/de/podcast/python-podcast/id1445331513",
+    "spotify": "https://open.spotify.com/show/5AvPhPaP1ZNSjNUXY3Gf6M",
+    "youtube": "https://www.youtube.com/@pythonpodcast4617",
 }
 
 # Default auto primary key field (Django 3.2)

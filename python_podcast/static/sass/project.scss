@@ -46,11 +46,6 @@ podlove-player {
   content-visibility: auto;
 }
 
-.cast-subscribe-button-slot {
-  // Reserve space for the subscribe button iframe (big + cover = 234px).
-  min-height: 234px;
-}
-
 @media (max-width: 768px) {
   podlove-player {
     min-height: 514px;
