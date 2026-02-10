@@ -26,9 +26,13 @@
   </script>
   <script class="podlove-subscribe-button"
           src="{% static 'subscribe_button/javascripts/app.js' %}"
-          data-language="en"
+          async
+          data-language="de"
           data-size="big"
           data-json-data="podcastData"
-          data-colors="#FC6E51">
+          data-color="#469cd1"
+          data-format="cover"
+          data-style="filled">
   </script>
+  <noscript><a href="{{ podcast_feeds.0.rss_url }}">Subscribe to feed</a></noscript>
 {% endblock podlove_subscribe_button %}
