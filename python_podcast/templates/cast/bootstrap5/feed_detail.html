@@ -43,12 +43,19 @@
     {% trans "Subscribe" %}
   </a>
   <script>
-    document.getElementById("podlove-subscribe-trigger").addEventListener("click", function(e) {
-      e.preventDefault();
-      if (window.subscribeButtons && window.subscribeButtons[0]) {
-        window.subscribeButtons[0].openPopup(window.subscribeButtons[0].options);
+    (function() {
+      var trigger = document.getElementById("podlove-subscribe-trigger");
+      var container = document.querySelector(".cast-platform-buttons");
+      if (trigger && container) {
+        container.insertBefore(trigger, container.firstChild);
       }
-    });
+      trigger.addEventListener("click", function(e) {
+        e.preventDefault();
+        if (window.subscribeButtons && window.subscribeButtons[0]) {
+          window.subscribeButtons[0].openPopup(window.subscribeButtons[0].options);
+        }
+      });
+    })();
   </script>
   <noscript><a href="{{ podcast_feeds.0.rss_url }}">Subscribe to feed</a></noscript>
 {% endblock podlove_subscribe_button %}
