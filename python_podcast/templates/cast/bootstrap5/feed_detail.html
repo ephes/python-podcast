@@ -15,7 +15,7 @@
           {
             "type": "audio",
             "format": "{% if feed.format == 'mp3' %}mp3{% elif feed.format == 'm4a' %}aac{% elif feed.format == 'oga' %}ogg{% elif feed.format == 'opus' %}opus{% endif %}",
-            "url": "{{ feed.rss_url|escapejs }}",
+            "url": "{{ request.scheme }}://{{ request.get_host }}{{ feed.rss_url|escapejs }}",
             {% if apple_podcasts_url %}
               "directory-url-itunes": "{{ apple_podcasts_url|escapejs }}"
             {% endif %}
