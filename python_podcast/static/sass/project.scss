@@ -41,6 +41,17 @@ podlove-player {
   min-height: 294px;
 }
 
+html[data-bs-theme="dark"] podlove-player,
+body[data-bs-theme="dark"] podlove-player {
+  background-color: #1e293b;
+}
+
+@media (prefers-color-scheme: dark) {
+  podlove-player {
+    background-color: #1e293b;
+  }
+}
+
 // Avoid expensive rendering below the fold on long lists.
 #paging-area {
   content-visibility: auto;

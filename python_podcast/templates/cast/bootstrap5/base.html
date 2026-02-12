@@ -11,6 +11,15 @@
       display: block;
       min-height: 294px;
     }
+    html[data-bs-theme="dark"] podlove-player,
+    body[data-bs-theme="dark"] podlove-player {
+      background-color: #1e293b;
+    }
+    @media (prefers-color-scheme: dark) {
+      podlove-player {
+        background-color: #1e293b;
+      }
+    }
     #paging-area {
       content-visibility: auto;
     }
