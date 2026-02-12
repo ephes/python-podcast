@@ -253,7 +253,7 @@ wheels = [
 [[package]]
 name = "cast-bootstrap5"
 version = "0.0.74"
-source = { git = "https://github.com/ephes/cast-bootstrap5#0ad523c204fa544a24b234e96a91e657c6cdcbeb" }
+source = { git = "https://github.com/ephes/cast-bootstrap5#dc33aef694fd0b83a7813c7ae19bb4c39cfe16bd" }
 dependencies = [
     { name = "crispy-bootstrap5" },
     { name = "django-cast" },
@@ -520,15 +520,15 @@ wheels = [
 
 [[package]]
 name = "crispy-bootstrap4"
-version = "2025.6"
+version = "2026.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django" },
     { name = "django-crispy-forms" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/99/f7/5dea1c2ad806fb28b42da08f1dc19ac172e909a63bcef0734bfdf811fedf/crispy_bootstrap4-2025.6.tar.gz", hash = "sha256:69066c33fc9c8841cbd8741a7ec99ad9234f12877b4549490031a47c2c1abd79", size = 35938, upload-time = "2025-06-08T08:04:54.872Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5b/cc/638d36595da9fbb2c9d0be98bf6007442a65a521b614cf4645d04311b061/crispy_bootstrap4-2026.2.tar.gz", hash = "sha256:66f8f14bf9c2c16ed94243236ed253a94e5a625afa1ee64022ce29db98c6cd85", size = 34645, upload-time = "2026-02-11T22:45:05.422Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/28/f9/a43aeecf5bf7c9b05eccf9f35d1878291a1f2c5ffc501bd96b8759fb6b10/crispy_bootstrap4-2025.6-py3-none-any.whl", hash = "sha256:64bf732b27690c7147bfaa154b4b690217bee81c71731daf5da73de00ee01943", size = 23281, upload-time = "2025-06-08T08:04:53.622Z" },
+    { url = "https://files.pythonhosted.org/packages/ad/6d/b90d601ea2449cc6b35b4b08be90fb1f6ca1baf2be383ed195f7bfa91a32/crispy_bootstrap4-2026.2-py3-none-any.whl", hash = "sha256:4b2b99dfe3e3cacb548702159462110901bd38792b650b770e50c62284ac2227", size = 23178, upload-time = "2026-02-11T22:45:04.108Z" },
 ]
 
 [[package]]
@@ -648,7 +648,7 @@ wheels = [
 [[package]]
 name = "django-cast"
 version = "0.2.53"
-source = { git = "https://github.com/ephes/django-cast?branch=develop#98b8649582d0b53e2f9be82d167d60ce2e73ae56" }
+source = { git = "https://github.com/ephes/django-cast?branch=develop#f262618f0ea280d47da3895e80b6abb58382cea2" }
 dependencies = [
     { name = "crispy-bootstrap4" },
     { name = "django" },
