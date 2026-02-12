@@ -253,7 +253,7 @@ wheels = [
 [[package]]
 name = "cast-bootstrap5"
 version = "0.0.74"
-source = { git = "https://github.com/ephes/cast-bootstrap5?rev=ffa45660b213ccbcaa034da447a2d467a4a8dd4f#ffa45660b213ccbcaa034da447a2d467a4a8dd4f" }
+source = { git = "https://github.com/ephes/cast-bootstrap5?rev=4a21a31fdbf6662aef9e7a7428be54213b25a577#4a21a31fdbf6662aef9e7a7428be54213b25a577" }
 dependencies = [
     { name = "crispy-bootstrap5" },
     { name = "django-cast" },
@@ -1617,7 +1617,7 @@ dev = [
 requires-dist = [
     { name = "argon2-cffi" },
     { name = "boto3" },
-    { name = "cast-bootstrap5", git = "https://github.com/ephes/cast-bootstrap5?rev=ffa45660b213ccbcaa034da447a2d467a4a8dd4f" },
+    { name = "cast-bootstrap5", git = "https://github.com/ephes/cast-bootstrap5?rev=4a21a31fdbf6662aef9e7a7428be54213b25a577" },
     { name = "cast-vue", git = "https://github.com/ephes/cast-vue" },
     { name = "django-allauth" },
     { name = "django-anymail", extras = ["mailgun"] },
