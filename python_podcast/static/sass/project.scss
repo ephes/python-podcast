@@ -46,9 +46,23 @@ body[data-bs-theme="dark"] podlove-player {
   background-color: #1e293b;
 }
 
+html[data-bs-theme="dark"] podlove-player .podlove-player-container,
+body[data-bs-theme="dark"] podlove-player .podlove-player-container,
+html[data-bs-theme="dark"] podlove-player .podlove-player-container iframe,
+body[data-bs-theme="dark"] podlove-player .podlove-player-container iframe {
+  background-color: #1e293b !important;
+  color-scheme: dark;
+}
+
 @media (prefers-color-scheme: dark) {
   podlove-player {
     background-color: #1e293b;
+  }
+
+  podlove-player .podlove-player-container,
+  podlove-player .podlove-player-container iframe {
+    background-color: #1e293b !important;
+    color-scheme: dark;
   }
 }
 

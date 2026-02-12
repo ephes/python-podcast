@@ -15,9 +15,21 @@
     body[data-bs-theme="dark"] podlove-player {
       background-color: #1e293b;
     }
+    html[data-bs-theme="dark"] podlove-player .podlove-player-container,
+    body[data-bs-theme="dark"] podlove-player .podlove-player-container,
+    html[data-bs-theme="dark"] podlove-player .podlove-player-container iframe,
+    body[data-bs-theme="dark"] podlove-player .podlove-player-container iframe {
+      background-color: #1e293b !important;
+      color-scheme: dark;
+    }
     @media (prefers-color-scheme: dark) {
       podlove-player {
         background-color: #1e293b;
+      }
+      podlove-player .podlove-player-container,
+      podlove-player .podlove-player-container iframe {
+        background-color: #1e293b !important;
+        color-scheme: dark;
       }
     }
     #paging-area {
@@ -84,3 +96,37 @@
     </div>
   </nav>
 {% endblock navigation%}
+
+{% block javascript %}
+  {{ block.super }}
+  <script>
+    (function () {
+      function asElement(value) {
+        return value instanceof Element ? value : null;
+      }
+
+      function targetsPagingArea(event) {
+        var detail = event && event.detail ? event.detail : {};
+        var target = asElement(detail.target);
+        if (target && target.id === "paging-area") {
+          return true;
+        }
+        var elt = asElement(detail.elt);
+        return !!(elt && elt.id === "paging-area");
+      }
+
+      document.addEventListener("htmx:beforeTransition", function (event) {
+        if (!targetsPagingArea(event)) {
+          return;
+        }
+        var pagingArea = document.querySelector("#paging-area");
+        if (!pagingArea) {
+          return;
+        }
+        if (pagingArea.querySelector("podlove-player")) {
+          event.preventDefault();
+        }
+      });
+    })();
+  </script>
+{% endblock javascript %}
