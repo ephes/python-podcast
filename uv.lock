@@ -253,7 +253,7 @@ wheels = [
 [[package]]
 name = "cast-bootstrap5"
 version = "0.0.74"
-source = { git = "https://github.com/ephes/cast-bootstrap5#c066a7060efb635c1ce4ac51df87539f136854db" }
+source = { git = "https://github.com/ephes/cast-bootstrap5#6c96692d49d369fd851d38c59e980ffcddee61b0" }
 dependencies = [
     { name = "crispy-bootstrap5" },
     { name = "django-cast" },
@@ -619,15 +619,15 @@ wheels = [
 
 [[package]]
 name = "django-allauth"
-version = "65.14.1"
+version = "65.14.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "asgiref" },
     { name = "django" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fb/02/549b6f41ba3e55d4e2cf8e181cdf57b50035a3c0bdddb710a7df0b24efb0/django_allauth-65.14.1.tar.gz", hash = "sha256:2467656d0adc835607e407847054979ab5a943778f6eb8980ed2a29eee6c5790", size = 1993088, upload-time = "2026-02-07T22:36:52.279Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e1/27/cb4ef76234a8b18357fa8a809595d3aa327ea59738bc05bd8ba03d576524/django_allauth-65.14.2.tar.gz", hash = "sha256:f5dbc7abbde79058336ae887f8d33f36cf03d77a5fe2f15641f7057497ae4171", size = 2029025, upload-time = "2026-02-13T15:21:37.388Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/28/80/05e2b3fffb80260af2dbb179d186929d7531bc9331974ba774d1d8eb3e38/django_allauth-65.14.1-py3-none-any.whl", hash = "sha256:204d8a07f217c41769a62aa4c7ae7afeb2886c841bebda6964e613e5be72e8b3", size = 1793120, upload-time = "2026-02-07T22:37:03.486Z" },
+    { url = "https://files.pythonhosted.org/packages/5c/71/45a28dae6ed158443c54811744679605603b76528a958b93629e515de42d/django_allauth-65.14.2-py3-none-any.whl", hash = "sha256:73050d7e7b9c81fe7a4369f590c817e18b7efae774b69127c41f8cacc772207e", size = 1828800, upload-time = "2026-02-13T15:21:28.129Z" },
 ]
 
 [[package]]
