@@ -253,7 +253,7 @@ wheels = [
 [[package]]
 name = "cast-bootstrap5"
 version = "0.0.74"
-source = { git = "https://github.com/ephes/cast-bootstrap5#f6968cbef3a2fe458785d346f2a8944ee9d9d79e" }
+source = { git = "https://github.com/ephes/cast-bootstrap5#f661d53a875315971f613096b0abb69c0af3cfb2" }
 dependencies = [
     { name = "crispy-bootstrap5" },
     { name = "django-cast" },
@@ -648,7 +648,7 @@ wheels = [
 [[package]]
 name = "django-cast"
 version = "0.2.53"
-source = { git = "https://github.com/ephes/django-cast?branch=develop#373816220fb38c3d270b2f3f7719b1408471f80c" }
+source = { git = "https://github.com/ephes/django-cast?branch=develop#52e7e59e98cc4c40a798ecdbe0f553a6a1e86ce6" }
 dependencies = [
     { name = "crispy-bootstrap4" },
     { name = "django" },
