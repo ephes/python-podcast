@@ -85,7 +85,45 @@
   color: var(--cast-accent-contrast-text);
 }
 
-/* Python accent for hero title */
-.python-accent {
-  color: var(--cast-accent);
+/* Prototype-faithful hero hierarchy for the list page */
+.cast-hero {
+  min-height: 300px;
+}
+
+.cast-hero .cast-hero-content {
+  max-width: 80ch;
+}
+
+.cast-hero .blog-title {
+  font-size: clamp(2.5rem, 5vw, 4.5rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin-bottom: 0.45rem;
+}
+
+.cast-hero .intro.lead,
+.cast-hero .intro.lead p {
+  font-size: clamp(1.25rem, 1.7vw, 1.5rem);
+  font-style: italic;
+  line-height: 1.5;
+  color: var(--cast-text-muted);
+}
+
+.cast-hero .intro.lead p {
+  margin-bottom: 0;
+}
+
+[data-bs-theme="dark"] .cast-hero .intro.lead,
+[data-bs-theme="dark"] .cast-hero .intro.lead p {
+  color: var(--cast-text-muted);
+}
+
+@media (max-width: 640px) {
+  .cast-hero {
+    min-height: 220px;
+  }
+
+  .cast-hero .blog-title {
+    font-size: clamp(2rem, 8vw, 2.75rem);
+  }
 }
