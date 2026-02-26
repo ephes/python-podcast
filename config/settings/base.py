@@ -433,10 +433,10 @@ CAST_PODLOVE_PLAYER_THEMES = {
     "bootstrap5": {
         "light": {
             "tokens": {
-                "brand": "#0066cc",
-                "brandDark": "#004c99",
-                "brandDarkest": "#212529",
-                "brandLightest": "#e6f0ff",
+                "brand": "#7c3aed",
+                "brandDark": "#6d28d9",
+                "brandDarkest": "#4c1d95",
+                "brandLightest": "#ede9fe",
                 "shadeDark": "#6c757d",
                 "shadeBase": "#6c757d",
                 "contrast": "#212529",
@@ -445,10 +445,10 @@ CAST_PODLOVE_PLAYER_THEMES = {
         },
         "dark": {
             "tokens": {
-                "brand": "#38bdf8",
-                "brandDark": "#0ea5e9",
-                "brandDarkest": "#0b1f34",
-                "brandLightest": "#0b1f34",
+                "brand": "#a78bfa",
+                "brandDark": "#8b5cf6",
+                "brandDarkest": "#1e1640",
+                "brandLightest": "#1e1640",
                 "shadeDark": "#94a3b8",
                 "shadeBase": "#94a3b8",
                 "contrast": "#f8fafc",

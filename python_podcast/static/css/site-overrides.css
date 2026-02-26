@@ -101,6 +101,10 @@
   margin-bottom: 0.45rem;
 }
 
+.cast-hero .blog-title .python-accent {
+  color: var(--cast-accent);
+}
+
 .cast-hero .intro.lead,
 .cast-hero .intro.lead p {
   font-size: clamp(1.25rem, 1.7vw, 1.5rem);

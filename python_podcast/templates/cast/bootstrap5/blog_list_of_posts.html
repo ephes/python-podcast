@@ -5,6 +5,28 @@
 {% block template_script %}
   <script>
     (function() {
+      function accentHeroTitle() {
+        var title = document.querySelector('.cast-hero .blog-title');
+        if (!title || title.dataset.heroAccentApplied === '1') return;
+
+        var text = (title.textContent || '').trim().replace(/\s+/g, ' ');
+        if (!text) return;
+
+        var splitIndex = text.indexOf(' ');
+        var firstWord = splitIndex === -1 ? text : text.slice(0, splitIndex);
+        var rest = splitIndex === -1 ? '' : text.slice(splitIndex);
+
+        title.textContent = '';
+        var accent = document.createElement('span');
+        accent.className = 'python-accent';
+        accent.textContent = firstWord;
+        title.appendChild(accent);
+        if (rest) {
+          title.appendChild(document.createTextNode(rest));
+        }
+        title.dataset.heroAccentApplied = '1';
+      }
+
       var canvas = document.getElementById('heroCanvas');
       if (!canvas || canvas.dataset.heroInit) return;
       canvas.dataset.heroInit = '1';
@@ -44,6 +66,7 @@
         rafId = requestAnimationFrame(drawWaveform);
       }
 
+      accentHeroTitle();
       drawWaveform();
       window.addEventListener('resize', scheduleRedraw);
       new MutationObserver(scheduleRedraw)
