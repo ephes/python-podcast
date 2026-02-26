@@ -8,10 +8,10 @@
   --cast-text-muted: #6c757d;
   --cast-text-light: #adb5bd;
 
-  --cast-accent: #0066cc;
-  --cast-accent-hover: #004c99;
-  --cast-accent-light: #e6f0ff;
-  --cast-link-on-white: #004c99;
+  --cast-accent: #7c3aed;
+  --cast-accent-hover: #6d28d9;
+  --cast-accent-light: #ede9fe;
+  --cast-link-on-white: #6d28d9;
 
   --cast-border: #e9ecef;
   --cast-border-strong: #dee2e6;
@@ -34,10 +34,10 @@
   --cast-text-muted: #94a3b8;
   --cast-text-light: #64748b;
 
-  --cast-accent: #38bdf8;
-  --cast-accent-hover: #0ea5e9;
-  --cast-accent-light: #0b1f34;
-  --cast-link-on-white: #38bdf8;
+  --cast-accent: #a78bfa;
+  --cast-accent-hover: #c4b5fd;
+  --cast-accent-light: #1e1640;
+  --cast-link-on-white: #a78bfa;
 
   --cast-border: #334155;
   --cast-border-strong: #475569;
@@ -49,4 +49,9 @@
   --cast-gallery-body-bg: rgba(15, 23, 42, 0.9);
   --cast-gallery-header-bg: rgba(40, 53, 72, 1);
   --cast-gallery-footer-bg: rgba(40, 53, 72, 1);
+}
+
+/* Python accent for hero title */
+.python-accent {
+  color: var(--cast-accent);
 }

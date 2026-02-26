@@ -1,0 +1,30 @@
+{% extends "../base.html" %}
+{% load django_vite %}
+{% load i18n %}
+{% load static %}
+
+{% block title %}{% translate "Styleguide" %}{% endblock title %}
+
+{% block css %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'cast/css/styleguide.css' %}">
+  <style>
+    /* Avoid content-visibility side effects on interactive demo content. */
+    #paging-area {
+      content-visibility: visible;
+    }
+  </style>
+{% endblock css %}
+
+{% block navigation %}{% endblock navigation %}
+
+{% block content %}
+  {% include "cast/styleguide/layout.html" %}
+{% endblock content %}
+
+{% block javascript %}
+  {{ block.super }}
+  {% vite_hmr_client app="cast-bootstrap5" %}
+  {% vite_asset 'src/gallery/image-gallery-bs5.ts' app="cast-bootstrap5" %}
+  {% vite_asset 'src/audio/podlove-player.ts' app="cast-bootstrap5" %}
+{% endblock javascript %}

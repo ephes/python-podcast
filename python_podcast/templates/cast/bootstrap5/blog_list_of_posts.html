@@ -1,0 +1,58 @@
+{% extends "cast/bootstrap5/blog_list_of_posts.html" %}
+
+{% block hero_title %}<span class="python-accent">Python</span> Podcast{% endblock hero_title %}
+{% block hero_tagline %}
+  Wir wollten über <strong>Python</strong> reden.
+  Meistens tun wir das auch.
+{% endblock hero_tagline %}
+{% block hero_canvas %}<canvas id="heroCanvas"></canvas>{% endblock hero_canvas %}
+
+{% block template_script %}
+  <script>
+    (function() {
+      var canvas = document.getElementById('heroCanvas');
+      if (!canvas || canvas.dataset.heroInit) return;
+      canvas.dataset.heroInit = '1';
+
+      function drawWaveform() {
+        var ctx = canvas.getContext('2d');
+        var W = canvas.width = canvas.offsetWidth;
+        var H = canvas.height = canvas.offsetHeight;
+        ctx.clearRect(0, 0, W, H);
+
+        var isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+        var baseColor = isDark ? [167, 139, 250] : [124, 58, 237];
+
+        var layers = 12;
+        var midY = H / 2;
+        for (var i = 0; i < layers; i++) {
+          var alpha = 0.04 + i * 0.02;
+          var freq = 0.003 + i * 0.001;
+          var amp = 20 + i * 8;
+          var phase = i * 1.2;
+          ctx.strokeStyle = 'rgba(' + baseColor[0] + ',' + baseColor[1] + ',' + baseColor[2] + ',' + alpha + ')';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          for (var x = 0; x <= W; x += 2) {
+            var y = midY + Math.sin(x * freq + phase) * amp +
+            Math.sin(x * freq * 2.3 + phase * 0.7) * (amp * 0.4);
+            if (x === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+        }
+      }
+
+      var rafId = 0;
+      function scheduleRedraw() {
+        cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(drawWaveform);
+      }
+
+      drawWaveform();
+      window.addEventListener('resize', scheduleRedraw);
+      new MutationObserver(scheduleRedraw)
+        .observe(document.documentElement, { attributes: true, attributeFilter: ['data-bs-theme'] });
+    })();
+  </script>
+{% endblock template_script %}

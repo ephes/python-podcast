@@ -1,4 +1,9 @@
 import os
+from pathlib import Path
+
+import cast
+import cast_bootstrap5
+import cast_vue
 
 from .base import *  # noqa
 from .base import env
@@ -56,6 +61,25 @@ if ENABLE_DEBUG_TOOLBAR:
 # Your stuff...
 # ------------------------------------------------------------------------------
 
+# django-cast styleguide (dev-only)
+CAST_ENABLE_STYLEGUIDE = True
+CAST_STYLEGUIDE_REMOTE_MEDIA = env.bool("CAST_STYLEGUIDE_REMOTE_MEDIA", default=True)
+CAST_STYLEGUIDE_IMAGE_SOURCE_URLS = [
+    "https://wersdoerfer.de/blogs/ephes_blog/weeknotes-2025-11-03-shipping-steel-iq/",
+    "https://wersdoerfer.de/blogs/ephes_blog/weeknotes-2025-08-18/",
+]
+CAST_STYLEGUIDE_VIDEO_SOURCE_URL = "https://wersdoerfer.de/blogs/ephes_blog/weeknotes-2025-02-03/"
+CAST_STYLEGUIDE_PODCAST_SOURCE_URL = "https://python-podcast.de/show/platonismus-und-python-data-class-builders/"
+CAST_STYLEGUIDE_TRANSCRIPT_SOURCE_URL = (
+    "https://python-podcast.de/show/platonismus-und-python-data-class-builders/transcript/"
+)
+CAST_STYLEGUIDE_TRANSCRIPT_MAX_SEGMENTS = 12
+CAST_STYLEGUIDE_TRANSCRIPT_EXCERPT_SEGMENTS = 2
+CAST_STYLEGUIDE_IMAGE_LIMIT = 6
+CAST_STYLEGUIDE_REMOTE_TIMEOUT = 8
+CAST_STYLEGUIDE_GENERATE_RENDITIONS = False
+CAST_STYLEGUIDE_BODY_GALLERY_LIMIT = 2
+
 # logging
 LOGGING = {
     "version": 1,
@@ -82,16 +106,28 @@ LOGGING = {
 
 # Django Vite
 DJANGO_VITE_ASSETS_PATH = "need to be set but doesn't matter"
+DJANGO_VITE_DEV_MODE = env.bool("DJANGO_VITE_DEV_MODE", default=False)
+
+
+def _package_manifest_path(package, *path_parts: str) -> Path:
+    return Path(package.__file__).resolve().parent.joinpath("static", *path_parts, "manifest.json")
+
 
 DJANGO_VITE = {
     "cast_vue": {
-        "dev_mode": True,
+        "dev_mode": DJANGO_VITE_DEV_MODE,
+        "static_url_prefix": "" if DJANGO_VITE_DEV_MODE else "cast_vue/",
+        "manifest_path": _package_manifest_path(cast_vue, "cast_vue"),
     },
     "cast-bootstrap5": {
-        "dev_mode": True,
+        "dev_mode": DJANGO_VITE_DEV_MODE,
         "dev_server_port": 5174,
+        "static_url_prefix": "" if DJANGO_VITE_DEV_MODE else "cast_bootstrap5/vite/",
+        "manifest_path": _package_manifest_path(cast_bootstrap5, "cast_bootstrap5", "vite"),
     },
     "cast": {
-        "dev_mode": True,
+        "dev_mode": DJANGO_VITE_DEV_MODE,
+        "static_url_prefix": "" if DJANGO_VITE_DEV_MODE else "cast/vite/",
+        "manifest_path": _package_manifest_path(cast, "cast", "vite"),
     },
 }

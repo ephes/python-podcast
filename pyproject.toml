@@ -19,7 +19,7 @@ dependencies = [
     "gunicorn",
     "psycopg[binary]",
     "python-dotenv",
-    "pyzmq>=25.1.1",  # needed for Python >= 3.12
+    "pyzmq>=25.1.1",           # needed for Python >= 3.12
     "sentry-sdk",
     "whitenoise",
 ]
@@ -46,7 +46,7 @@ dev-dependencies = [
 
 [tool.uv.sources]
 cast-vue = { git = "https://github.com/ephes/cast-vue" }
-cast-bootstrap5 = { git = "https://github.com/ephes/cast-bootstrap5", rev = "ffa45660b213ccbcaa034da447a2d467a4a8dd4f" }
+cast-bootstrap5 = { git = "https://github.com/ephes/cast-bootstrap5" }
 django-cast = { git = "https://github.com/ephes/django-cast", branch = "develop" }
 django-indieweb = { git = "https://github.com/ephes/django-indieweb", branch = "develop" }
 
@@ -64,13 +64,8 @@ command_line = "-m pytest"
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings.test"
-filterwarnings = [
-]
-addopts = [
-    "-ra",
-    "--reuse-db",
-    "--no-migrations",
-]
+filterwarnings = []
+addopts = ["-ra", "--reuse-db", "--no-migrations"]
 
 [tool.specsync]
 workspace_subdir = "specs"
