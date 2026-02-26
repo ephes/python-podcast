@@ -1,12 +1,12 @@
 /* Host-site overrides for cast-bootstrap5 tokens. */
 :root {
-  --cast-bg: #f8f9fa;
-  --cast-bg-alt: #f0f1f3;
+  --cast-bg: #f9f9fb;
+  --cast-bg-alt: #eeeef4;
   --cast-surface: #ffffff;
 
-  --cast-text: #212529;
-  --cast-text-muted: #6c757d;
-  --cast-text-light: #adb5bd;
+  --cast-text: #1a1a2e;
+  --cast-text-muted: #5a5a72;
+  --cast-text-light: #9a9aad;
 
   --cast-accent: #7c3aed;
   --cast-accent-hover: #6d28d9;
@@ -14,11 +14,11 @@
   --cast-accent-contrast-text: #ffffff;
   --cast-link-on-white: #6d28d9;
 
-  --cast-border: #e9ecef;
-  --cast-border-strong: #dee2e6;
+  --cast-border: #e2e2ea;
+  --cast-border-strong: #d0d0dc;
 
-  --cast-code-bg: #f0f1f3;
-  --cast-code-text: #212529;
+  --cast-code-bg: #eeeef4;
+  --cast-code-text: #1a1a2e;
 
   --cast-modal-backdrop: rgba(0, 0, 0, 0.85);
   --cast-gallery-body-bg: rgba(255, 255, 255, 0.8);
@@ -27,30 +27,30 @@
 }
 
 [data-bs-theme="dark"] {
-  --cast-bg: #0f172a;
-  --cast-bg-alt: #1e293b;
-  --cast-surface: #283548;
+  --cast-bg: #0f0f1a;
+  --cast-bg-alt: #1a1a2e;
+  --cast-surface: #1a1a2e;
 
-  --cast-text: #f8fafc;
-  --cast-text-muted: #94a3b8;
-  --cast-text-light: #64748b;
+  --cast-text: #f1f1f9;
+  --cast-text-muted: #9a9ab8;
+  --cast-text-light: #6a6a88;
 
   --cast-accent: #a78bfa;
   --cast-accent-hover: #c4b5fd;
   --cast-accent-light: #1e1640;
-  --cast-accent-contrast-text: #0f172a;
+  --cast-accent-contrast-text: #1a1a2e;
   --cast-link-on-white: #a78bfa;
 
-  --cast-border: #334155;
-  --cast-border-strong: #475569;
+  --cast-border: #2d2d44;
+  --cast-border-strong: #3d3d5c;
 
-  --cast-code-bg: #1e293b;
-  --cast-code-text: #f8fafc;
+  --cast-code-bg: #1a1a2e;
+  --cast-code-text: #f1f1f9;
 
   --cast-modal-backdrop: rgba(0, 0, 0, 0.85);
-  --cast-gallery-body-bg: rgba(15, 23, 42, 0.9);
-  --cast-gallery-header-bg: rgba(40, 53, 72, 1);
-  --cast-gallery-footer-bg: rgba(40, 53, 72, 1);
+  --cast-gallery-body-bg: rgba(15, 15, 26, 0.9);
+  --cast-gallery-header-bg: rgba(26, 26, 46, 1);
+  --cast-gallery-footer-bg: rgba(26, 26, 46, 1);
 }
 
 /* Search modal contrast and token alignment */
