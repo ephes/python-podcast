@@ -11,6 +11,7 @@
   --cast-accent: #7c3aed;
   --cast-accent-hover: #6d28d9;
   --cast-accent-light: #ede9fe;
+  --cast-accent-contrast-text: #ffffff;
   --cast-link-on-white: #6d28d9;
 
   --cast-border: #e9ecef;
@@ -37,6 +38,7 @@
   --cast-accent: #a78bfa;
   --cast-accent-hover: #c4b5fd;
   --cast-accent-light: #1e1640;
+  --cast-accent-contrast-text: #0f172a;
   --cast-link-on-white: #a78bfa;
 
   --cast-border: #334155;
@@ -49,6 +51,38 @@
   --cast-gallery-body-bg: rgba(15, 23, 42, 0.9);
   --cast-gallery-header-bg: rgba(40, 53, 72, 1);
   --cast-gallery-footer-bg: rgba(40, 53, 72, 1);
+}
+
+/* Search modal contrast and token alignment */
+.cast-search-overlay {
+  background: var(--cast-modal-backdrop);
+}
+
+.cast-search-modal {
+  background-color: var(--cast-surface);
+  color: var(--cast-text);
+}
+
+.cast-search-modal .cast-btn-clear {
+  color: var(--cast-text);
+  background-color: var(--cast-bg-alt);
+  border-color: var(--cast-border-strong);
+}
+
+.cast-search-modal .cast-btn-clear:hover {
+  color: var(--cast-text);
+  background-color: var(--cast-surface);
+  border-color: var(--cast-border-strong);
+}
+
+.cast-search-modal .cast-btn-search,
+.cast-search-modal .tag-pill.active {
+  color: var(--cast-accent-contrast-text);
+}
+
+/* Keep accent-filled player CTA contrast-compliant across themes */
+.podlove-facade-play {
+  color: var(--cast-accent-contrast-text);
 }
 
 /* Python accent for hero title */
