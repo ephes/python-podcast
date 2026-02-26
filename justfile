@@ -14,12 +14,12 @@ default:
 # Check if services are already running
 check-services:
     @echo "Checking for running services..."
-    @if lsof -i :8000 > /dev/null 2>&1; then \
+    @if lsof -n -P -iTCP:8000 -sTCP:LISTEN > /dev/null 2>&1; then \
         echo "❌ Port 8000 already in use (Django)"; \
-        echo "   PID: $(lsof -ti :8000)"; \
+        echo "   PID: $(lsof -tiTCP:8000 -sTCP:LISTEN)"; \
         exit 1; \
     fi
-    @if lsof -i :5432 > /dev/null 2>&1; then \
+    @if lsof -n -P -iTCP:5432 -sTCP:LISTEN > /dev/null 2>&1; then \
         echo "⚠️  Port 5432 already in use (PostgreSQL)"; \
         echo "   This might be your system PostgreSQL - checking..."; \
         if pgrep -f "postgres -D databases/postgres" > /dev/null; then \
