@@ -122,7 +122,8 @@
   margin: 0;
 }
 
-.cast-hero .intro.lead strong {
+.cast-hero .intro.lead strong,
+.cast-hero .intro.lead b {
   font-style: normal;
   font-weight: 600;
   color: var(--cast-text);
