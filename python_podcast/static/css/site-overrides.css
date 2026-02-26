@@ -109,12 +109,23 @@
 .cast-hero .intro.lead p {
   font-size: clamp(1.25rem, 1.7vw, 1.5rem);
   font-style: italic;
+  font-weight: 400;
   line-height: 1.5;
   color: var(--cast-text-muted);
 }
 
+.cast-hero .intro.lead {
+  margin-top: 0.6667rem;
+}
+
 .cast-hero .intro.lead p {
-  margin-bottom: 0;
+  margin: 0;
+}
+
+.cast-hero .intro.lead strong {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--cast-text);
 }
 
 [data-bs-theme="dark"] .cast-hero .intro.lead,
