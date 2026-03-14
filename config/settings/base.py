@@ -38,6 +38,7 @@ THIRD_PARTY_APPS = [
     "allauth",  # registration
     "allauth.account",  # registration
     "allauth.socialaccount",  # registration
+    "django_tasks.backends.database",
     "rest_framework",
     "rest_framework.authtoken",
     "django_filters",  # filter posts
@@ -130,6 +131,13 @@ DATABASES = {
     "legacy": env.db("LEGACY_DATABASE_URL", default="postgres:///python_podcast_legacy"),
 }
 DATABASES["default"]["ATOMIC_REQUESTS"] = True
+
+TASKS = {
+    "default": {
+        "BACKEND": "django_tasks.backends.database.DatabaseBackend",
+        "ENQUEUE_ON_COMMIT": False,
+    }
+}
 
 # GENERAL
 # ------------------------------------------------------------------------------
