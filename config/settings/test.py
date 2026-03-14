@@ -50,7 +50,11 @@ TASKS = {
     "default": {
         "BACKEND": "django_tasks.backends.immediate.ImmediateBackend",
         "ENQUEUE_ON_COMMIT": False,
-    }
+    },
+    "cast_transcripts": {
+        "BACKEND": "django_tasks.backends.immediate.ImmediateBackend",
+        "ENQUEUE_ON_COMMIT": False,
+    },
 }
 
 # Your stuff...

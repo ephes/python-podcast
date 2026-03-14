@@ -648,7 +648,7 @@ wheels = [
 [[package]]
 name = "django-cast"
 version = "0.2.55"
-source = { git = "https://github.com/ephes/django-cast?branch=develop#3cdf847d394bd19b4bd14f3a4afa64e7e9b999ee" }
+source = { git = "https://github.com/ephes/django-cast?branch=develop#b536f94d5abe42a56ffd48c4e3869c209134e608" }
 dependencies = [
     { name = "crispy-bootstrap4" },
     { name = "django" },
@@ -2064,7 +2064,7 @@ name = "pexpect"
 version = "4.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "ptyprocess" },
+    { name = "ptyprocess", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/42/92/cc564bf6381ff43ce1f4d06852fc19a2f11d180f23dc32d9588bee2f149d/pexpect-4.9.0.tar.gz", hash = "sha256:ee7d41123f3c9911050ea2c2dac107568dc43b2d3b0c7557a33212c398ead30f", size = 166450, upload-time = "2023-11-25T09:07:26.339Z" }
 wheels = [

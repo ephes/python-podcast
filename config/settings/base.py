@@ -134,9 +134,13 @@ DATABASES["default"]["ATOMIC_REQUESTS"] = True
 
 TASKS = {
     "default": {
+        "BACKEND": "django_tasks.backends.immediate.ImmediateBackend",
+        "ENQUEUE_ON_COMMIT": False,
+    },
+    "cast_transcripts": {
         "BACKEND": "django_tasks.backends.database.DatabaseBackend",
         "ENQUEUE_ON_COMMIT": False,
-    }
+    },
 }
 
 # GENERAL
