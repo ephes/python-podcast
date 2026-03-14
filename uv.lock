@@ -648,7 +648,7 @@ wheels = [
 [[package]]
 name = "django-cast"
 version = "0.2.55"
-source = { git = "https://github.com/ephes/django-cast?branch=develop#2eaf046dac40b0f74ab7c8db1474ce00b545ee14" }
+source = { git = "https://github.com/ephes/django-cast?branch=develop#3cdf847d394bd19b4bd14f3a4afa64e7e9b999ee" }
 dependencies = [
     { name = "crispy-bootstrap4" },
     { name = "django" },
@@ -658,6 +658,7 @@ dependencies = [
     { name = "django-filter" },
     { name = "django-htmx" },
     { name = "django-model-utils" },
+    { name = "django-tasks" },
     { name = "django-threadedcomments" },
     { name = "django-vite" },
     { name = "pygments" },
