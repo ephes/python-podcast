@@ -80,9 +80,9 @@ You must set the DSN url in production.
 Deployment
 ----------
 
-Production deployments run via ops-control (SOPS-backed). Use ``just deploy-production`` or
-``uv run python commands.py deploy_production``. The ``deploy/`` directory is kept as a legacy
-reference (staging still uses it).
+Production deployments run via ops-control (SOPS-backed). Use ``just deploy-production``.
+The just deploy recipes bootstrap Ansible collections via ``uvx`` before running the
+ops-control playbook. The ``deploy/`` directory is kept as a legacy reference.
 
 
 
@@ -92,5 +92,4 @@ Docker
 See detailed `cookiecutter-django Docker documentation`_.
 
 .. _`cookiecutter-django Docker documentation`: http://cookiecutter-django.readthedocs.io/en/latest/deployment-with-docker.html
-
 

@@ -4,8 +4,10 @@
 # Path to your local ops-control clone
 OPS_CONTROL := env_var_or_default("OPS_CONTROL", "/Users/jochen/projects/ops-control")
 PROJECTS_ROOT := env_var_or_default("PROJECTS_ROOT", "/Users/jochen/projects")
+OPS_LIBRARY_PATH := env_var_or_default("OPS_LIBRARY_PATH", PROJECTS_ROOT + "/ops-library")
 SOPS_AGE_KEY_FILE := env_var_or_default("SOPS_AGE_KEY_FILE", "~/.config/sops/age/keys.txt")
-ANSIBLE_PLAYBOOK := env_var_or_default("ANSIBLE_PLAYBOOK", "ansible-playbook")
+ANSIBLE_PLAYBOOK_CMD := env_var_or_default("ANSIBLE_PLAYBOOK_CMD", "uvx --from ansible-core ansible-playbook")
+ANSIBLE_GALAXY_CMD := env_var_or_default("ANSIBLE_GALAXY_CMD", "uvx --from ansible-core ansible-galaxy")
 
 # Default recipe - show available commands
 default:
@@ -128,16 +130,39 @@ install:
 docs:
     uv run python commands.py docs
 
-# Production deployment
-deploy-staging:
-    uv run python commands.py deploy-staging
+# Install ops-control Ansible dependencies via uvx
+deploy-bootstrap:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    test -d "{{OPS_CONTROL}}" || (echo "ops-control not found at {{OPS_CONTROL}}"; exit 1)
+    test -d "{{OPS_LIBRARY_PATH}}" || (echo "ops-library not found at {{OPS_LIBRARY_PATH}}"; exit 1)
+    cd "{{OPS_CONTROL}}"
+    {{ANSIBLE_GALAXY_CMD}} collection install -r collections/requirements.yml -p ./collections
+    # ops-control roles also use community.postgresql, but it is not currently listed in collections/requirements.yml.
+    {{ANSIBLE_GALAXY_CMD}} collection install community.postgresql -p ./collections
+    rm -f ./local-ops_library-*.tar.gz
+    {{ANSIBLE_GALAXY_CMD}} collection build "{{OPS_LIBRARY_PATH}}" --force
+    {{ANSIBLE_GALAXY_CMD}} collection install ./local-ops_library-*.tar.gz -p ./collections --force
+    rm -f ./local-ops_library-*.tar.gz
 
-deploy-production:
-    OPS_CONTROL={{OPS_CONTROL}} \
+# Production deployment
+deploy-staging: deploy-bootstrap
+    @test -d "{{OPS_CONTROL}}" || (echo "ops-control not found at {{OPS_CONTROL}}"; exit 1)
+    @test -f "{{OPS_CONTROL}}/inventories/prod/hosts.yml" || (echo "Missing ops-control inventory at {{OPS_CONTROL}}/inventories/prod/hosts.yml"; exit 1)
+    @test -f "{{OPS_CONTROL}}/playbooks/deploy-python-podcast.yml" || (echo "Missing ops-control playbook at {{OPS_CONTROL}}/playbooks/deploy-python-podcast.yml"; exit 1)
+    cd "{{OPS_CONTROL}}" && \
     PROJECTS_ROOT={{PROJECTS_ROOT}} \
     SOPS_AGE_KEY_FILE={{SOPS_AGE_KEY_FILE}} \
-    ANSIBLE_PLAYBOOK={{ANSIBLE_PLAYBOOK}} \
-    uv run python commands.py deploy-production
+    {{ANSIBLE_PLAYBOOK_CMD}} -i inventories/prod/hosts.yml playbooks/deploy-python-podcast.yml -l staging -e target_host=staging -e service_secrets_env=staging
+
+deploy-production: deploy-bootstrap
+    @test -d "{{OPS_CONTROL}}" || (echo "ops-control not found at {{OPS_CONTROL}}"; exit 1)
+    @test -f "{{OPS_CONTROL}}/inventories/prod/hosts.yml" || (echo "Missing ops-control inventory at {{OPS_CONTROL}}/inventories/prod/hosts.yml"; exit 1)
+    @test -f "{{OPS_CONTROL}}/playbooks/deploy-python-podcast.yml" || (echo "Missing ops-control playbook at {{OPS_CONTROL}}/playbooks/deploy-python-podcast.yml"; exit 1)
+    cd "{{OPS_CONTROL}}" && \
+    PROJECTS_ROOT={{PROJECTS_ROOT}} \
+    SOPS_AGE_KEY_FILE={{SOPS_AGE_KEY_FILE}} \
+    {{ANSIBLE_PLAYBOOK_CMD}} -i inventories/prod/hosts.yml playbooks/deploy-python-podcast.yml
 
 # Help for common issues
 troubleshoot:
