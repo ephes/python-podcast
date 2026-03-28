@@ -20,6 +20,9 @@ ALLOWED_HOSTS = env.list(
         "python-podcast.com",
         "python-podcast.de",
         "pythonpodcast.de",
+        "www.python-podcast.com",
+        "www.python-podcast.de",
+        "www.pythonpodcast.de",
     ],
 )
 
