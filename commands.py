@@ -341,7 +341,7 @@ def switch_to_dev_environment():
         print("\nDevelopment environment activated!")
         print("Local packages are now installed in editable mode.")
         print("Changes to the source code will be reflected immediately.")
-        print("\nIMPORTANT: Remember to run pre-commit hooks before committing!")
+        print("\nIMPORTANT: Remember to run prek hooks before committing!")
         print("To switch back to git sources, run: uv run python commands.py switch-to-git-sources")
 
 

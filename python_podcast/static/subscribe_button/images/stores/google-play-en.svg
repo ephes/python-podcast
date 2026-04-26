@@ -84,16 +84,16 @@
 		</g>
 	</g>
 	<g>
-		<polygon fill="none" points="244.59,404.892 248.883,400.6 248.882,400.6 244.59,404.892 230.891,391.192 230.89,391.192 
+		<polygon fill="none" points="244.59,404.892 248.883,400.6 248.882,400.6 244.59,404.892 230.891,391.192 230.89,391.192
 			244.59,404.894 230.868,418.615 230.868,418.615 244.59,404.894 248.902,409.205 248.904,409.205 		"/>
-		
+
 			<linearGradient id="SVGID_1_" gradientUnits="userSpaceOnUse" x1="727.4922" y1="886.9492" x2="709.4041" y2="898.2695" gradientTransform="matrix(0.7071 0.7071 0.7071 -0.7071 -899.868 516.5412)">
 			<stop  offset="0" style="stop-color:#D7E69D"/>
 			<stop  offset="0.4456" style="stop-color:#94C4AA"/>
 			<stop  offset="1" style="stop-color:#01A4B6"/>
 		</linearGradient>
 		<path fill="url(#SVGID_1_)" d="M248.882,400.6l-16.726-9.197c-0.473-0.259-0.912-0.319-1.265-0.21l13.7,13.699L248.882,400.6z"/>
-		
+
 			<linearGradient id="SVGID_2_" gradientUnits="userSpaceOnUse" x1="716.9775" y1="896.6211" x2="740.4282" y2="890.4908" gradientTransform="matrix(0.7071 0.7071 0.7071 -0.7071 -899.868 516.5412)">
 			<stop  offset="0" style="stop-color:#ED277B"/>
 			<stop  offset="0.0192" style="stop-color:#EE2F7C"/>
@@ -102,7 +102,7 @@
 		</linearGradient>
 		<path fill="url(#SVGID_2_)" d="M248.904,409.205l5.709-3.141c1.158-0.64,1.158-1.679,0-2.314l-5.73-3.15l-4.292,4.292
 			L248.904,409.205z"/>
-		
+
 			<linearGradient id="SVGID_3_" gradientUnits="userSpaceOnUse" x1="730.0674" y1="878.3633" x2="704.6365" y2="893.3253" gradientTransform="matrix(0.7071 0.7071 0.7071 -0.7071 -899.868 516.5412)">
 			<stop  offset="0" style="stop-color:#89CFBD"/>
 			<stop  offset="0.0907" style="stop-color:#7DBEBB"/>
@@ -112,7 +112,7 @@
 		</linearGradient>
 		<path fill="url(#SVGID_3_)" d="M230.89,391.192c-0.508,0.159-0.838,0.675-0.838,1.454l0.003,24.522c0,0.77,0.32,1.277,0.813,1.446
 			l13.723-13.723L230.89,391.192z"/>
-		
+
 			<linearGradient id="SVGID_4_" gradientUnits="userSpaceOnUse" x1="739.3018" y1="890.2432" x2="723.6417" y2="869.6118" gradientTransform="matrix(0.7071 0.7071 0.7071 -0.7071 -899.868 516.5412)">
 			<stop  offset="0" style="stop-color:#F04A2B"/>
 			<stop  offset="0.4704" style="stop-color:#B54F6B"/>

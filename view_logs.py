@@ -3,6 +3,7 @@
 Simple log viewer for development.
 Shows the last N lines from dev.log and can filter by patterns.
 """
+
 import argparse
 from pathlib import Path
 

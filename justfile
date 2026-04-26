@@ -126,6 +126,10 @@ shell:
 install:
     uv sync
 
+# Update prek hook revisions
+update-hooks:
+    env -u VIRTUAL_ENV uv run prek auto-update
+
 # Build documentation
 docs:
     uv run python commands.py docs

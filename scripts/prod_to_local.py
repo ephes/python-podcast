@@ -2,8 +2,8 @@ import os
 from subprocess import check_output
 
 import paramiko
+from dotenv import find_dotenv, load_dotenv
 
-from dotenv import load_dotenv, find_dotenv
 load_dotenv(find_dotenv())
 
 # get backup dump from production
@@ -29,7 +29,7 @@ local_path = os.path.join("backups", file_name)
 if not os.path.exists("backups"):
     os.mkdir("backups")
 sftp = client.open_sftp()
-sftp.get(remote_path, "backups/{}".format(file_name))
+sftp.get(remote_path, f"backups/{file_name}")
 
 # recreate local docker environment from production
 
@@ -39,12 +39,10 @@ print(detach_postgres_out)
 
 # restore backup dump to database
 docker_id_cmd = 'docker ps | grep postgres | cut -d " " -f 1'
-postgres_id = (check_output(docker_id_cmd, shell=True)
-               .decode('utf-8')
-               .replace("\n", ""))
+postgres_id = check_output(docker_id_cmd, shell=True).decode("utf-8").replace("\n", "")
 print(postgres_id)
 
-backup_copy_cmd = "docker cp {} {}:/backups".format(local_path, postgres_id)
+backup_copy_cmd = f"docker cp {local_path} {postgres_id}:/backups"
 print(backup_copy_cmd)
 result = check_output(backup_copy_cmd, shell=True)
 print(result)
@@ -57,29 +55,29 @@ start_postgres_cmd = "docker-compose -f local.yml run --rm django ./manage.py"
 result = check_output(start_postgres_cmd, shell=True)
 print(result)
 
-restore_cmd = "docker-compose -f local.yml run --rm postgres restore {}".format(file_name)
+restore_cmd = f"docker-compose -f local.yml run --rm postgres restore {file_name}"
 print(restore_cmd)
 result = check_output(restore_cmd, shell=True)
 print(result)
 
 # remove stale media files
-#delete_stale_cmd = "docker-compose -f local.yml run --rm django ./manage.py s3_stale --delete"
-#delete_stale_cmd = "docker-compose -f local.yml run --rm django ./manage.py s3_stale"
-#print(delete_stale_cmd)
-#result = check_output(delete_stale_cmd, shell=True)
-#print(result)
+# delete_stale_cmd = "docker-compose -f local.yml run --rm django ./manage.py s3_stale --delete"
+# delete_stale_cmd = "docker-compose -f local.yml run --rm django ./manage.py s3_stale"
+# print(delete_stale_cmd)
+# result = check_output(delete_stale_cmd, shell=True)
+# print(result)
 
 # get new media files from s3
-#backup_s3_cmd = "docker-compose -f local.yml run --rm django ./manage.py s3_backup"
-#print(backup_s3_cmd)
-#result = check_output(backup_s3_cmd, shell=True)
-#print(result)
+# backup_s3_cmd = "docker-compose -f local.yml run --rm django ./manage.py s3_backup"
+# print(backup_s3_cmd)
+# result = check_output(backup_s3_cmd, shell=True)
+# print(result)
 
 # recreate local db from production
-#dropdb_cmd = f"dropdb {db_name}"
-#print(dropdb_cmd)
-#result = check_output(dropdb_cmd, shell=True)
-#print(result)
+# dropdb_cmd = f"dropdb {db_name}"
+# print(dropdb_cmd)
+# result = check_output(dropdb_cmd, shell=True)
+# print(result)
 
 try:
     createdb_cmd = f"createuser {db_user}"
