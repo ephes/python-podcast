@@ -32,3 +32,18 @@ Ops-control Prerequisites
 * SOPS age key configured (``SOPS_AGE_KEY_FILE`` defaults to ``~/.config/sops/age/keys.txt``)
 * ``PROJECTS_ROOT`` pointing at the parent directory that contains this repo
 * ``uv`` installed locally; the just recipes run ``uvx --from ansible-core ansible-playbook``
+
+Transcript Worker
+-----------------
+
+Voxhelm transcript generation from Wagtail admin queues completion work on the
+``cast_transcripts`` Django Tasks database backend. The ops-control
+``deploy-python-podcast.yml`` playbook enables a managed systemd worker in
+addition to Gunicorn::
+
+    uv run python manage.py db_worker --backend cast_transcripts --worker-id python-podcast-transcripts
+
+The worker service uses the ``cast_transcripts`` backend alias and the stable
+``python-podcast-transcripts`` worker id. The worker requires the
+``django_tasks_db`` migrations to have been applied before it starts processing
+jobs.

@@ -38,7 +38,8 @@ THIRD_PARTY_APPS = [
     "allauth",  # registration
     "allauth.account",  # registration
     "allauth.socialaccount",  # registration
-    "django_tasks.backends.database",
+    "django_tasks",
+    "django_tasks_db",
     "rest_framework",
     "rest_framework.authtoken",
     "django_filters",  # filter posts
@@ -135,11 +136,9 @@ DATABASES["default"]["ATOMIC_REQUESTS"] = True
 TASKS = {
     "default": {
         "BACKEND": "django_tasks.backends.immediate.ImmediateBackend",
-        "ENQUEUE_ON_COMMIT": False,
     },
     "cast_transcripts": {
-        "BACKEND": "django_tasks.backends.database.DatabaseBackend",
-        "ENQUEUE_ON_COMMIT": False,
+        "BACKEND": "django_tasks_db.DatabaseBackend",
     },
 }
 
