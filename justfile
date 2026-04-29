@@ -144,10 +144,16 @@ deploy-bootstrap:
     {{ANSIBLE_GALAXY_CMD}} collection install -r collections/requirements.yml -p ./collections
     # ops-control roles also use community.postgresql, but it is not currently listed in collections/requirements.yml.
     {{ANSIBLE_GALAXY_CMD}} collection install community.postgresql -p ./collections
-    rm -f ./local-ops_library-*.tar.gz
-    {{ANSIBLE_GALAXY_CMD}} collection build "{{OPS_LIBRARY_PATH}}" --force
-    {{ANSIBLE_GALAXY_CMD}} collection install ./local-ops_library-*.tar.gz -p ./collections --force
-    rm -f ./local-ops_library-*.tar.gz
+    build_dir="$(mktemp -d "${TMPDIR:-/tmp}/python-podcast-ops-library.XXXXXX")"
+    trap 'rm -rf "${build_dir}"' EXIT
+    {{ANSIBLE_GALAXY_CMD}} collection build "{{OPS_LIBRARY_PATH}}" --output-path "${build_dir}" --force
+    shopt -s nullglob
+    tarballs=("${build_dir}"/local-ops_library-*.tar.gz)
+    if [[ "${#tarballs[@]}" -ne 1 ]]; then
+        echo "Expected exactly one local-ops_library tarball in ${build_dir}, found ${#tarballs[@]}"
+        exit 1
+    fi
+    {{ANSIBLE_GALAXY_CMD}} collection install "${tarballs[0]}" -p ./collections --force
 
 # Production deployment
 deploy-staging: deploy-bootstrap
