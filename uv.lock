@@ -717,7 +717,7 @@ wheels = [
 [[package]]
 name = "django-cast"
 version = "0.2.57"
-source = { editable = "../django-cast" }
+source = { git = "https://github.com/ephes/django-cast?branch=develop#2e4520174783be374e04d17f1e508ab5d38d9e84" }
 dependencies = [
     { name = "crispy-bootstrap4" },
     { name = "django" },
@@ -737,58 +737,6 @@ dependencies = [
     { name = "rich" },
     { name = "setuptools" },
     { name = "wagtail" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "crispy-bootstrap4" },
-    { name = "django", specifier = ">=4.2,<7" },
-    { name = "django-contrib-comments" },
-    { name = "django-crispy-forms" },
-    { name = "django-environ" },
-    { name = "django-filter" },
-    { name = "django-htmx" },
-    { name = "django-model-utils" },
-    { name = "django-tasks", specifier = ">=0.7,<0.13" },
-    { name = "django-tasks-db", marker = "extra == 'transcript-worker'", specifier = ">=0.12,<0.13" },
-    { name = "django-threadedcomments" },
-    { name = "django-vite" },
-    { name = "modelsearch", specifier = ">=1.2.2,<1.4" },
-    { name = "pygments" },
-    { name = "python-dateutil" },
-    { name = "python-slugify" },
-    { name = "rich" },
-    { name = "setuptools" },
-    { name = "wagtail", specifier = ">=7.0,<8" },
-]
-provides-extras = ["transcript-worker"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "django-allauth" },
-    { name = "django-environ" },
-    { name = "django-extensions" },
-    { name = "django-stubs", extras = ["compatible-mypy"] },
-    { name = "factory-boy" },
-    { name = "feedparser" },
-    { name = "furo" },
-    { name = "jupyter" },
-    { name = "mypy" },
-    { name = "playwright" },
-    { name = "pre-commit" },
-    { name = "pytest", specifier = ">=6" },
-    { name = "pytest-cov", specifier = ">=3" },
-    { name = "pytest-django" },
-    { name = "pytest-mock" },
-    { name = "pytest-randomly" },
-    { name = "pytz" },
-    { name = "ruff" },
-    { name = "tox" },
-    { name = "tox-uv" },
-    { name = "typer" },
-    { name = "types-python-dateutil", specifier = ">=2.9.0.20260124" },
-    { name = "types-python-slugify" },
-    { name = "types-requests" },
 ]
 
 [[package]]
@@ -877,7 +825,7 @@ wheels = [
 [[package]]
 name = "django-indieweb"
 version = "0.6.1"
-source = { editable = "../django-indieweb" }
+source = { git = "https://github.com/ephes/django-indieweb?branch=develop#5c910c44e311eadf9c4e44209715cca737635c82" }
 dependencies = [
     { name = "beautifulsoup4" },
     { name = "cryptography" },
@@ -886,34 +834,6 @@ dependencies = [
     { name = "httpx" },
     { name = "mf2py" },
     { name = "nh3" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "beautifulsoup4", specifier = ">=4.14.2" },
-    { name = "cryptography", specifier = ">=48.0.0" },
-    { name = "django", specifier = ">=5.2.13,<6.1" },
-    { name = "filetype", specifier = ">=1.2.0" },
-    { name = "httpx", specifier = ">=0.28.1" },
-    { name = "mf2py", specifier = ">=2.0.1" },
-    { name = "nh3", specifier = ">=0.3.5" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "django-environ" },
-    { name = "django-stubs", extras = ["compatible-mypy"] },
-    { name = "furo" },
-    { name = "mypy" },
-    { name = "prek", specifier = ">=0.3.10" },
-    { name = "pytest", specifier = ">=9.0.3" },
-    { name = "pytest-cov", specifier = ">=3" },
-    { name = "pytest-django" },
-    { name = "requests", specifier = ">=2.33.0" },
-    { name = "ruff" },
-    { name = "sphinxcontrib-mermaid", specifier = ">=1.0.0" },
-    { name = "tox" },
-    { name = "types-requests" },
 ]
 
 [[package]]
@@ -1796,9 +1716,9 @@ requires-dist = [
     { name = "cast-vue", git = "https://github.com/ephes/cast-vue" },
     { name = "django-allauth" },
     { name = "django-anymail", extras = ["mailgun"] },
-    { name = "django-cast", editable = "../django-cast" },
+    { name = "django-cast", git = "https://github.com/ephes/django-cast?branch=develop" },
     { name = "django-extensions" },
-    { name = "django-indieweb", editable = "../django-indieweb" },
+    { name = "django-indieweb", git = "https://github.com/ephes/django-indieweb?branch=develop" },
     { name = "django-proxy" },
     { name = "django-storages" },
     { name = "django-tasks", specifier = "==0.12.0" },
@@ -2276,7 +2196,7 @@ name = "pexpect"
 version = "4.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "ptyprocess" },
+    { name = "ptyprocess", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/42/92/cc564bf6381ff43ce1f4d06852fc19a2f11d180f23dc32d9588bee2f149d/pexpect-4.9.0.tar.gz", hash = "sha256:ee7d41123f3c9911050ea2c2dac107568dc43b2d3b0c7557a33212c398ead30f", size = 166450, upload-time = "2023-11-25T09:07:26.339Z" }
 wheels = [
