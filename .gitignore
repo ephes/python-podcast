@@ -53,6 +53,9 @@ coverage.xml
 # Django stuff:
 staticfiles/
 
+# Local PostgreSQL data directory
+databases/postgres/
+
 # Sphinx documentation
 docs/_build/
 
@@ -341,9 +344,6 @@ notebooks
 
 # links
 docker-compose.yml
-
-# databases
-databases
 
 # vault password
 .vault_password

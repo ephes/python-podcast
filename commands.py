@@ -1,7 +1,9 @@
 import contextlib
+import datetime
 import os
 import platform
 import re
+import shlex
 import subprocess
 import sys
 import webbrowser
@@ -161,42 +163,62 @@ def working_directory(path):
 
 
 @cli.command()
-def production_db_to_local():
+def production_db_to_local(
+    production_host: str = typer.Option("wersdoerfer.de", help="SSH host for the production server."),
+    production_ssh_user: str = typer.Option("root", help="SSH user for the production server."),
+    production_db_name: str = typer.Option("python-podcast", help="Production PostgreSQL database name."),
+    production_db_user: str = typer.Option("postgres", help="Remote system user allowed to dump PostgreSQL."),
+    local_db_name: str = typer.Option("python_podcast", help="Local PostgreSQL database name to restore into."),
+):
     """
-    Use ansible to create and fetch a backup.
+    Fetch a production PostgreSQL dump over SSH and restore it locally.
 
     Make sure only the database is running using:
-      postgres -D databases/postgres
+      just postgres
     """
     import psutil
 
     for proc in psutil.process_iter(["pid", "name", "username"]):
-        if proc.info["name"] is None or "python" not in proc.info["name"]:
-            continue
         try:
             cmdline = " ".join(proc.cmdline())
             if "honcho" in cmdline:
-                print("please stop honcho first and start a single postgres db with postgres -D databases/postgres")
+                print("please stop honcho first and start a single postgres db with just postgres")
                 sys.exit(1)
-        except psutil.AccessDenied:
+        except (psutil.AccessDenied, psutil.NoSuchProcess, psutil.ZombieProcess):
             # ignore processes that we cannot observe
             pass
 
-    deploy_root = Path(__file__).parent / "deploy"
-    with working_directory(deploy_root):
-        output = subprocess.check_output(
-            ["ansible-playbook", "backup_database.yml", "--limit", "production"], text=True
-        )
-    [line] = [line for line in output.split("\n") if "sql.gz" in line]
-    backup_file_name = line.split('"')[-2]
-    backup_path = get_project_root() / "backups" / backup_file_name
-    db_name = "python_podcast"
-    subprocess.call(["dropdb", db_name])
-    subprocess.call(["createdb", db_name])
-    subprocess.call(["createuser", db_name])
-    command = f"gunzip -c {backup_path} | psql {db_name}"
-    print(command)
-    subprocess.call(command, shell=True)
+    backups_dir = get_project_root() / "backups"
+    backups_dir.mkdir(exist_ok=True)
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H%M%S")
+    backup_path = backups_dir / f"{timestamp}_{production_db_name}.sql.gz"
+
+    remote_dump_pipeline = (
+        "set -o pipefail; "
+        f"sudo -u {shlex.quote(production_db_user)} "
+        f"pg_dump --no-owner --no-privileges {shlex.quote(production_db_name)} | gzip -c"
+    )
+    remote_dump_command = f"bash -lc {shlex.quote(remote_dump_pipeline)}"
+    ssh_target = f"{production_ssh_user}@{production_host}"
+    print(f"Creating production backup via SSH: {ssh_target}:{production_db_name}")
+    try:
+        with backup_path.open("wb") as backup_file:
+            subprocess.run(["ssh", ssh_target, remote_dump_command], stdout=backup_file, check=True)
+    except subprocess.CalledProcessError:
+        backup_path.unlink(missing_ok=True)
+        raise
+
+    try:
+        subprocess.run(["createuser", local_db_name], check=False)
+        subprocess.run(["dropdb", "--if-exists", local_db_name], check=True)
+        subprocess.run(["createdb", local_db_name], check=True)
+        command = f"gunzip -c {shlex.quote(str(backup_path))} | psql {shlex.quote(local_db_name)}"
+        print(command)
+        subprocess.run(["bash", "-o", "pipefail", "-c", command], check=True)
+    except subprocess.CalledProcessError:
+        print(f"local restore failed; close open connections to {local_db_name} and rerun")
+        print(f"production backup was saved at {backup_path}")
+        raise
     print(backup_path)
 
 

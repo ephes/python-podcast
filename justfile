@@ -69,10 +69,20 @@ dev-all: check-services
 dev-force: cleanup
     @just dev
 
+# Initialize the local PostgreSQL data directory if it does not exist yet
+db-init:
+    @if [ ! -d databases/postgres ]; then \
+        echo "Initializing PostgreSQL data directory at databases/postgres..."; \
+        mkdir -p databases; \
+        initdb -D databases/postgres; \
+    else \
+        echo "PostgreSQL data directory already exists"; \
+    fi
+
 # Start individual services
-postgres:
+postgres: db-init
     @echo "Starting PostgreSQL..."
-    postgres -D databases/postgres
+    exec postgres -D databases/postgres
 
 django:
     @echo "Starting Django development server..."
