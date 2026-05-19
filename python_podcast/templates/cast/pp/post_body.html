@@ -16,4 +16,9 @@
       {% block detail_link %}{% endblock %}
     {% endif %}
   {% endfor %}
+  {% block episode_contributors %}
+    {% if render_detail and not render_for_feed and episode_contributors %}
+      {% include "cast/contributors.html" %}
+    {% endif %}
+  {% endblock episode_contributors %}
 </article>
