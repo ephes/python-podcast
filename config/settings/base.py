@@ -377,6 +377,10 @@ CAST_COMMENTS_ENABLED = True
 # needed to set via env because analytics cron breaks on cast.moderation
 FLUENT_COMMENTS_DEFAULT_MODERATOR = env("FLUENT_COMMENTS_DEFAULT_MODERATOR", default="cast.moderation.Moderator")
 
+# Voxhelm transcription: poll timeout in seconds for full-episode diarization
+# jobs, raising django-cast's 900s default. See docs/deploy.rst.
+CAST_VOXHELM_POLL_TIMEOUT = env.float("CAST_VOXHELM_POLL_TIMEOUT", default=6 * 60 * 60)
+
 CAST_FOLLOW_LINKS = {
     "mastodon": "https://fedi.python-podcast.de/@show@python-podcast.de/",
     "linkedin": "https://www.linkedin.com/company/105560994/",

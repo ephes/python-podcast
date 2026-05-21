@@ -46,4 +46,6 @@ addition to Gunicorn::
 The worker service uses the ``cast_transcripts`` backend alias and the stable
 ``python-podcast-transcripts`` worker id. The worker requires the
 ``django_tasks_db`` migrations to have been applied before it starts processing
-jobs.
+jobs. Full-episode Voxhelm diarization can exceed django-cast's default polling
+window, so this project sets ``CAST_VOXHELM_POLL_TIMEOUT`` to six hours by
+default.
