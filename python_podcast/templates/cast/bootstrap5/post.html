@@ -1,9 +1,2 @@
 {% extends "cast/bootstrap5/post.html" %}
 {% block title %}{% if page.seo_title %}{{ page.seo_title }}{% else %}{{ page.title }}{% endif %} (python-podcast){% endblock title %}
-
-{% block content %}
-  {{ block.super }}
-  {% if render_detail and not render_for_feed and episode_contributors %}
-    {% include "cast/contributors.html" %}
-  {% endif %}
-{% endblock content %}
