@@ -49,3 +49,10 @@ The worker service uses the ``cast_transcripts`` backend alias and the stable
 jobs. Full-episode Voxhelm diarization can exceed django-cast's default polling
 window, so this project sets ``CAST_VOXHELM_POLL_TIMEOUT`` to six hours by
 default.
+
+Voxhelm credentials should be supplied through deployment-managed environment
+variables rather than relying on the Wagtail database token field. Configure
+``CAST_VOXHELM_API_BASE`` and ``CAST_VOXHELM_API_KEY`` in the shared
+environment used by both Gunicorn and the transcript worker; the Wagtail
+``Voxhelm settings`` token field may stay blank when the token comes from
+deployment secrets.
