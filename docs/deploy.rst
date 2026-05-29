@@ -56,3 +56,35 @@ variables rather than relying on the Wagtail database token field. Configure
 environment used by both Gunicorn and the transcript worker; the Wagtail
 ``Voxhelm settings`` token field may stay blank when the token comes from
 deployment secrets.
+
+Known-speaker recognition
+-------------------------
+
+Anonymous diarization clusters voices but cannot reliably recover a known
+recurring speaker on this podcast's mono live-room recordings. To use
+contributor voice references for known-speaker recognition:
+
+* Enable diarization (``CAST_VOXHELM_DIARIZATION_ENABLED=true`` or the
+  site-level Voxhelm setting).
+* Enable known-speaker recognition with ``CAST_VOXHELM_KNOWN_SPEAKER_ENABLED=true``
+  (or the site-level Voxhelm setting) in the shared environment used by both
+  Gunicorn and the transcript worker.
+* Ensure Voxhelm's ``VOXHELM_ALLOWED_URL_HOSTS`` includes the host that serves
+  reference audio. References are sent as source ranges into already-uploaded
+  mastered audio (the CloudFront media host), so that host must be allowlisted
+  on the Voxhelm side.
+* Configure the Voxhelm known-speaker backend: ``VOXHELM_DIARIZATION_BACKEND=pyannote``
+  with a Hugging Face token (``VOXHELM_HUGGINGFACE_TOKEN``) that has accepted the
+  ``pyannote/wespeaker-voxceleb-resnet34-LM`` model terms.
+
+When enabled, diarized transcript jobs send the approved voice references of an
+episode's expected contributors to Voxhelm. Voxhelm returns per-segment speaker
+suggestions (candidates, confidence, margin, uncertainty, raw diarization
+labels) which django-cast stores privately on the transcript. Known-speaker
+results are suggestions: public transcript output stays unlabeled until an
+editor reviews and approves them.
+
+Applying the django-cast version with these features runs one new migration
+(``cast.0071``) adding the private known-speaker suggestion field and the
+site-level known-speaker setting. Bump the pinned ``django-cast`` commit, run
+``uv lock --upgrade-package django-cast``, apply migrations, and redeploy.
