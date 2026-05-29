@@ -13,6 +13,15 @@ Offline validation already passed: the shipped Voxhelm code path measured
 known Johannes passage correctly attributed. See
 ``voxhelm/evals/known_speaker_results.md``.
 
+Deployed-production validation also passed on **two** episodes against
+multitrack-derived gold sets: ``pp_64`` (same-episode references, 95.06%
+segment-level top-1) and ``pp_62`` "Bytes und Strings" (episode 135, audio 77;
+**cross-episode** references taken from ``pp_64`` only — zero eval leakage —
+scoring **96.76% time-weighted top-1 / DER 3.24%** full-episode, with public
+auto-applied labels 98.56% accurate). The pp_62 run needed no code or config
+changes; see ``voxhelm/evals/known_speaker_results.md`` for both metric
+definitions and Voxhelm job ids.
+
 0. Prerequisites
 ----------------
 
@@ -114,7 +123,16 @@ before/after quality metrics (anonymous ~77-87% vs known-speaker >90%).
 Remaining follow-up
 -------------------
 
-Applying approved suggestions to public transcript output through a Wagtail
-review UI is the next django-cast slice (tracked in django-cast ``BACKLOG.md``).
-Until it lands, known-speaker identities stay private suggestions and are not
-shown publicly.
+The Wagtail review-and-apply path has landed: an editor reviews the private
+suggestions and applies the approved labels to public Podlove/DOTe via
+``Transcript.apply_known_speaker_suggestions()``. This was exercised on
+production for ``pp_62`` (episode 135), so that episode's public transcript now
+shows speaker names. Generating suggestions still does *not* publish identities
+on its own — the apply step is the editorial gate, and the raw per-segment
+candidates stay in the private sidecar.
+
+Open follow-ups: apply labels to **WebVTT** too (currently Podlove/DOTe only,
+so caption-based players stay unlabeled); a per-segment review/approval UI
+(apply is currently whole-transcript); and deciding the smoothing policy
+(carry-forward, the current default, vs. conservative fill only where both
+neighbours agree).
