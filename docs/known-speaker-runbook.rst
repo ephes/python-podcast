@@ -136,3 +136,63 @@ so caption-based players stay unlabeled); a per-segment review/approval UI
 (apply is currently whole-transcript); and deciding the smoothing policy
 (carry-forward, the current default, vs. conservative fill only where both
 neighbours agree).
+
+8. Operator recipe: diarizing additional episodes via the management command
+----------------------------------------------------------------------------
+
+Five further archive episodes were diarized + labelled end to end on production
+(2026-05-29) using the known-speaker apply path, all browser-verified
+(contributor strip, Podlove player transcript tab, and ``/transcript/`` page):
+``das-python-data-model`` (post 131 / audio 73 — hosts only: Jochen, Dominik,
+Johannes), ``typescript-und-typisierung`` (post 127 / audio 69 — + guest
+**Stefan**), ``freelancing`` (post 128 / audio 70 — Dominik, Jochen + guest
+**Birgit**; Johannes absent), ``djangocon-europe-2024`` (post 130 / audio 72 —
+Dominik, Jochen + guest **Ronny**; Johannes absent), and ``devops-redux``
+(post 129 / audio 71 — Dominik, Jochen + guest **Sujeevan**; Johannes absent).
+Per-segment host attribution is voiceprint-based, not order-guessed; guests were
+identified from the transcript (Stefan's own book passage; Birgit's freelancer
+self-intro; Sujeevan's "… ist mein Name" + GitLab + co-hosting *TILpod* with
+Dirk) then seeded as known speakers themselves.
+
+The end-to-end recipe, run as the ``python-podcast`` app user on production:
+
+#. Pick a live episode whose ``podcast_audio`` has no diarized transcript yet and
+   enable per-audio diarization (``Audio.transcript_diarization_mode='enabled'``).
+#. Assign the candidate contributors (the three hosts, plus any recurring guest
+   such as Ronny who already has references) to the **episode** so their approved
+   voice references reach Voxhelm.
+#. Generate **by episode id**, not audio id (see gotcha below)::
+
+       python manage.py generate_transcripts --episode-id <POST_ID> --force
+
+#. Inspect the private sidecar: ``Transcript.get_speaker_suggestion_summary()``
+   lists matched ``known_speakers`` + ``confident_speaker_distribution``. A host
+   that does not appear was not in the room — drop their ``EpisodeContributor``.
+   The guest is the raw-diarization cluster that is almost entirely *uncertain*
+   (matches no host); read its text via ``get_speaker_suggestions()`` +
+   ``raw_diarization_speaker`` to confirm identity.
+#. Seed the new guest's voiceprint from a clean solo run of that cluster, then
+   re-run ``generate_transcripts --episode-id <POST_ID> --force`` so the guest is
+   a *known* speaker, and ``Transcript.apply_known_speaker_suggestions()``.
+#. Verify: ``/api/audios/podlove/<AUDIO>/post/<POST>/`` returns the mapped
+   ``speaker`` labels + ``contributors`` array, then a browser check of the
+   contributor strip, the player transcript tab, and the ``/transcript/`` page.
+
+.. important::
+
+   **The management command only sends the known-speaker payload with
+   ``--episode-id``.** ``--audio-id`` builds a target with ``episode=None``, and
+   ``VoxhelmTranscriptService.submit_for_audio`` skips ``build_known_speaker_references``
+   when ``episode is None`` — so an ``--audio-id`` run does plain anonymous
+   diarization and stores **no** ``speakers`` sidecar, even with references
+   seeded and ``CAST_VOXHELM_KNOWN_SPEAKER_ENABLED=true``.
+
+.. important::
+
+   **Seed each guest as a known speaker before applying.**
+   ``apply_known_speaker_suggestions()`` defaults to ``smooth=True``
+   (carry-forward), which fills a reference-less guest's uncertain segments with
+   the nearest confident *host* — silently mislabelling the whole guest voice.
+   Give the guest their own approved reference and re-run KS first (so their
+   segments become confident); only then apply. ``smooth=True`` is safe once
+   every voice present is a known speaker.
