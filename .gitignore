@@ -352,3 +352,4 @@ docker-compose.yml
 .idea/
 # Added by specsync
 specs
+.playwright-verify/
