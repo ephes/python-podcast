@@ -12,7 +12,11 @@ venv_bin: "{{ site_path }}/venv/bin"
 python: "{{ venv_bin }}/python"
 default_path: "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 port: 10014
-django_settings_module: "config.settings.production"
+# Per-environment settings module: staging -> config.settings.staging (which
+# previews the custom audio player), production -> config.settings.production.
+# (vars.yml is loaded via include_vars, which outranks host_vars, so the
+# environment switch must live here rather than in host_vars.)
+django_settings_module: "config.settings.{{ deploy_environment | default('production') }}"
 traefik_config_dir: "/etc/traefik/dynamic"
 traefik_config_path: "{{ traefik_config_dir }}/{{ project_name }}.traefik.yml"
 systemd_unit_path: "/etc/systemd/system/{{ project_name }}.service"
