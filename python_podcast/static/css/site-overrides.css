@@ -24,6 +24,15 @@
   --cast-gallery-body-bg: rgba(255, 255, 255, 0.8);
   --cast-gallery-header-bg: rgba(255, 255, 255, 1);
   --cast-gallery-footer-bg: rgba(255, 255, 255, 1);
+
+  /* Custom audio player (django-cast) — purple palette. */
+  --cast-player-bg: var(--cast-surface);
+  --cast-player-fg: var(--cast-text);
+  --cast-player-muted: var(--cast-text-muted);
+  --cast-player-accent: #7c3aed;
+  --cast-player-on-accent: #ffffff;
+  --cast-player-progress-track: var(--cast-border-strong);
+  --cast-player-focus: #7c3aed;
 }
 
 [data-bs-theme="dark"] {
@@ -51,6 +60,16 @@
   --cast-gallery-body-bg: rgba(15, 15, 26, 0.9);
   --cast-gallery-header-bg: rgba(26, 26, 46, 1);
   --cast-gallery-footer-bg: rgba(26, 26, 46, 1);
+
+  /* Custom audio player (django-cast) — lighter purple for dark mode. The
+     accent is light, so accent fills use dark text for contrast. */
+  --cast-player-bg: var(--cast-surface);
+  --cast-player-fg: var(--cast-text);
+  --cast-player-muted: var(--cast-text-muted);
+  --cast-player-accent: #a78bfa;
+  --cast-player-on-accent: #1a1a2e;
+  --cast-player-progress-track: var(--cast-border-strong);
+  --cast-player-focus: #a78bfa;
 }
 
 /* Search modal contrast and token alignment */
@@ -83,6 +102,32 @@
 /* Keep accent-filled player CTA contrast-compliant across themes */
 .podlove-facade-play {
   color: var(--cast-accent-contrast-text);
+}
+
+/* Accessibility (WCAG AA, 4.5:1): Bootstrap's auto color-contrast picks dark text
+   on our purple primary (only 3.07:1). Force white text on a slightly deeper
+   purple so .btn-primary clears AA, and darken the muted outline-secondary text
+   (was #6c757d on paper = 4.46:1, just under). */
+.btn-primary {
+  --bs-btn-color: #ffffff;
+  --bs-btn-bg: #6d28d9;
+  --bs-btn-border-color: #6d28d9;
+  --bs-btn-hover-color: #ffffff;
+  --bs-btn-hover-bg: #5b21b6;
+  --bs-btn-hover-border-color: #5b21b6;
+  --bs-btn-active-color: #ffffff;
+  --bs-btn-active-bg: #5b21b6;
+  --bs-btn-active-border-color: #5b21b6;
+}
+
+.btn-outline-secondary {
+  --bs-btn-color: #565c63; /* 6.4:1 on the light paper background */
+  --bs-btn-border-color: #565c63;
+}
+
+[data-bs-theme="dark"] .btn-outline-secondary {
+  --bs-btn-color: #adb5bd; /* ~7.9:1 on the dark surface (the light grey fails there) */
+  --bs-btn-border-color: #6c757d;
 }
 
 /* Prototype-faithful hero hierarchy for the list page */

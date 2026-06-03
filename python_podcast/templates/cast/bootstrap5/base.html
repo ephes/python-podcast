@@ -19,11 +19,13 @@
 
 {% block additionalheaders %}
   <link rel="icon" href="{% static 'images/favicons/favicon.ico' %}">
+  {# Mastodon identity verification — a head <link rel="me"> verifies the same as
+     a body <a rel="me"> but keeps the (empty) link out of the body region/landmark
+     accessibility audit. #}
+  <link rel="me" href="https://fedi.wersdoerfer.de/@jochen">
 {% endblock additionalheaders %}
 
-{% block bodystart %}
-  <a href="https://fedi.wersdoerfer.de/@jochen" rel="me" aria-label="Mastodon profile" title="Mastodon profile"></a>
-{% endblock bodystart %}
+{% block bodystart %}{% endblock bodystart %}
 
 {% block navigation %}
   <nav class="navbar navbar-expand-lg navbar-sticky">
