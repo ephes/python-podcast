@@ -19,9 +19,10 @@
 
 {% block additionalheaders %}
   <link rel="icon" href="{% static 'images/favicons/favicon.ico' %}">
-  {# Mastodon identity verification — a head <link rel="me"> verifies the same as
-     a body <a rel="me"> but keeps the (empty) link out of the body region/landmark
-     accessibility audit. #}
+  {% comment %}
+    Mastodon identity verification as a head rel=me link, so the (empty)
+    verification link stays out of the body region/landmark accessibility audit.
+  {% endcomment %}
   <link rel="me" href="https://fedi.wersdoerfer.de/@jochen">
 {% endblock additionalheaders %}
 
