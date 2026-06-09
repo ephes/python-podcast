@@ -1,10 +1,11 @@
 <main>
-  {% include "./pagination.html" %}
+  {% include "./_blog_header.html" %}
+  {% include "./pagination.html" with pagination_label="Page navigation (top)" %}
   {% for post in posts %}
     {% include "./post_body.html" with render_detail=False page=post %}
   {% endfor %}
 </main>
 
 <footer>
-  {% include "./pagination.html" %}
+  {% include "./pagination.html" with pagination_label="Page navigation (bottom)" %}
 </footer>

@@ -1,8 +1,30 @@
 {% extends "cast/bootstrap5/base.html" %}
 {% load i18n static wagtailcore_tags %}
 {% load cast_extras %}
+{% load django_vite %}
+{% load cast_audio_player %}
+{% load pp_persistent_player %}
+{# NOTE: this template EXTENDS the package base, so any tags placed at the top #}
+{# level (outside a {% block %}) are NOT executed — only block overrides run. #}
+{# The audio-player-mode tag must therefore be called INSIDE each block that #}
+{# needs it. `persistent_audio_player` comes from the context processor (so it #}
+{# is available in every block). #}
 
 {% block title %}{{ page.title }}{% endblock title %}
+
+{% block modal %}
+  {{ block.super }}
+  {% cast_audio_player_mode as audio_player_mode %}
+  {% if persistent_audio_player and audio_player_mode == "custom" %}
+    {# Persistent-player proof: the single live <cast-audio-player> lives here, #}
+    {# OUTSIDE #main-content, so enhanced navigation that swaps #main-content #}
+    {# never disconnects it. (Placed in `modal` — after </main> — because the #}
+    {# list template overrides `before_main` for its hero without block.super.) #}
+    {# Empty until the reader starts an episode; populated by persistent-player.js. #}
+    <div id="cast-persistent-player" class="cast-persistent container" data-cast-persistent
+         data-cast-swap-target="main-content" role="region" aria-label="Audio player" hidden></div>
+  {% endif %}
+{% endblock modal %}
 {% block css %}
   {{ block.super }}
   <link rel="preload" href="{% static 'css/project.css' %}" as="style">
@@ -70,6 +92,14 @@
 
 {% block javascript %}
   {{ block.super }}
+  {% cast_audio_player_mode as audio_player_mode %}
+  {% if persistent_audio_player and audio_player_mode == "custom" %}
+    {# Define the custom-player web components on every page + load the #}
+    {# persistent-player manager / enhanced navigation. #}
+    {% vite_hmr_client app="cast" %}
+    {% vite_asset 'src/audio/custom-player.ts' app="cast" %}
+    <script src="{% static 'js/persistent-player.js' %}" defer></script>
+  {% endif %}
   <script>
     (function () {
       function asElement(value) {

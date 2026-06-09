@@ -41,6 +41,7 @@ dev = [
     "pytest",
     "pytest-sugar",
     "pytest-django",
+    "pytest-playwright",
     "psutil",
     "rich",
     "sphinx_rtd_theme",
@@ -51,7 +52,16 @@ dev = [
 
 [tool.uv.sources]
 cast-vue = { git = "https://github.com/ephes/cast-vue" }
-cast-bootstrap5 = { git = "https://github.com/ephes/cast-bootstrap5" }
+# Git sources for the STAGING deploy of the custom audio player (rsync sends the
+# working tree, so the deployed pyproject must resolve server-side). These feature
+# refs predate the persistent-player slice and are shared by staging + production
+# installs, so a production rollout MUST first revert them to release/main refs
+# (cast-bootstrap5 -> main, django-cast -> a release). Production today is
+# unaffected in BEHAVIOUR: it runs config.settings.production (Podlove,
+# CAST_AUDIO_PLAYER != "custom", persistent flag pinned False), so the custom-/
+# persistent-player code paths these refs carry are never exercised there.
+# Locally, restore the editable `path = "../…"` entries to resume local preview.
+cast-bootstrap5 = { git = "https://github.com/ephes/cast-bootstrap5", branch = "feat/custom-player-rev4" }
 django-cast = { git = "https://github.com/ephes/django-cast", branch = "develop" }
 django-indieweb = { git = "https://github.com/ephes/django-indieweb", branch = "develop" }
 
@@ -70,7 +80,14 @@ command_line = "-m pytest"
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings.test"
 filterwarnings = []
-addopts = ["-ra", "--reuse-db", "--no-migrations"]
+# e2e tests are excluded by default: they need config.settings.e2e, built Vite
+# manifests, Playwright browsers, ffmpeg, and --migrations. Run them explicitly
+# with `just test-e2e` (or `-m e2e --migrations` under DJANGO_SETTINGS_MODULE=
+# config.settings.e2e). A CLI `-m e2e` overrides this default deselection.
+addopts = ["-ra", "--reuse-db", "--no-migrations", "-m", "not e2e"]
+markers = [
+    "e2e: browser-level end-to-end tests (require Playwright + a browser)",
+]
 
 [tool.specsync]
 workspace_subdir = "specs"

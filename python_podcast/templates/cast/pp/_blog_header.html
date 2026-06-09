@@ -1,0 +1,21 @@
+{% load wagtailcore_tags %}
+{# Blog index identity + filter. Lives INSIDE #paging-area (included by both #}
+{# blog_list_of_posts.html and the htmx paging partial) so it stays correct #}
+{# under both list pagination and enhanced cross-page navigation, instead of #}
+{# going stale in the site chrome outside the swap boundary. #}
+<header class="blog-index-header">
+  <h1>{{ page.title }}</h1>
+  <section>
+    <h2>Description</h2>
+    {{ page.description|richtext }}
+  </section>
+  <section>
+    <h2>Feed</h2>
+    <a href="{% url "cast:latest_entries_feed" slug=blog.slug %}">Link to RSS feed</a>
+  </section>
+</header>
+{% if filterset %}
+  <hr>
+  {% include "./_filter_form.html" with form=filterset.form %}
+  <hr>
+{% endif %}

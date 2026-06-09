@@ -8,6 +8,14 @@ import cast_vue
 from .base import *  # noqa
 from .base import env
 
+# Preview the new custom audio player in dev (replaces the Podlove Web Player on
+# episode detail pages). Set back to "podlove" or remove to restore the default.
+CAST_AUDIO_PLAYER = "custom"
+
+# Preview the persistent-player staging proof in dev too (one live player kept
+# alive across enhanced htmx navigation). Set False to restore page-local players.
+PYTHON_PODCAST_PERSISTENT_AUDIO_PLAYER = True
+
 # GENERAL
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#debug

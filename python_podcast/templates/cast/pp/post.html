@@ -25,7 +25,9 @@
   {% endif %}
 {% endblock robots %}
 
-{% block title %}{{ page.title }}{% endblock title %}
+{# Provide a complete <title> (the pp base block contains the <title> tag, so #}
+{# emitting plain text here would replace it and leave the page title-less). #}
+{% block title %}<title>{{ page.title }}</title>{% endblock title %}
 
 {% block main %}
   {% include "./post_body.html" with render_detail=True %}
@@ -41,7 +43,12 @@
 {% block javascript %}
   {{ block.super }}
   {% vite_hmr_client app="cast" %}
-  {% if has_audio %}
+  {% if persistent_audio_player and use_custom_audio_player %}
+    {# Persistent custom-player mode: base.html loads the custom-player bundle #}
+    {# globally; the episode page only publishes a payload + action. #}
+  {% elif use_custom_audio_player %}
+    {% vite_asset 'src/audio/custom-player.ts' app="cast" %}
+  {% elif use_podlove_player or has_audio %}
     {% vite_asset 'src/audio/podlove-player.ts' app="cast" %}
   {% endif %}
 {% endblock javascript %}

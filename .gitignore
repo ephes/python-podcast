@@ -352,3 +352,6 @@ docker-compose.yml
 .idea/
 # Added by specsync
 specs
+
+# Playwright e2e screenshot artifacts
+tests/e2e/*.png

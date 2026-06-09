@@ -2,7 +2,11 @@
 
 <article>
   <header>
-    <h2>{{ page.title }}</h2>
+    {% if render_detail %}
+      <h1>{{ page.title }}</h1>
+    {% else %}
+      <h2>{{ page.title }}</h2>
+    {% endif %}
     <a href="{{ page.page_url }}">
       <time datetime="{{ page.visible_date|date:"c" }}">{{ page.visible_date|date }}</time>,
     </a>

@@ -1,0 +1,15 @@
+{# Shared persistent-player publish markup: a sanitized json_script payload + an #}
+{# inert "play this episode" action. Clicking it loads that episode into the #}
+{# single live persistent player (driven by persistent-player.js). Works on #}
+{# detail pages AND overview/list cards (each card publishes its own payload). #}
+{# Params: payload (from {% cast_player_payload %}), optional button_class and #}
+{# label. #}
+{{ payload.player_script }}
+<div class="cast-play-publish"
+     data-cast-episode-payload="{{ payload.payload_id }}"
+     data-cast-player-id="{{ payload.player_id }}">
+  <button type="button" class="{{ button_class|default:'cast-play-episode' }}" data-cast-play="{{ payload.payload_id }}">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+    <span>{{ label|default:"Play this episode" }}</span>
+  </button>
+</div>

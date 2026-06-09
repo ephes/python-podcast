@@ -195,6 +195,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "cast.context_processors.site_template_base_dir",
                 "python_podcast.pp.context_processors.default_follow_links",
+                "python_podcast.pp.context_processors.persistent_audio_player",
             ],
         },
     },
@@ -380,6 +381,14 @@ FLUENT_COMMENTS_DEFAULT_MODERATOR = env("FLUENT_COMMENTS_DEFAULT_MODERATOR", def
 # Voxhelm transcription: poll timeout in seconds for full-episode diarization
 # jobs, raising django-cast's 900s default. See docs/deploy.rst.
 CAST_VOXHELM_POLL_TIMEOUT = env.float("CAST_VOXHELM_POLL_TIMEOUT", default=6 * 60 * 60)
+
+# Persistent audio player (staging proof). When True, the `pp` theme renders a
+# single live <cast-audio-player> outside the #paging-area swap boundary and
+# progressively enhances internal navigation so playback survives page changes.
+# Episode pages then publish a sanitized payload + an inert "play this episode"
+# action instead of an in-body live player. OFF by default; enabled on staging
+# only. See backlog/2026-06-08-persistent-player-staging.md (in django-cast).
+PYTHON_PODCAST_PERSISTENT_AUDIO_PLAYER = env.bool("PYTHON_PODCAST_PERSISTENT_AUDIO_PLAYER", default=False)
 
 CAST_FOLLOW_LINKS = {
     "mastodon": "https://fedi.python-podcast.de/@show@python-podcast.de/",

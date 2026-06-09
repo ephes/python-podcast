@@ -16,54 +16,43 @@
   <link rel="canonical" href="{{ canonical_url }}">
 {% endblock %}
 
-{% block title %}
-  <title>{{ page.seo_title }}</title>
-{% endblock %}
+{% block title %}<title>{{ page.seo_title }}</title>{% endblock %}
 
 {% block description %}
   <meta name="description" content="{{ page.search_description }}">
 {% endblock %}
 
-{% block header %}
-  <header>
-    <h1>{{ page.title }}</h1>
-    <section>
-      <h4>Description</h4>
-      {{ page.description|richtext }}
-    </section>
-    <section>
-      <h4>Feed</h4>
-      <a href="{% url "cast:latest_entries_feed" slug=blog.slug %}">
-        Link to RSS feed
-      </a>
-    </section>
-  </header>
-{% endblock header %}
-
-{% block nav_extra %}
-  <hr>
-  {% include "./_filter_form.html" with form=filterset.form %}
-  <hr>
-{% endblock nav_extra %}
+{# The blog header (h1/description/feed) and the filter form moved INSIDE #}
+{# #paging-area (via _blog_header.html) so enhanced cross-page navigation #}
+{# swaps them instead of leaving the previous page's chrome stale. The site #}
+{# header/nav outside #paging-area is now page-constant. #}
 
 {% block main %}
-  <main>
-    {% include "./pagination.html" %}
-    {% for post in posts %}
-      {% include "./post_body.html" with render_detail=False page=post %}
-    {% endfor %}
-  </main>
+  {% include "./_blog_header.html" %}
+  {% include "./pagination.html" with pagination_label="Page navigation (top)" %}
+  {% for post in posts %}
+    {% include "./post_body.html" with render_detail=False page=post %}
+  {% endfor %}
 {% endblock main %}
 
 {% block footer %}
   <footer>
-    {% include "./pagination.html" %}
+    {% include "./pagination.html" with pagination_label="Page navigation (bottom)" %}
   </footer>
 {% endblock footer %}
 
 {% block javascript %}
   <!-- block.super does not work? -->
   {{ block.super }}
+  {% load cast_audio_player %}
+  {% cast_audio_player_mode as audio_player_mode %}
   {% vite_hmr_client app="cast" %}
-  {% vite_asset 'src/audio/podlove-player.ts' app="cast" %}
+  {# Load the active player's bundle so any in-body custom elements upgrade. #}
+  {# (In persistent mode the base already loads custom-player.ts globally; a #}
+  {# second module include with the same URL is deduped by the browser.) #}
+  {% if audio_player_mode == "custom" %}
+    {% vite_asset 'src/audio/custom-player.ts' app="cast" %}
+  {% elif audio_player_mode == "podlove" %}
+    {% vite_asset 'src/audio/podlove-player.ts' app="cast" %}
+  {% endif %}
 {% endblock javascript %}

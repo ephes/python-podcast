@@ -116,6 +116,14 @@ manage *ARGS:
 test *ARGS:
     uv run python commands.py test {{ARGS}}
 
+# Run the browser-level e2e tests (Playwright + ffmpeg + built Vite manifests).
+# Uses config.settings.e2e and real migrations; `-m e2e` overrides the default
+# deselection. Requires a local PostgreSQL (just postgres) and an installed
+# django-cast carrying the custom-player Vite assets.
+test-e2e *ARGS:
+    DJANGO_ALLOW_ASYNC_UNSAFE=1 DJANGO_SETTINGS_MODULE=config.settings.e2e \
+        uv run pytest tests/e2e -m e2e --migrations {{ARGS}}
+
 # Run coverage
 coverage:
     uv run python commands.py coverage

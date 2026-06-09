@@ -1,5 +1,5 @@
 {% if is_paginated %}
-  <nav aria-label="Page navigation" class="cast-page-navigation">
+  <nav aria-label="{{ pagination_label|default:'Page navigation' }}" class="cast-page-navigation">
     <ul class="cast-pagination">
       {% if has_previous %}
         <!-- previous page -->

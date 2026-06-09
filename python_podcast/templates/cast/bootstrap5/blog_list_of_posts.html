@@ -1,6 +1,31 @@
 {% extends "cast/bootstrap5/blog_list_of_posts.html" %}
+{% load wagtailcore_tags %}
+{% load cast_audio_player %}
 
 {% block hero_canvas %}<canvas id="heroCanvas"></canvas>{% endblock hero_canvas %}
+
+{# Persistent-player proof: the index identity (h1 + description) normally lives
+   in the hero (before_main), which is OUTSIDE the #main-content swap boundary
+   and would go stale on enhanced navigation. In custom+persistent mode, drop the
+   hero and render the identity inside #main-content (the feeds block) so it
+   swaps correctly and the page keeps a single in-content <h1>. #}
+{% block before_main %}
+  {% cast_audio_player_mode as audio_player_mode %}
+  {% if not persistent_audio_player or audio_player_mode != "custom" %}
+    {{ block.super }}
+  {% endif %}
+{% endblock before_main %}
+
+{% block feeds %}
+  {% cast_audio_player_mode as audio_player_mode %}
+  {% if persistent_audio_player and audio_player_mode == "custom" %}
+    <header class="blog-index-header">
+      <h1 class="blog-title">{{ page.title }}</h1>
+      <div class="intro lead">{{ page.description|richtext }}</div>
+    </header>
+  {% endif %}
+  {{ block.super }}
+{% endblock feeds %}
 
 {% block template_script %}
   <script>

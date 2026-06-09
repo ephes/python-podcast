@@ -1,4 +1,4 @@
-{% extends cast_base_template %}
+{% extends cast_session_base_template|default:cast_base_template %}
 {% block content %}
   <h1>Impressum</h1>
   <a href="/datenschutzerklaerung/"><strong><u>Sie haben jederzeit ein Recht auf unentgeltliche Löschung oder Sperrung Ihrer erhobenen Daten, klicken Sie hier</u></strong></a>

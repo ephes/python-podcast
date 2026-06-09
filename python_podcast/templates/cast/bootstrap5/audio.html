@@ -1,0 +1,20 @@
+{% load cast_audio_player %}
+{% load pp_persistent_player %}
+{% cast_audio_player_mode as audio_player_mode %}
+{% pp_persistent_player_enabled as persistent_audio_player %}
+{# bootstrap5 audio block. When the persistent-player proof is on (custom mode), #}
+{# every episode block — detail page AND overview/list card — PUBLISHES a #}
+{# payload + an inert play action instead of an in-body player. The single live #}
+{# <cast-audio-player> lives outside #main-content (cast/bootstrap5/base.html) #}
+{# and is driven by persistent-player.js. Feeds + podlove mode + flag off fall #}
+{# through to the upstream block unchanged. #}
+{% if persistent_audio_player and audio_player_mode == "custom" and not render_for_feed and page.pk %}
+  {% cast_player_payload value page as payload %}
+  {% if render_detail %}
+    {% include "cast/_persistent_play_action.html" with payload=payload button_class="btn btn-primary cast-play-episode" label="Play this episode" %}
+  {% else %}
+    {% include "cast/_persistent_play_action.html" with payload=payload button_class="btn btn-outline-primary btn-sm cast-play-episode" label="Play episode" %}
+  {% endif %}
+{% else %}
+  {% include "cast/audio/audio.html" %}
+{% endif %}
