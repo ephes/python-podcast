@@ -1,0 +1,356 @@
+/*
+ * Persistent audio player — visual layer (python-podcast staging proof).
+ *
+ * Loaded ONLY when PYTHON_PODCAST_PERSISTENT_AUDIO_PLAYER is on (the base
+ * templates gate the <link> behind the same flag as the dock region + manager),
+ * so production — which never enables the flag — is completely unaffected. This
+ * file is presentation only: it adds zero behaviour and touches no django-cast
+ * internals. It restyles the light-DOM the django-cast custom player renders
+ * (`.cast-player__*`) from the outside and styles the python-podcast-owned dock
+ * chrome + play card.
+ *
+ * Colours come from the same `--cast-player-*` tokens the player already uses
+ * (declared per-theme in site-overrides.css), so the dock matches the player and
+ * adapts to light/dark automatically. A few dock-only knobs are added under the
+ * `--cast-dock-*` namespace.
+ */
+
+:root {
+  --cast-dock-radius: 1.1rem;
+  --cast-dock-gap: 0.9rem;
+  --cast-dock-max: 46rem; /* centred floating width on wide viewports */
+}
+
+/* Derived colour tokens are declared on the subtree roots (NOT :root) so the
+   var(--cast-player-*) they reference resolve against the inherited per-theme
+   token values at this element. Declaring them on :root would substitute the
+   light-theme values once at :root and inherit those everywhere — breaking dark
+   mode (light text on a light dock). */
+.cast-persistent,
+.cast-play-card {
+  --cast-dock-surface: var(--cast-player-bg, Canvas);
+  --cast-dock-line: color-mix(in srgb, var(--cast-player-fg, CanvasText) 12%, transparent);
+  --cast-dock-shadow: 0 -1px 0 color-mix(in srgb, var(--cast-player-fg, #111) 8%, transparent),
+    0 12px 40px -12px color-mix(in srgb, #000 55%, transparent),
+    0 4px 14px -8px color-mix(in srgb, #000 40%, transparent);
+}
+
+/* Reserve space so the fixed dock never hides the last line of content/footer. */
+body.cast-dock-open {
+  padding-bottom: 8.5rem;
+  scroll-padding-bottom: 8.5rem;
+}
+
+/* ==========================================================================
+   Episode play card — the in-article affordance that starts an episode.
+   Replaces the bare button: poster + a prominent labelled play pill + duration.
+   ========================================================================== */
+
+.cast-play-card {
+  display: flex;
+  flex-wrap: wrap; /* narrow viewports: the play pill drops below the poster */
+  align-items: center;
+  gap: 1rem;
+  margin: 1.25rem 0;
+  padding: 0.85rem;
+  border: 1px solid var(--cast-dock-line);
+  border-radius: var(--cast-dock-radius);
+  background: color-mix(in srgb, var(--cast-player-accent, #2d8260) 5%, var(--cast-dock-surface));
+  max-width: 32rem;
+}
+
+/* On overview/list cards the affordance is more compact. */
+.cast-play-card--compact {
+  margin: 0.5rem 0 0;
+  padding: 0.5rem;
+  gap: 0.75rem;
+}
+
+.cast-play-card__poster {
+  flex: none;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 0.7rem;
+  object-fit: cover;
+  background: var(--cast-player-progress-track, #e5e7eb);
+  box-shadow: 0 1px 4px color-mix(in srgb, #000 18%, transparent);
+}
+
+.cast-play-card--compact .cast-play-card__poster {
+  width: 3rem;
+  height: 3rem;
+}
+
+.cast-play-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+/* The play pill: accent surface, play glyph + label + middot duration. This is
+   the same element the manager wires (`[data-cast-play]`); we just dress it.
+   Defensive resets in case a theme passed Bootstrap `.btn` classes. */
+.cast-play-card__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  align-self: flex-start;
+  padding: 0.6rem 1.1rem 0.6rem 0.75rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--cast-player-accent, #2d8260);
+  color: var(--cast-player-on-accent, #fff);
+  font: inherit;
+  font-weight: 600;
+  line-height: 1.1;
+  cursor: pointer;
+  box-shadow: 0 2px 12px color-mix(in srgb, var(--cast-player-accent, #2d8260) 40%, transparent);
+  transition: transform 0.14s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s ease,
+    background-color 0.16s ease;
+}
+
+.cast-play-card__btn:hover {
+  background: color-mix(in srgb, var(--cast-player-accent, #2d8260) 88%, black);
+  box-shadow: 0 4px 18px color-mix(in srgb, var(--cast-player-accent, #2d8260) 52%, transparent);
+  transform: translateY(-1px);
+}
+
+.cast-play-card__btn:active {
+  transform: translateY(0) scale(0.97);
+}
+
+.cast-play-card__btn:focus-visible {
+  outline: 3px solid var(--cast-player-focus, var(--cast-player-accent, #2d8260));
+  outline-offset: 2px;
+}
+
+/* The circular glyph chip inside the pill. */
+.cast-play-card__glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--cast-player-on-accent, #fff) 22%, transparent);
+}
+
+.cast-play-card__glyph > svg {
+  transform: translateX(1px); /* optically centre the play triangle */
+}
+
+.cast-play-card__label {
+  white-space: nowrap;
+}
+
+.cast-play-card__dur {
+  font-size: 0.85em;
+  font-weight: 500;
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+.cast-play-card__dur::before {
+  content: "·";
+  margin-right: 0.5rem;
+  opacity: 0.7;
+}
+
+/* ==========================================================================
+   The dock — single live player, lifted OUT of document flow and fixed to the
+   bottom edge (this is the fix for "the player renders below the pagination":
+   the region used to sit in normal flow at the very end of the page).
+   ========================================================================== */
+
+.cast-persistent {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1030; /* above Bootstrap sticky navbar (1020), below modals */
+  /* Neutralise Bootstrap's `.container` (max-width + auto margins) on the bs5
+     region: the fixed positioner spans full width; the inner card is centred. */
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  pointer-events: none; /* only the inner card is interactive */
+}
+
+.cast-persistent[hidden] {
+  display: none;
+}
+
+/* The centred floating card. */
+.cast-dock__inner {
+  pointer-events: auto;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--cast-dock-max);
+  margin: 0 auto;
+  padding: 0.7rem clamp(0.8rem, 3vw, 1.1rem) calc(0.7rem + env(safe-area-inset-bottom, 0px));
+  background: color-mix(in srgb, var(--cast-dock-surface) 92%, transparent);
+  -webkit-backdrop-filter: saturate(140%) blur(14px);
+  backdrop-filter: saturate(140%) blur(14px);
+  border: 1px solid var(--cast-dock-line);
+  border-bottom: 0;
+  border-radius: var(--cast-dock-radius) var(--cast-dock-radius) 0 0;
+  box-shadow: var(--cast-dock-shadow);
+  color: var(--cast-player-fg, CanvasText);
+}
+
+@media (min-width: 48rem) {
+  /* Float it as a rounded pill clear of the bottom edge on larger screens. */
+  .cast-dock__inner {
+    margin-bottom: 0.9rem;
+    border-bottom: 1px solid var(--cast-dock-line);
+    border-radius: var(--cast-dock-radius);
+  }
+}
+
+/* Header row: poster + title/subtitle + close. */
+.cast-dock__header {
+  display: flex;
+  align-items: center;
+  gap: var(--cast-dock-gap);
+  margin-bottom: 0.4rem;
+}
+
+.cast-dock__poster {
+  flex: none;
+  width: 2.9rem;
+  height: 2.9rem;
+  border-radius: 0.55rem;
+  object-fit: cover;
+  background: var(--cast-player-progress-track, #e5e7eb);
+  box-shadow: 0 1px 5px color-mix(in srgb, #000 22%, transparent);
+}
+
+.cast-dock__meta {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.cast-dock__title {
+  font-weight: 650;
+  font-size: 0.95rem;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cast-dock__subtitle {
+  font-size: 0.8rem;
+  color: var(--cast-player-muted, #6b7280);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cast-dock__close {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--cast-player-muted, #6b7280);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.cast-dock__close:hover {
+  background: color-mix(in srgb, var(--cast-player-fg, CanvasText) 10%, transparent);
+  color: var(--cast-player-fg, CanvasText);
+}
+
+.cast-dock__close:focus-visible {
+  outline: 2px solid var(--cast-player-focus, var(--cast-player-accent, #2d8260));
+  outline-offset: 2px;
+}
+
+/* Blend the player's own pill transport into the dock surface so it does not
+   read as a box-in-a-box. The accent play button stays as-is. */
+.cast-persistent .cast-player__transport {
+  background: transparent;
+  border: 0;
+  padding: 0.15rem 0;
+  min-height: 0;
+}
+
+/* Keep the transcript/chapters panels usable but scrollable inside the dock. */
+.cast-persistent .cast-player__panels {
+  margin-top: 0.35rem;
+}
+
+.cast-persistent .cast-panel__body {
+  max-height: min(42vh, 22rem);
+  overflow-y: auto;
+}
+
+/* ==========================================================================
+   Motion — dock entrance + the View-Transitions poster morph.
+   ========================================================================== */
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Non-VT browsers (and the first paint before a VT) still get a gentle rise.
+     Excludes the closing state so the sink rule below isn't outweighed by this
+     more-specific selector while `data-cast-active` is still set during close. */
+  .cast-persistent[data-cast-active="true"]:not(.cast-vt-active):not([data-cast-closing]) .cast-dock__inner {
+    animation: cast-dock-rise 0.32s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  }
+
+  .cast-persistent[data-cast-closing] .cast-dock__inner {
+    animation: cast-dock-sink 0.22s ease-in both;
+  }
+}
+
+@keyframes cast-dock-rise {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes cast-dock-sink {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+}
+
+/* View Transitions: the poster glides from the card into the dock, and on the
+   first open the dock body rises. Names are assigned/cleared by the manager only
+   for the duration of a transition, so they never collide between snapshots. */
+::view-transition-group(cast-vt-poster) {
+  animation-duration: 0.4s;
+  animation-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+::view-transition-new(cast-vt-dock) {
+  animation: cast-dock-rise 0.36s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Belt-and-braces: the manager already skips startViewTransition under reduced
+     motion, but pin durations to ~0 if a transition is triggered another way. */
+  ::view-transition-group(*),
+  ::view-transition-new(cast-vt-dock) {
+    animation-duration: 0.01ms !important;
+  }
+}

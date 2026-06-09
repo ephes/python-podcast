@@ -22,6 +22,11 @@
 
     {% block css %}
       <link href="{% static 'css/pp/style.css' %}" rel="stylesheet">
+      {% if persistent_audio_player and audio_player_mode == "custom" %}
+        {# Persistent-player dock + play-card styling; only when the staging proof #}
+        {# is on, so production is unaffected. #}
+        <link href="{% static 'css/persistent-player.css' %}" rel="stylesheet">
+      {% endif %}
     {% endblock %}
   </head>
   <body>

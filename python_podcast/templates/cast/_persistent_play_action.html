@@ -1,15 +1,27 @@
 {# Shared persistent-player publish markup: a sanitized json_script payload + an #}
-{# inert "play this episode" action. Clicking it loads that episode into the #}
-{# single live persistent player (driven by persistent-player.js). Works on #}
-{# detail pages AND overview/list cards (each card publishes its own payload). #}
-{# Params: payload (from {% cast_player_payload %}), optional button_class and #}
-{# label. #}
+{# inert "play this episode" action, dressed as an episode play card (poster + a #}
+{# prominent labelled play pill + duration). Clicking it loads that episode into #}
+{# the single live persistent player (driven by persistent-player.js) and the #}
+{# poster glides into the dock via a View Transition. Works on detail pages AND #}
+{# overview/list cards (each card publishes its own payload). #}
+{# Params: payload (from {% cast_player_payload %}); optional button_class, label, #}
+{# and card_class ("cast-play-card--compact" for list cards). #}
 {{ payload.player_script }}
-<div class="cast-play-publish"
+<div class="cast-play-card {{ card_class }}"
      data-cast-episode-payload="{{ payload.payload_id }}"
      data-cast-player-id="{{ payload.player_id }}">
-  <button type="button" class="{{ button_class|default:'cast-play-episode' }}" data-cast-play="{{ payload.payload_id }}">
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
-    <span>{{ label|default:"Play this episode" }}</span>
-  </button>
+  {% if payload.poster %}
+    <img class="cast-play-card__poster" src="{{ payload.poster }}" alt="" loading="lazy">
+  {% endif %}
+  <div class="cast-play-card__body">
+    <button type="button" class="cast-play-card__btn {{ button_class }}" data-cast-play="{{ payload.payload_id }}">
+      <span class="cast-play-card__glyph">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+      </span>
+      <span class="cast-play-card__label">{{ label|default:"Play this episode" }}</span>
+      {% if payload.duration_display %}
+        <span class="cast-play-card__dur">{{ payload.duration_display }}</span>
+      {% endif %}
+    </button>
+  </div>
 </div>

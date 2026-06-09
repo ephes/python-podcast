@@ -13,7 +13,7 @@
   {% if render_detail %}
     {% include "cast/_persistent_play_action.html" with payload=payload label="Play this episode" %}
   {% else %}
-    {% include "cast/_persistent_play_action.html" with payload=payload label="Play episode" %}
+    {% include "cast/_persistent_play_action.html" with payload=payload label="Play episode" card_class="cast-play-card--compact" %}
   {% endif %}
 {% else %}
   {% include "cast/audio/audio.html" %}

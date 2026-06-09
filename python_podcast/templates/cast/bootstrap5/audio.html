@@ -11,9 +11,9 @@
 {% if persistent_audio_player and audio_player_mode == "custom" and not render_for_feed and page.pk %}
   {% cast_player_payload value page as payload %}
   {% if render_detail %}
-    {% include "cast/_persistent_play_action.html" with payload=payload button_class="btn btn-primary cast-play-episode" label="Play this episode" %}
+    {% include "cast/_persistent_play_action.html" with payload=payload label="Play this episode" %}
   {% else %}
-    {% include "cast/_persistent_play_action.html" with payload=payload button_class="btn btn-outline-primary btn-sm cast-play-episode" label="Play episode" %}
+    {% include "cast/_persistent_play_action.html" with payload=payload label="Play episode" card_class="cast-play-card--compact" %}
   {% endif %}
 {% else %}
   {% include "cast/audio/audio.html" %}

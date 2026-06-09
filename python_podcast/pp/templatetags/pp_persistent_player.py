@@ -17,6 +17,23 @@ from django.utils.html import json_script
 register = template.Library()
 
 
+def _format_duration(seconds: Any) -> str:
+    """Render a payload duration (seconds) as a compact human label.
+
+    Used by the episode play card ("Play episode · 45 min"). Returns "" when the
+    duration is unknown so the template can omit the label entirely.
+    """
+    if not isinstance(seconds, (int, float)) or seconds <= 0:
+        return ""
+    minutes = int(round(seconds / 60))
+    if minutes < 1:
+        minutes = 1
+    if minutes < 60:
+        return f"{minutes} min"
+    hours, rest = divmod(minutes, 60)
+    return f"{hours} h {rest} min" if rest else f"{hours} h"
+
+
 @register.simple_tag
 def pp_persistent_player_enabled() -> bool:
     """Return whether the persistent-audio-player staging proof is enabled."""
@@ -49,4 +66,9 @@ def cast_player_payload(context: dict[str, Any], audio: Any, post: Any) -> dict[
         "payload_id": payload_id,
         "player_id": f"cast-player-{audio.pk}",
         "title": payload.get("title", ""),
+        # Exposed so the episode play card can show a poster + duration (and the
+        # dock can morph the poster). Empty poster / "" duration are omitted in
+        # the template.
+        "poster": payload.get("poster", ""),
+        "duration_display": _format_duration(payload.get("duration")),
     }

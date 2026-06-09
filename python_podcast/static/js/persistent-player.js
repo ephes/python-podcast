@@ -45,12 +45,49 @@
   // Path suffixes (feed / download / media files) that must use a full load.
   var EXCLUDED_SUFFIXES = [".mp3", ".m4a", ".oga", ".opus", ".xml", ".rss", ".json", ".zip", ".pdf"];
 
+  var CLOSE_ICON =
+    '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+
   var state = {
     activePayloadId: null,
     activeAudioId: null,
     switchCount: 0,
     pageDisposers: [],
+    // Guards the async close animation against a re-activation racing it: each
+    // close takes a sequence number; activating (or a newer close) bumps it so a
+    // stale finish() no-ops instead of tearing down the freshly built dock.
+    closeSeq: 0,
+    closeTimer: null,
   };
+
+  // Cancel an in-flight close animation/teardown (called before (re)activating),
+  // so a pending finish() can't dismiss the new dock and the closing animation
+  // never leaks onto it.
+  function cancelPendingClose() {
+    state.closeSeq += 1;
+    if (state.closeTimer) {
+      window.clearTimeout(state.closeTimer);
+      state.closeTimer = null;
+    }
+    var region = getRegion();
+    if (region) {
+      region.removeAttribute("data-cast-closing");
+    }
+  }
+
+  function prefersReducedMotion() {
+    return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  }
+
+  // The poster of the play card a "play this episode" button belongs to — the
+  // View Transition morph source that glides into the dock.
+  function cardPosterFor(button) {
+    if (!button || !button.closest) {
+      return null;
+    }
+    var card = button.closest(".cast-play-card");
+    return card ? card.querySelector(".cast-play-card__poster") : null;
+  }
 
   // ---- persistent player lifecycle -----------------------------------------
 
@@ -93,17 +130,54 @@
     region.replaceChildren();
   }
 
-  // Build the single live persistent player from a published episode payload
-  // and start playback. Called only on an explicit "play this episode" action.
-  function activate(payloadId) {
-    var payload = parsePayload(payloadId);
+  // Build the dock chrome (poster + title + close) and the single live player
+  // from a published episode payload, reveal the dock, and start playback.
+  // Returns whether the dock was already active (an in-place episode switch),
+  // so the caller can avoid re-animating the dock entrance on a switch.
+  function buildActiveDock(payloadId, payload) {
     var region = getRegion();
-    if (!payload || !region) {
-      return;
+    if (!region) {
+      return false;
     }
+    var wasActive = region.getAttribute("data-cast-active") === "true";
+    var data = payload.data || {};
 
     teardownActive();
     state.switchCount += 1;
+
+    // Centred floating card; the region itself is the full-width fixed positioner.
+    var inner = document.createElement("div");
+    inner.className = "cast-dock__inner";
+
+    var header = document.createElement("div");
+    header.className = "cast-dock__header";
+    if (data.poster) {
+      var poster = document.createElement("img");
+      poster.className = "cast-dock__poster";
+      poster.src = data.poster;
+      poster.alt = "";
+      header.appendChild(poster);
+    }
+    var meta = document.createElement("div");
+    meta.className = "cast-dock__meta";
+    var title = document.createElement("span");
+    title.className = "cast-dock__title";
+    title.textContent = data.title || "";
+    meta.appendChild(title);
+    if (data.subtitle) {
+      var subtitle = document.createElement("span");
+      subtitle.className = "cast-dock__subtitle";
+      subtitle.textContent = data.subtitle;
+      meta.appendChild(subtitle);
+    }
+    header.appendChild(meta);
+    var close = document.createElement("button");
+    close.type = "button";
+    close.className = "cast-dock__close";
+    close.setAttribute("aria-label", "Close player");
+    close.innerHTML = CLOSE_ICON;
+    close.addEventListener("click", closeDock);
+    header.appendChild(close);
 
     var dataScript = document.createElement("script");
     dataScript.type = "application/json";
@@ -127,14 +201,19 @@
     // Append the payload + player first (upgrades synchronously: connectedCallback
     // builds the controller and dispatches cast:player-ready), then the panels so
     // they resolve the freshly-registered controller.
-    region.appendChild(dataScript);
-    region.appendChild(player);
-    region.appendChild(panels);
+    inner.appendChild(header);
+    inner.appendChild(dataScript);
+    inner.appendChild(player);
+    inner.appendChild(panels);
+    region.appendChild(inner);
     region.hidden = false;
     region.setAttribute("data-cast-active", "true");
+    document.body.classList.add("cast-dock-open");
 
+    // Set manager state HERE (not in activate()), so in the deferred View
+    // Transition path it is written together with the dock that actually exists.
     state.activePayloadId = payloadId;
-    state.activeAudioId = payload.data && typeof payload.data.audioId === "number" ? payload.data.audioId : null;
+    state.activeAudioId = typeof data.audioId === "number" ? data.audioId : null;
 
     // Start playback through the controller the element exposed on connect.
     // applyStartAt() inside the element already honours ?t=<seconds>.
@@ -146,6 +225,108 @@
         btn.click();
       }
     }
+    return wasActive;
+  }
+
+  // Activate an episode. Called only on an explicit "play this episode" action.
+  // When the View Transitions API is available (and motion is allowed) the play
+  // card's poster glides into the dock; otherwise the dock just builds/reveals.
+  function activate(payloadId, sourceButton) {
+    var payload = parsePayload(payloadId);
+    var region = getRegion();
+    if (!payload || !region) {
+      return;
+    }
+
+    // Neutralise any in-flight close synchronously — before the (deferred) View
+    // Transition callback — so its finish() can't null manager state or tear down
+    // the dock we are about to build.
+    cancelPendingClose();
+
+    if (!document.startViewTransition || prefersReducedMotion()) {
+      buildActiveDock(payloadId, payload);
+      return;
+    }
+
+    // Morph the poster from the clicked card into the dock. A view-transition-name
+    // is unique per snapshot, so it lives on the card in the OLD snapshot and is
+    // moved onto the dock poster in the NEW snapshot, then cleared when finished.
+    var sourcePoster = cardPosterFor(sourceButton);
+    if (sourcePoster) {
+      sourcePoster.style.viewTransitionName = "cast-vt-poster";
+    }
+    region.classList.add("cast-vt-active");
+
+    var transition = document.startViewTransition(function () {
+      if (sourcePoster) {
+        sourcePoster.style.viewTransitionName = "";
+      }
+      var wasActive = buildActiveDock(payloadId, payload);
+      var dockPoster = region.querySelector(".cast-dock__poster");
+      if (dockPoster) {
+        dockPoster.style.viewTransitionName = "cast-vt-poster";
+      }
+      // First open rises from the bottom edge; an in-place switch only crossfades.
+      if (!wasActive) {
+        var inner = region.querySelector(".cast-dock__inner");
+        if (inner) {
+          inner.style.viewTransitionName = "cast-vt-dock";
+        }
+      }
+    });
+
+    var cleanup = function () {
+      region.classList.remove("cast-vt-active");
+      var dockPoster = region.querySelector(".cast-dock__poster");
+      if (dockPoster) {
+        dockPoster.style.viewTransitionName = "";
+      }
+      var inner = region.querySelector(".cast-dock__inner");
+      if (inner) {
+        inner.style.viewTransitionName = "";
+      }
+    };
+    transition.finished.then(cleanup).catch(cleanup);
+  }
+
+  // Dismiss the dock entirely: stop + unmount the single live player (zero live
+  // players), distinct from pause (which keeps the player alive). Animates out
+  // unless reduced motion is preferred.
+  function closeDock() {
+    var region = getRegion();
+    if (!region) {
+      return;
+    }
+    var myClose = (state.closeSeq += 1);
+    var finish = function () {
+      // No-op if a re-activation (or a newer close) has superseded this one.
+      if (myClose !== state.closeSeq) {
+        return;
+      }
+      if (state.closeTimer) {
+        window.clearTimeout(state.closeTimer);
+        state.closeTimer = null;
+      }
+      teardownActive();
+      region.hidden = true;
+      region.removeAttribute("data-cast-active");
+      region.removeAttribute("data-cast-closing");
+      document.body.classList.remove("cast-dock-open");
+      state.activePayloadId = null;
+      state.activeAudioId = null;
+    };
+    var inner = region.querySelector(".cast-dock__inner");
+    if (prefersReducedMotion() || !inner) {
+      finish();
+      return;
+    }
+    region.setAttribute("data-cast-closing", "");
+    var onEnd = function () {
+      inner.removeEventListener("animationend", onEnd);
+      finish();
+    };
+    inner.addEventListener("animationend", onEnd);
+    state.closeTimer = window.setTimeout(onEnd, 400); // fallback if animationend never fires
   }
 
   // Wire every page-published "play this episode" action to the manager. Old
@@ -161,7 +342,7 @@
       var payloadId = button.getAttribute("data-cast-play");
       var handler = function (event) {
         event.preventDefault();
-        activate(payloadId);
+        activate(payloadId, button);
       };
       button.addEventListener("click", handler);
       state.pageDisposers.push(function () {
