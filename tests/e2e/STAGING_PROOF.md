@@ -58,6 +58,38 @@ On staging the `show` blog + site `TemplateBaseDirectory` are set to `bootstrap5
 (reversible staging-DB settings) so the persistent player is the default visit
 experience. Production is a separate site/DB, unaffected.
 
+## Beautification verified live on staging (2026-06-10)
+
+The persistent player was beautified (commit *"Persistent player: beautiful
+fixed bottom dock, play card, and view-transition morph"*) and **deployed to
+staging** via `just deploy-staging` (Ansible rsync of the working tree +
+`collectstatic`; `staging: ok=117 changed=8 failed=0`). The change is python-podcast
+only and stays gated behind `PYTHON_PODCAST_PERSISTENT_AUDIO_PLAYER`; production
+(Podlove, flag pinned `False`) is untouched.
+
+`tests/e2e/staging_beautification.py` re-runs against the real site and asserts
+the beautification is genuinely live; the recorded run against
+`https://python-podcast.staging.django-cast.com` (2026-06-10) passed every check:
+
+```json
+{
+  "css_status": 200, "css_fixed_dock": true, "css_play_card": true,
+  "manager_loaded": true, "css_linked": true, "play_cards": 5,
+  "dock_position_fixed": "fixed", "dock_bottom_0": "0px",
+  "dock_inner": true, "dock_poster": true, "dock_close": true,
+  "dock_transport": true, "dock_title": "Data Science",
+  "host_count_1": 1, "audio_count_1": 1, "body_dock_open": true,
+  "no_console_errors": [], "failures": []
+}
+```
+
+Key facts proven on the live site: the staging-gated `persistent-player.css` is
+served (200) and linked; episode cards render the play card; starting an episode
+builds a dock that is `position: fixed` pinned to `bottom: 0` (lifted out of flow
+— no longer "below the pagination") with poster/title/close + the live transport;
+the one-host invariant holds (`hostCount === 1`, `audioCount === 1`) and the
+console is error-free. Screenshots: `staging-idle.png`, `staging-dock.png`.
+
 ## Known, accepted-out-of-scope item
 
 The `[tool.uv.sources]` refs (`cast-bootstrap5` → `feat/custom-player-rev4`,
