@@ -300,10 +300,12 @@ body.cast-dock-open {
    ========================================================================== */
 
 @media (prefers-reduced-motion: no-preference) {
-  /* Non-VT browsers (and the first paint before a VT) still get a gentle rise.
-     Excludes the closing state so the sink rule below isn't outweighed by this
-     more-specific selector while `data-cast-active` is still set during close. */
-  .cast-persistent[data-cast-active="true"]:not(.cast-vt-active):not([data-cast-closing]) .cast-dock__inner {
+  /* Non-VT browsers get a gentle rise. Triggered by a one-shot class the manager
+     adds ONLY on the non-View-Transition first open — never tied to
+     `data-cast-active`, so removing `.cast-vt-active` after a View Transition can
+     not re-fire it, and an in-place switch does not re-rise. The sink rule is
+     listed after it so on the close tie (equal specificity) the sink wins. */
+  .cast-persistent .cast-dock__inner.cast-rise {
     animation: cast-dock-rise 0.32s cubic-bezier(0.22, 0.61, 0.36, 1) both;
   }
 

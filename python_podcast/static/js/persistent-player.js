@@ -58,7 +58,36 @@
     // stale finish() no-ops instead of tearing down the freshly built dock.
     closeSeq: 0,
     closeTimer: null,
+    // Same idea for the View Transition: a rapid second activate supersedes the
+    // first. vtSeq generation-scopes cleanup so a stale transition can't strip the
+    // current dock's names/class; vtSourcePoster tracks the morph source so its
+    // name is cleared before the next snapshot (two elements sharing a
+    // view-transition-name in one snapshot aborts the transition).
+    vtSeq: 0,
+    vtSourcePoster: null,
   };
+
+  // Clear the morph view-transition-names currently held by the dock (poster +
+  // inner) and the tracked source poster, so the next snapshot has a unique
+  // cast-vt-poster even if a prior transition has not run its cleanup yet.
+  function clearMorphNames() {
+    if (state.vtSourcePoster) {
+      state.vtSourcePoster.style.viewTransitionName = "";
+      state.vtSourcePoster = null;
+    }
+    var region = getRegion();
+    if (!region) {
+      return;
+    }
+    var dockPoster = region.querySelector(".cast-dock__poster");
+    if (dockPoster) {
+      dockPoster.style.viewTransitionName = "";
+    }
+    var inner = region.querySelector(".cast-dock__inner");
+    if (inner) {
+      inner.style.viewTransitionName = "";
+    }
+  }
 
   // Cancel an in-flight close animation/teardown (called before (re)activating),
   // so a pending finish() can't dismiss the new dock and the closing animation
@@ -134,7 +163,7 @@
   // from a published episode payload, reveal the dock, and start playback.
   // Returns whether the dock was already active (an in-place episode switch),
   // so the caller can avoid re-animating the dock entrance on a switch.
-  function buildActiveDock(payloadId, payload) {
+  function buildActiveDock(payloadId, payload, opts) {
     var region = getRegion();
     if (!region) {
       return false;
@@ -205,6 +234,11 @@
     inner.appendChild(dataScript);
     inner.appendChild(player);
     inner.appendChild(panels);
+    // Plain CSS entrance for the non-VT path only (first open, not a switch); the
+    // View Transition path passes rise:false and animates the entrance itself.
+    if (opts && opts.rise && !wasActive) {
+      inner.className += " cast-rise";
+    }
     region.appendChild(inner);
     region.hidden = false;
     region.setAttribute("data-cast-active", "true");
@@ -244,16 +278,23 @@
     cancelPendingClose();
 
     if (!document.startViewTransition || prefersReducedMotion()) {
-      buildActiveDock(payloadId, payload);
+      // No View Transition: the dock gets a plain CSS rise on first open (the
+      // media query suppresses it under reduced motion anyway).
+      buildActiveDock(payloadId, payload, { rise: !prefersReducedMotion() });
       return;
     }
 
     // Morph the poster from the clicked card into the dock. A view-transition-name
     // is unique per snapshot, so it lives on the card in the OLD snapshot and is
     // moved onto the dock poster in the NEW snapshot, then cleared when finished.
+    // A second activate supersedes the first: bump the generation and clear any
+    // names a still-in-flight prior transition holds, so this snapshot is unique.
+    var myVt = (state.vtSeq += 1);
+    clearMorphNames();
     var sourcePoster = cardPosterFor(sourceButton);
     if (sourcePoster) {
       sourcePoster.style.viewTransitionName = "cast-vt-poster";
+      state.vtSourcePoster = sourcePoster;
     }
     region.classList.add("cast-vt-active");
 
@@ -261,7 +302,11 @@
       if (sourcePoster) {
         sourcePoster.style.viewTransitionName = "";
       }
-      var wasActive = buildActiveDock(payloadId, payload);
+      if (state.vtSourcePoster === sourcePoster) {
+        state.vtSourcePoster = null;
+      }
+      // The VT animates the entrance; never also run the CSS rise.
+      var wasActive = buildActiveDock(payloadId, payload, { rise: false });
       var dockPoster = region.querySelector(".cast-dock__poster");
       if (dockPoster) {
         dockPoster.style.viewTransitionName = "cast-vt-poster";
@@ -276,15 +321,13 @@
     });
 
     var cleanup = function () {
+      // A newer transition (or its clearMorphNames) now owns the dock; do not
+      // strip its names/class.
+      if (myVt !== state.vtSeq) {
+        return;
+      }
       region.classList.remove("cast-vt-active");
-      var dockPoster = region.querySelector(".cast-dock__poster");
-      if (dockPoster) {
-        dockPoster.style.viewTransitionName = "";
-      }
-      var inner = region.querySelector(".cast-dock__inner");
-      if (inner) {
-        inner.style.viewTransitionName = "";
-      }
+      clearMorphNames();
     };
     transition.finished.then(cleanup).catch(cleanup);
   }
