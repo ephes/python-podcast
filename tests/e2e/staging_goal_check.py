@@ -130,6 +130,27 @@ def run(base: str, headed: bool = False) -> dict:
         results["geometry"] = geometry
         page.screenshot(path=str(SHOTS / "staging-goal-3-sheet-open-pagination.png"), full_page=False)
 
+        # --- Minimize: one-row strip, space shrinks, audio keeps playing -----
+        pad_expanded = page.evaluate("() => parseFloat(getComputedStyle(document.body).paddingBottom)")
+        page.locator(".cast-dock__minify").click()
+        page.wait_for_function("() => window.__castPersistentAudioDebug.isMinimized()")
+        checks["minimize_hides_panels"] = page.locator("#cast-persistent-player cast-transcript").is_hidden()
+        page.wait_for_function(
+            "(p0) => parseFloat(getComputedStyle(document.body).paddingBottom) < p0 - 40", arg=pad_expanded
+        )
+        checks["minimize_shrinks_reservation"] = True
+        checks["minimize_keeps_audio"] = page.evaluate(
+            "(prev) => { const a = window.__castPersistentAudioDebug.getActiveAudio();"
+            " return a === prev && !a.paused; }",
+            audio,
+        )
+        page.screenshot(path=str(SHOTS / "staging-goal-5-minimized.png"), full_page=False)
+        page.locator(".cast-dock__minify").click()
+        page.wait_for_function("() => !window.__castPersistentAudioDebug.isMinimized()")
+        checks["restore_preserves_sheet"] = page.locator(
+            "#cast-persistent-player .cast-transcript__cue"
+        ).first.is_visible()
+
         # --- Paginate while playing: audio survives, state re-applies --------
         page.locator('a[href$="?page=2"]').last.click()
         page.wait_for_url("**page=2**")
@@ -159,6 +180,22 @@ def run(base: str, headed: bool = False) -> dict:
             )
             checks["detail_card_mirrors_after_nav"] = True
             page.screenshot(path=str(SHOTS / "staging-goal-4-detail-card-playing.png"), full_page=False)
+
+        # --- The originally broken episode (Tag 1) now has a transcript ------
+        page.goto(base + "/show/live-von-der-djangocon-europe-2025-in-dublin-tag-1/", wait_until="networkidle")
+        page.wait_for_function("() => !!window.__castPersistentAudioDebug")
+        page.locator("[data-cast-play]").first.click()
+        page.wait_for_function(
+            "() => { const a = window.__castPersistentAudioDebug.getActiveAudio();"
+            " return a && a.currentTime > 0.3 && !a.paused; }",
+            timeout=15000,
+        )
+        page.locator("#cast-persistent-player cast-transcript .cast-panel__toggle").click()
+        page.wait_for_selector("#cast-persistent-player .cast-transcript__cue", timeout=15000)
+        tag1_cues = page.locator("#cast-persistent-player .cast-transcript__cue").count()
+        checks["tag1_transcript_has_cues"] = tag1_cues > 100
+        results["tag1_cues"] = tag1_cues
+        page.screenshot(path=str(SHOTS / "staging-goal-6-tag1-transcript.png"), full_page=False)
 
         browser.close()
 
