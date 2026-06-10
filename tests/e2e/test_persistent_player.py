@@ -416,7 +416,7 @@ def test_play_card_mirror_and_dock_space_reservation(page, paginated_site):
     assert geometry["ok"] is True, f"bottom pagination must not be covered by the dock: {geometry}"
 
     # --- Pagination (htmx swap) stays clickable and re-applies card state ---
-    page.locator('a[href*="?page=2"]').last.click()
+    page.locator('a[href$="?page=2"]').last.click()
     page.wait_for_function(
         "() => { const s = window.__castPersistentAudioDebug.cardStates();"
         " const ids = Object.keys(s); return ids.length >= 1 && ids.every((k) => s[k] === null); }"
@@ -425,7 +425,7 @@ def test_play_card_mirror_and_dock_space_reservation(page, paginated_site):
         "(prev) => window.__castPersistentAudioDebug.getActiveAudio() === prev", audio_a
     ), "pagination must not touch the persistent player"
     _assert_advancing(page, "after paginating to page 2")
-    page.locator('a[href*="?page=1"]').last.click()
+    page.locator('a[href$="?page=1"]').last.click()
     page.wait_for_function(
         "(id) => window.__castPersistentAudioDebug.cardStates()[id] === 'playing'",
         arg=active_payload_id,
