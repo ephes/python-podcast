@@ -35,126 +35,228 @@
     0 4px 14px -8px color-mix(in srgb, #000 40%, transparent);
 }
 
-/* Reserve space so the fixed dock never hides the last line of content/footer. */
+/* Reserve real space so the fixed dock never hides content. --cast-dock-height
+   tracks the dock's actual rendered height (the manager keeps it current with a
+   ResizeObserver), so even an expanded transcript/chapters sheet (~42vh) leaves
+   the last paragraphs, footer, and pagination reachable below the content. */
 body.cast-dock-open {
-  padding-bottom: 8.5rem;
-  scroll-padding-bottom: 8.5rem;
+  padding-bottom: calc(var(--cast-dock-height, 8.5rem) + 1.5rem);
+  scroll-padding-bottom: calc(var(--cast-dock-height, 8.5rem) + 1.5rem);
 }
 
 /* ==========================================================================
-   Episode play card — the in-article affordance that starts an episode.
-   Replaces the bare button: poster + a prominent labelled play pill + duration.
+   Episode play card — the in-article affordance that starts an episode and
+   mirrors the dock's playback state for its own episode. One cohesive surface
+   (no pill-in-a-box): poster, circular play control, label + duration.
+   data-cast-state (set by the manager) flips it into the now-playing proxy:
+   pause glyph, live elapsed/total readout, equalizer badge on the poster,
+   accent border. The button's hit area stretches over the whole card.
    ========================================================================== */
 
 .cast-play-card {
+  position: relative; /* anchor for the stretched button hit area */
   display: flex;
-  flex-wrap: wrap; /* narrow viewports: the play pill drops below the poster */
   align-items: center;
-  gap: 1rem;
+  gap: 0.9rem;
   margin: 1.25rem 0;
-  padding: 0.85rem;
+  padding: 0.7rem 0.95rem;
   border: 1px solid var(--cast-dock-line);
-  border-radius: var(--cast-dock-radius);
-  background: color-mix(in srgb, var(--cast-player-accent, #2d8260) 5%, var(--cast-dock-surface));
-  max-width: 32rem;
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--cast-player-accent, #2d8260) 4%, var(--cast-dock-surface));
+  max-width: 30rem;
+  transition: border-color 0.16s ease, background-color 0.16s ease, box-shadow 0.18s ease;
+}
+
+.cast-play-card:hover {
+  border-color: color-mix(in srgb, var(--cast-player-accent, #2d8260) 45%, transparent);
+  box-shadow: 0 4px 18px -8px color-mix(in srgb, var(--cast-player-accent, #2d8260) 45%, transparent);
+}
+
+.cast-play-card[data-cast-state] {
+  border-color: color-mix(in srgb, var(--cast-player-accent, #2d8260) 55%, transparent);
+  background: color-mix(in srgb, var(--cast-player-accent, #2d8260) 9%, var(--cast-dock-surface));
 }
 
 /* On overview/list cards the affordance is more compact. */
 .cast-play-card--compact {
   margin: 0.5rem 0 0;
-  padding: 0.5rem;
-  gap: 0.75rem;
+  padding: 0.5rem 0.7rem;
+  gap: 0.7rem;
+}
+
+.cast-play-card__posterwrap {
+  position: relative;
+  flex: none;
+  display: block;
 }
 
 .cast-play-card__poster {
-  flex: none;
-  width: 4rem;
-  height: 4rem;
+  display: block;
+  width: 3.4rem;
+  height: 3.4rem;
   border-radius: 0.7rem;
   object-fit: cover;
   background: var(--cast-player-progress-track, #e5e7eb);
-  box-shadow: 0 1px 4px color-mix(in srgb, #000 18%, transparent);
 }
 
 .cast-play-card--compact .cast-play-card__poster {
-  width: 3rem;
-  height: 3rem;
+  width: 2.9rem;
+  height: 2.9rem;
 }
 
-.cast-play-card__body {
+/* Equalizer badge: pulses over the poster while this episode is playing. */
+.cast-play-card__eq {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 3px;
+  padding-bottom: 0.55rem;
+  border-radius: 0.7rem;
+  background: color-mix(in srgb, #000 45%, transparent);
+}
+
+.cast-play-card[data-cast-state="playing"] .cast-play-card__eq {
   display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  min-width: 0;
 }
 
-/* The play pill: accent surface, play glyph + label + middot duration. This is
-   the same element the manager wires (`[data-cast-play]`); we just dress it.
-   Defensive resets in case a theme passed Bootstrap `.btn` classes. */
+.cast-play-card__eq > i {
+  width: 3px;
+  height: 30%;
+  border-radius: 2px;
+  background: #fff;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .cast-play-card[data-cast-state="playing"] .cast-play-card__eq > i {
+    animation: cast-eq 1s ease-in-out infinite;
+  }
+
+  .cast-play-card__eq > i:nth-child(2) {
+    animation-delay: 0.25s;
+  }
+
+  .cast-play-card__eq > i:nth-child(3) {
+    animation-delay: 0.5s;
+  }
+}
+
+@keyframes cast-eq {
+  0%,
+  100% {
+    height: 25%;
+  }
+
+  50% {
+    height: 65%;
+  }
+}
+
+/* The button IS the card's single action (the manager wires [data-cast-play]).
+   Visually it is the circular glyph + text; its hit area covers the card. */
 .cast-play-card__btn {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.6rem;
-  align-self: flex-start;
-  padding: 0.6rem 1.1rem 0.6rem 0.75rem;
+  gap: 0.8rem;
+  min-width: 0;
+  padding: 0;
   border: 0;
-  border-radius: 999px;
-  background: var(--cast-player-accent, #2d8260);
-  color: var(--cast-player-on-accent, #fff);
+  background: none;
+  color: inherit;
   font: inherit;
-  font-weight: 600;
-  line-height: 1.1;
+  text-align: left;
   cursor: pointer;
-  box-shadow: 0 2px 12px color-mix(in srgb, var(--cast-player-accent, #2d8260) 40%, transparent);
-  transition: transform 0.14s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s ease,
-    background-color 0.16s ease;
 }
 
-.cast-play-card__btn:hover {
-  background: color-mix(in srgb, var(--cast-player-accent, #2d8260) 88%, black);
-  box-shadow: 0 4px 18px color-mix(in srgb, var(--cast-player-accent, #2d8260) 52%, transparent);
-  transform: translateY(-1px);
-}
-
-.cast-play-card__btn:active {
-  transform: translateY(0) scale(0.97);
+.cast-play-card__btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 1rem;
 }
 
 .cast-play-card__btn:focus-visible {
+  outline: none;
+}
+
+.cast-play-card:has(.cast-play-card__btn:focus-visible) {
   outline: 3px solid var(--cast-player-focus, var(--cast-player-accent, #2d8260));
   outline-offset: 2px;
 }
 
-/* The circular glyph chip inside the pill. */
+/* The circular accent play/pause control. */
 .cast-play-card__glyph {
+  flex: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.9rem;
-  height: 1.9rem;
+  width: 2.75rem;
+  height: 2.75rem;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--cast-player-on-accent, #fff) 22%, transparent);
+  background: var(--cast-player-accent, #2d8260);
+  color: var(--cast-player-on-accent, #fff);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--cast-player-accent, #2d8260) 45%, transparent);
+  transition: transform 0.14s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s ease;
 }
 
-.cast-play-card__glyph > svg {
+.cast-play-card--compact .cast-play-card__glyph {
+  width: 2.4rem;
+  height: 2.4rem;
+}
+
+.cast-play-card:hover .cast-play-card__glyph {
+  transform: scale(1.06);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--cast-player-accent, #2d8260) 55%, transparent);
+}
+
+.cast-play-card__btn:active .cast-play-card__glyph {
+  transform: scale(0.94);
+}
+
+.cast-play-card__icon--play {
   transform: translateX(1px); /* optically centre the play triangle */
 }
 
-.cast-play-card__label {
-  white-space: nowrap;
+.cast-play-card__icon--pause {
+  display: none;
 }
 
-.cast-play-card__dur {
+.cast-play-card[data-cast-state="playing"] .cast-play-card__icon--play {
+  display: none;
+}
+
+.cast-play-card[data-cast-state="playing"] .cast-play-card__icon--pause {
+  display: block;
+}
+
+.cast-play-card__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.cast-play-card__label {
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.cast-play-card__meta {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
   font-size: 0.85em;
   font-weight: 500;
-  opacity: 0.85;
+  color: var(--cast-player-muted, #6b7280);
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-.cast-play-card__dur::before {
-  content: "·";
-  margin-right: 0.5rem;
-  opacity: 0.7;
+/* While the card mirrors the dock, the static duration yields to the live
+   elapsed/total readout the manager writes into __time. */
+.cast-play-card[data-cast-state] .cast-play-card__dur {
+  display: none;
 }
 
 /* ==========================================================================
@@ -336,9 +438,24 @@ body.cast-dock-open {
   }
 }
 
-/* View Transitions: the poster glides from the card into the dock, and on the
-   first open the dock body rises. Names are assigned/cleared by the manager only
-   for the duration of a transition, so they never collide between snapshots. */
+/* View Transitions: the pressed play card morphs into the dock (the group
+   interpolates position + size, so the card visibly *becomes* the player) and
+   the poster glides as its own nested pair. cast-vt-dock stays as the entrance
+   for the no-card fallback. Names are assigned/cleared by the manager only for
+   the duration of a transition, so they never collide between snapshots. */
+::view-transition-group(cast-vt-card) {
+  animation-duration: 0.45s;
+  animation-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* Scale both snapshots to the morphing group box so the card/dock crossfade
+   tracks the size interpolation instead of overflowing it. */
+::view-transition-old(cast-vt-card),
+::view-transition-new(cast-vt-card) {
+  height: 100%;
+  width: 100%;
+}
+
 ::view-transition-group(cast-vt-poster) {
   animation-duration: 0.4s;
   animation-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);

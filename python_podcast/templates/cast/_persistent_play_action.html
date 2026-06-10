@@ -1,27 +1,38 @@
 {# Shared persistent-player publish markup: a sanitized json_script payload + an #}
 {# inert "play this episode" action, dressed as an episode play card (poster + a #}
-{# prominent labelled play pill + duration). Clicking it loads that episode into #}
+{# circular play control + label/duration). Clicking it loads that episode into #}
 {# the single live persistent player (driven by persistent-player.js) and the #}
-{# poster glides into the dock via a View Transition. Works on detail pages AND #}
-{# overview/list cards (each card publishes its own payload). #}
-{# Params: payload (from {% cast_player_payload %}); optional button_class, label, #}
-{# and card_class ("cast-play-card--compact" for list cards). #}
+{# card morphs into the dock via a View Transition. The manager mirrors global #}
+{# playback state back onto the card (data-cast-state="playing"|"paused"): the #}
+{# glyph flips to pause, the duration swaps to a live elapsed/total readout, an #}
+{# equalizer badge pulses on the poster, and clicking again toggles pause/resume #}
+{# instead of restarting. Works on detail pages AND overview/list cards (each #}
+{# card publishes its own payload). #}
+{# Params: payload (from {% cast_player_payload %}); optional label and #}
+{# card_class ("cast-play-card--compact" for list cards). #}
 {{ payload.player_script }}
 <div class="cast-play-card {{ card_class }}"
      data-cast-episode-payload="{{ payload.payload_id }}"
      data-cast-player-id="{{ payload.player_id }}">
   {% if payload.poster %}
-    <img class="cast-play-card__poster" src="{{ payload.poster }}" alt="" loading="lazy">
+    <span class="cast-play-card__posterwrap">
+      <img class="cast-play-card__poster" src="{{ payload.poster }}" alt="" loading="lazy">
+      <span class="cast-play-card__eq" aria-hidden="true"><i></i><i></i><i></i></span>
+    </span>
   {% endif %}
-  <div class="cast-play-card__body">
-    <button type="button" class="cast-play-card__btn {{ button_class }}" data-cast-play="{{ payload.payload_id }}">
-      <span class="cast-play-card__glyph">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+  <button type="button" class="cast-play-card__btn" data-cast-play="{{ payload.payload_id }}">
+    <span class="cast-play-card__glyph" aria-hidden="true">
+      <svg class="cast-play-card__icon--play" viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+      <svg class="cast-play-card__icon--pause" viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M7 5h3.4v14H7zM13.6 5H17v14h-3.6z"/></svg>
+    </span>
+    <span class="cast-play-card__text">
+      <span class="cast-play-card__label" data-cast-idle-label="{{ label|default:'Play episode' }}">{{ label|default:"Play episode" }}</span>
+      <span class="cast-play-card__meta">
+        {% if payload.duration_display %}
+          <span class="cast-play-card__dur">{{ payload.duration_display }}</span>
+        {% endif %}
+        <span class="cast-play-card__time" hidden></span>
       </span>
-      <span class="cast-play-card__label">{{ label|default:"Play this episode" }}</span>
-      {% if payload.duration_display %}
-        <span class="cast-play-card__dur">{{ payload.duration_display }}</span>
-      {% endif %}
-    </button>
-  </div>
+    </span>
+  </button>
 </div>

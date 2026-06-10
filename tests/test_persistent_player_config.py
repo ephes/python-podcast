@@ -63,13 +63,15 @@ def test_persistent_play_action_partial_renders_payload_and_inert_action():
                 "payload_id": "cast-player-data-7",
                 "title": "Episode Alpha",
             },
-            "button_class": "btn btn-primary cast-play-episode",
             "label": "Play this episode",
         },
     )
     assert 'data-cast-play="cast-player-data-7"' in html  # inert action references the payload
     assert "cast-player-data-7" in html  # payload published (json_script id)
-    assert "btn btn-primary cast-play-episode" in html  # theme-supplied styling
+    # The card carries the state-mirror hooks the manager writes to.
+    assert 'data-cast-idle-label="Play this episode"' in html
+    assert "cast-play-card__icon--pause" in html  # pause glyph for the now-playing proxy
+    assert "cast-play-card__time" in html  # live elapsed/total readout slot
     assert "Play this episode" in html
     assert "<cast-audio-player" not in html  # no in-body live player
     assert "<cast-transcript" not in html

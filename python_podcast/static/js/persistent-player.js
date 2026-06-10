@@ -60,20 +60,30 @@
     closeTimer: null,
     // Same idea for the View Transition: a rapid second activate supersedes the
     // first. vtSeq generation-scopes cleanup so a stale transition can't strip the
-    // current dock's names/class; vtSourcePoster tracks the morph source so its
-    // name is cleared before the next snapshot (two elements sharing a
-    // view-transition-name in one snapshot aborts the transition).
+    // current dock's names/class; vtSourcePoster/vtSourceCard track the morph
+    // sources so their names are cleared before the next snapshot (two elements
+    // sharing a view-transition-name in one snapshot aborts the transition).
     vtSeq: 0,
     vtSourcePoster: null,
+    vtSourceCard: null,
+    // Listeners scoped to the lifetime of the current dock (audio events that
+    // mirror playback state onto the page's play cards). Disposed on teardown.
+    dockDisposers: [],
+    dockResizeObserver: null,
+    lastCardTimeText: "",
   };
 
   // Clear the morph view-transition-names currently held by the dock (poster +
-  // inner) and the tracked source poster, so the next snapshot has a unique
-  // cast-vt-poster even if a prior transition has not run its cleanup yet.
+  // inner) and the tracked source poster/card, so the next snapshot has unique
+  // names even if a prior transition has not run its cleanup yet.
   function clearMorphNames() {
     if (state.vtSourcePoster) {
       state.vtSourcePoster.style.viewTransitionName = "";
       state.vtSourcePoster = null;
+    }
+    if (state.vtSourceCard) {
+      state.vtSourceCard.style.viewTransitionName = "";
+      state.vtSourceCard = null;
     }
     var region = getRegion();
     if (!region) {
@@ -108,13 +118,18 @@
     return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   }
 
-  // The poster of the play card a "play this episode" button belongs to — the
-  // View Transition morph source that glides into the dock.
-  function cardPosterFor(button) {
+  // The play card a "play this episode" button belongs to — the View Transition
+  // morph source that grows into the dock.
+  function cardFor(button) {
     if (!button || !button.closest) {
       return null;
     }
-    var card = button.closest(".cast-play-card");
+    return button.closest(".cast-play-card");
+  }
+
+  // The card's poster: a nested morph pair that glides into the dock poster.
+  function cardPosterFor(button) {
+    var card = cardFor(button);
     return card ? card.querySelector(".cast-play-card__poster") : null;
   }
 
@@ -146,11 +161,190 @@
     }
   }
 
+  // ---- dock space reservation ----------------------------------------------
+  // The dock is fixed to the bottom edge and grows when the transcript/chapters
+  // panels open (up to ~42vh), so a static body padding cannot keep the page
+  // content reachable. --cast-dock-height tracks the dock's real height; the CSS
+  // reserves padding-bottom/scroll-padding-bottom from it, so the footer and the
+  // pagination controls always scroll clear of the dock.
+
+  function releaseDockSpace() {
+    if (state.dockResizeObserver) {
+      state.dockResizeObserver.disconnect();
+      state.dockResizeObserver = null;
+    }
+    document.documentElement.style.removeProperty("--cast-dock-height");
+  }
+
+  function reserveDockSpace() {
+    releaseDockSpace();
+    var region = getRegion();
+    var inner = region ? region.querySelector(".cast-dock__inner") : null;
+    if (!inner) {
+      return;
+    }
+    var apply = function () {
+      var height = Math.ceil(inner.getBoundingClientRect().height);
+      document.documentElement.style.setProperty("--cast-dock-height", height + "px");
+    };
+    if (window.ResizeObserver) {
+      state.dockResizeObserver = new ResizeObserver(apply);
+      state.dockResizeObserver.observe(inner);
+    }
+    apply();
+  }
+
+  // ---- play-card state mirror ------------------------------------------------
+  // The page's play cards mirror the dock's playback state for their own episode:
+  // data-cast-state="playing"|"paused" drives the pause glyph, equalizer badge and
+  // accent styling; the static duration yields to a live elapsed/total readout.
+  // Cards stay plain DOM the manager writes to — they never hold a controller.
+
+  function formatTime(totalSeconds) {
+    if (typeof totalSeconds !== "number" || !isFinite(totalSeconds) || totalSeconds < 0) {
+      return "";
+    }
+    var s = Math.floor(totalSeconds);
+    var h = Math.floor(s / 3600);
+    var m = Math.floor((s % 3600) / 60);
+    var two = function (n) {
+      return n < 10 ? "0" + n : "" + n;
+    };
+    return h > 0 ? h + ":" + two(m) + ":" + two(s % 60) : m + ":" + two(s % 60);
+  }
+
+  function updateCardTime() {
+    var audio = state.activePayloadId ? getActiveAudio() : null;
+    var text = "";
+    if (audio) {
+      var current = formatTime(audio.currentTime);
+      var total = formatTime(audio.duration);
+      text = current && total ? current + " / " + total : current;
+    }
+    if (text === state.lastCardTimeText) {
+      return; // timeupdate fires ~4x/s; only touch the DOM on a visible change
+    }
+    state.lastCardTimeText = text;
+    var times = document.querySelectorAll(".cast-play-card[data-cast-state] .cast-play-card__time");
+    Array.prototype.forEach.call(times, function (el) {
+      el.textContent = text;
+      el.hidden = !text;
+    });
+  }
+
+  function updateCards() {
+    var audio = getActiveAudio();
+    var playing = !!(audio && !audio.paused && !audio.ended);
+    var cards = document.querySelectorAll(".cast-play-card[data-cast-episode-payload]");
+    Array.prototype.forEach.call(cards, function (card) {
+      var isActive =
+        !!state.activePayloadId && card.getAttribute("data-cast-episode-payload") === state.activePayloadId;
+      var label = card.querySelector(".cast-play-card__label");
+      var time = card.querySelector(".cast-play-card__time");
+      var button = card.querySelector(".cast-play-card__btn");
+      if (!isActive) {
+        card.removeAttribute("data-cast-state");
+        if (label && label.getAttribute("data-cast-idle-label")) {
+          label.textContent = label.getAttribute("data-cast-idle-label");
+        }
+        if (time) {
+          time.hidden = true;
+          time.textContent = "";
+        }
+        if (button) {
+          button.removeAttribute("aria-label");
+        }
+        return;
+      }
+      card.setAttribute("data-cast-state", playing ? "playing" : "paused");
+      if (label) {
+        label.textContent = playing ? "Now playing" : "Paused";
+      }
+      if (button) {
+        // The visible label states the status; the accessible name keeps that
+        // text (label-in-name) and adds the action the click performs.
+        button.setAttribute("aria-label", playing ? "Now playing — pause" : "Paused — resume");
+      }
+    });
+    state.lastCardTimeText = null; // force the next readout to render
+    updateCardTime();
+  }
+
+  // The active episode's card is a thin proxy for the dock: clicking it again
+  // toggles pause/resume on the single live controller instead of restarting.
+  function toggleActive() {
+    var player = getPersistentPlayerEl();
+    if (player && player.controller && typeof player.controller.toggle === "function") {
+      player.controller.toggle();
+      return;
+    }
+    var audio = getActiveAudio();
+    if (audio) {
+      if (audio.paused) {
+        var p = audio.play();
+        if (p && typeof p.catch === "function") {
+          p.catch(function () {});
+        }
+      } else {
+        audio.pause();
+      }
+    }
+  }
+
+  function disposeDockListeners() {
+    for (var i = 0; i < state.dockDisposers.length; i++) {
+      state.dockDisposers[i]();
+    }
+    state.dockDisposers = [];
+  }
+
+  // Mirror the dock's audio events onto the page's play cards. Scoped to the
+  // current dock: disposed in teardownActive(), re-attached per build.
+  function wireActiveAudio() {
+    var audio = getActiveAudio();
+    if (!audio) {
+      // The custom element upgrades synchronously when the bundle is loaded, but
+      // be defensive: resolve through the registry's document-level ready event.
+      var onReady = function (event) {
+        if (!event.detail || event.detail.playerId !== PLAYER_ID) {
+          return;
+        }
+        document.removeEventListener("cast:player-ready", onReady);
+        wireActiveAudio();
+        updateCards();
+      };
+      document.addEventListener("cast:player-ready", onReady);
+      state.dockDisposers.push(function () {
+        document.removeEventListener("cast:player-ready", onReady);
+      });
+      return;
+    }
+    var onState = function () {
+      updateCards();
+    };
+    var onTime = function () {
+      updateCardTime();
+    };
+    audio.addEventListener("play", onState);
+    audio.addEventListener("pause", onState);
+    audio.addEventListener("ended", onState);
+    audio.addEventListener("timeupdate", onTime);
+    audio.addEventListener("durationchange", onTime);
+    state.dockDisposers.push(function () {
+      audio.removeEventListener("play", onState);
+      audio.removeEventListener("pause", onState);
+      audio.removeEventListener("ended", onState);
+      audio.removeEventListener("timeupdate", onTime);
+      audio.removeEventListener("durationchange", onTime);
+    });
+  }
+
   function teardownActive() {
     var region = getRegion();
     if (!region) {
       return;
     }
+    disposeDockListeners();
     // Removing the children synchronously fires disconnectedCallback on the
     // <cast-audio-player> (controller.destroy + unregister) and the panels, so
     // no controller/listener leaks across a switch and the registry is clear
@@ -259,6 +453,11 @@
         btn.click();
       }
     }
+    // Track the dock's real height for the body's space reservation, and mirror
+    // the new playback state onto the page's play cards.
+    reserveDockSpace();
+    wireActiveAudio();
+    updateCards();
     return wasActive;
   }
 
@@ -284,17 +483,23 @@
       return;
     }
 
-    // Morph the poster from the clicked card into the dock. A view-transition-name
-    // is unique per snapshot, so it lives on the card in the OLD snapshot and is
-    // moved onto the dock poster in the NEW snapshot, then cleared when finished.
-    // A second activate supersedes the first: bump the generation and clear any
-    // names a still-in-flight prior transition holds, so this snapshot is unique.
+    // Morph the clicked card into the dock (and its poster into the dock poster
+    // as a nested pair). A view-transition-name is unique per snapshot, so it
+    // lives on the card in the OLD snapshot and is moved onto the dock in the
+    // NEW snapshot, then cleared when finished. A second activate supersedes the
+    // first: bump the generation and clear any names a still-in-flight prior
+    // transition holds, so this snapshot is unique.
     var myVt = (state.vtSeq += 1);
     clearMorphNames();
     var sourcePoster = cardPosterFor(sourceButton);
+    var sourceCard = cardFor(sourceButton);
     if (sourcePoster) {
       sourcePoster.style.viewTransitionName = "cast-vt-poster";
       state.vtSourcePoster = sourcePoster;
+    }
+    if (sourceCard) {
+      sourceCard.style.viewTransitionName = "cast-vt-card";
+      state.vtSourceCard = sourceCard;
     }
     region.classList.add("cast-vt-active");
 
@@ -305,17 +510,25 @@
       if (state.vtSourcePoster === sourcePoster) {
         state.vtSourcePoster = null;
       }
+      if (sourceCard) {
+        sourceCard.style.viewTransitionName = "";
+      }
+      if (state.vtSourceCard === sourceCard) {
+        state.vtSourceCard = null;
+      }
       // The VT animates the entrance; never also run the CSS rise.
       var wasActive = buildActiveDock(payloadId, payload, { rise: false });
       var dockPoster = region.querySelector(".cast-dock__poster");
       if (dockPoster) {
         dockPoster.style.viewTransitionName = "cast-vt-poster";
       }
-      // First open rises from the bottom edge; an in-place switch only crossfades.
+      // First open: the dock inner is the card's morph target (the card grows
+      // into the player); without a card source it falls back to the rise
+      // entrance. An in-place switch only crossfades.
       if (!wasActive) {
         var inner = region.querySelector(".cast-dock__inner");
         if (inner) {
-          inner.style.viewTransitionName = "cast-vt-dock";
+          inner.style.viewTransitionName = sourceCard ? "cast-vt-card" : "cast-vt-dock";
         }
       }
     });
@@ -357,6 +570,8 @@
       document.body.classList.remove("cast-dock-open");
       state.activePayloadId = null;
       state.activeAudioId = null;
+      releaseDockSpace();
+      updateCards();
     };
     var inner = region.querySelector(".cast-dock__inner");
     if (prefersReducedMotion() || !inner) {
@@ -385,6 +600,14 @@
       var payloadId = button.getAttribute("data-cast-play");
       var handler = function (event) {
         event.preventDefault();
+        var region = getRegion();
+        var dockActive = !!region && region.getAttribute("data-cast-active") === "true";
+        if (dockActive && payloadId === state.activePayloadId) {
+          // This episode is already in the dock: the card acts as a pause/resume
+          // proxy instead of restarting playback.
+          toggleActive();
+          return;
+        }
         activate(payloadId, button);
       };
       button.addEventListener("click", handler);
@@ -392,6 +615,9 @@
         button.removeEventListener("click", handler);
       });
     });
+    // Fresh cards (initial load, enhanced nav, htmx pagination) must immediately
+    // reflect the dock's current episode/state.
+    updateCards();
   }
 
   // ---- enhanced navigation --------------------------------------------------
@@ -585,6 +811,20 @@
       },
       getActiveAudio: getActiveAudio,
       getActivePlayer: getPersistentPlayerEl,
+      // Map of payload id -> data-cast-state (null when idle) for every play
+      // card on the page; lets tests assert the now-playing mirror.
+      cardStates: function () {
+        var out = {};
+        var cards = document.querySelectorAll(".cast-play-card[data-cast-episode-payload]");
+        Array.prototype.forEach.call(cards, function (card) {
+          out[card.getAttribute("data-cast-episode-payload")] = card.getAttribute("data-cast-state");
+        });
+        return out;
+      },
+      // The reserved dock height custom property ("" when no dock is open).
+      dockHeight: function () {
+        return document.documentElement.style.getPropertyValue("--cast-dock-height");
+      },
     };
   }
 
