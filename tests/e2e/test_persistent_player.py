@@ -47,7 +47,7 @@ def _synth_audio(ext: str, codec: str, seconds: int = CLIP_SECONDS) -> bytes:
         return out.read_bytes()
 
 
-def _make_episode(*, blog, num, title, user, root_collection, seconds=CLIP_SECONDS):
+def _make_episode(*, blog, num, title, user, root_collection, seconds=CLIP_SECONDS, num_cues=NUM_CUES):
     from cast.devdata import create_episode, create_transcript
     from cast.models import Audio
     from cast.models.audio import ChapterMark
@@ -65,7 +65,7 @@ def _make_episode(*, blog, num, title, user, root_collection, seconds=CLIP_SECON
 
     cues = [
         {"start_ms": i * 1000, "end_ms": (i + 1) * 1000, "text": f"{title} transcript cue {i}."}
-        for i in range(NUM_CUES)
+        for i in range(num_cues)
     ]
     create_transcript(audio=audio, podlove={"transcripts": cues})
     ChapterMark.objects.create(audio=audio, start="00:00:00.000", title=f"{title} Chapter One")
@@ -160,6 +160,21 @@ def paginated_site(staging_site):
         episode.visible_date = datetime.datetime(2020, 1, i, tzinfo=datetime.UTC)
         episode.save()
         episode.save_revision().publish()
+    # An advertised transcript that resolves to zero cues (stored file exists but
+    # is empty) — the staging shape behind the dead-empty-panel bug.
+    empty = _make_episode(
+        blog=podcast,
+        num=7,
+        title="Episode Empty Transcript",
+        user=user,
+        root_collection=root_collection,
+        seconds=2,
+        num_cues=0,
+    )
+    empty.visible_date = datetime.datetime(2019, 1, 1, tzinfo=datetime.UTC)
+    empty.save()
+    empty.save_revision().publish()
+    staging_site["empty_transcript_url"] = empty.url
     return staging_site
 
 
@@ -431,6 +446,24 @@ def test_play_card_mirror_and_dock_space_reservation(page, paginated_site):
         arg=active_payload_id,
     )
 
+    # --- Minimize: one-row strip, space shrinks, audio keeps playing --------
+    pad_expanded = page.evaluate("() => parseFloat(getComputedStyle(document.body).paddingBottom)")
+    page.locator(".cast-dock__minify").click()
+    page.wait_for_function("() => window.__castPersistentAudioDebug.isMinimized()")
+    expect(page.locator("#cast-persistent-player cast-transcript")).to_be_hidden()
+    page.wait_for_function(
+        "(p0) => parseFloat(getComputedStyle(document.body).paddingBottom) < p0 - 40", arg=pad_expanded
+    )
+    assert page.evaluate(
+        "(prev) => window.__castPersistentAudioDebug.getActiveAudio() === prev", audio_a
+    ), "minimizing must not touch the player"
+    _assert_advancing(page, "while minimized")
+
+    # Restore: the open transcript sheet comes back exactly as it was.
+    page.locator(".cast-dock__minify").click()
+    page.wait_for_function("() => !window.__castPersistentAudioDebug.isMinimized()")
+    expect(page.locator("#cast-persistent-player .cast-transcript__cue").first).to_be_visible()
+
     # --- Closing the dock returns every card to idle and frees the space ----
     page.locator(".cast-dock__close").click()
     page.wait_for_function("() => !document.body.classList.contains('cast-dock-open')")
@@ -442,6 +475,23 @@ def test_play_card_mirror_and_dock_space_reservation(page, paginated_site):
     assert page.evaluate("() => window.__castPersistentAudioDebug.hostCount()") == 0
 
     assert errors == [], f"console errors: {errors}"
+
+
+@pytest.mark.e2e
+def test_empty_transcript_shows_status_instead_of_dead_panel(page, paginated_site):
+    """A transcript URL that lazily resolves to zero cues must yield a clear
+    status message (and no dead search toolbar) in the dock panel."""
+    site = paginated_site
+    page.goto(site["base"] + site["empty_transcript_url"])
+    page.wait_for_function("() => !!window.__castPersistentAudioDebug")
+    page.locator("[data-cast-play]").first.click()
+    page.wait_for_function("() => window.__castPersistentAudioDebug.hostCount() === 1")
+    page.locator("#cast-persistent-player cast-transcript .cast-panel__toggle").click()
+    expect(page.locator("#cast-persistent-player .cast-transcript__loading")).to_have_text(
+        "No transcript available for this episode."
+    )
+    expect(page.locator("#cast-persistent-player cast-transcript .cast-panel__tools")).to_be_hidden()
+    assert page.locator("#cast-persistent-player .cast-transcript__cue").count() == 0
 
 
 @pytest.mark.e2e

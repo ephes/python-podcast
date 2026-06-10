@@ -129,16 +129,19 @@ body.cast-dock-open {
 }
 
 @media (prefers-reduced-motion: no-preference) {
+  /* Per-bar durations + delays keep the pulse organic instead of metronomic. */
   .cast-play-card[data-cast-state="playing"] .cast-play-card__eq > i {
-    animation: cast-eq 1s ease-in-out infinite;
+    animation: cast-eq 0.9s ease-in-out infinite;
   }
 
-  .cast-play-card__eq > i:nth-child(2) {
-    animation-delay: 0.25s;
+  .cast-play-card[data-cast-state="playing"] .cast-play-card__eq > i:nth-child(2) {
+    animation-duration: 1.15s;
+    animation-delay: 0.2s;
   }
 
-  .cast-play-card__eq > i:nth-child(3) {
-    animation-delay: 0.5s;
+  .cast-play-card[data-cast-state="playing"] .cast-play-card__eq > i:nth-child(3) {
+    animation-duration: 0.75s;
+    animation-delay: 0.35s;
   }
 }
 
@@ -353,7 +356,8 @@ body.cast-dock-open {
   text-overflow: ellipsis;
 }
 
-.cast-dock__close {
+.cast-dock__close,
+.cast-dock__minify {
   flex: none;
   display: inline-flex;
   align-items: center;
@@ -368,14 +372,93 @@ body.cast-dock-open {
   transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-.cast-dock__close:hover {
+.cast-dock__close:hover,
+.cast-dock__minify:hover {
   background: color-mix(in srgb, var(--cast-player-fg, CanvasText) 10%, transparent);
   color: var(--cast-player-fg, CanvasText);
 }
 
-.cast-dock__close:focus-visible {
+.cast-dock__close:focus-visible,
+.cast-dock__minify:focus-visible {
   outline: 2px solid var(--cast-player-focus, var(--cast-player-accent, #2d8260));
   outline-offset: 2px;
+}
+
+.cast-dock__minify > svg {
+  transition: transform 0.2s ease;
+}
+
+.cast-persistent[data-cast-min] .cast-dock__minify > svg {
+  transform: rotate(180deg);
+}
+
+/* ==========================================================================
+   Minimized dock — a one-row strip: poster · title · play · elapsed · ⌃ · ✕.
+   `display: contents` folds the header into the inner's flex row so the
+   transport can sit between the title and the window buttons; everything not
+   needed for "keep listening" (subtitle, seek, share, shortcuts, panels) is
+   hidden. Panel open/closed state is preserved — expanding shows it again.
+   ========================================================================== */
+
+.cast-persistent[data-cast-min] .cast-dock__inner {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.65rem;
+  max-width: 30rem;
+  padding-top: 0.45rem;
+  padding-bottom: calc(0.45rem + env(safe-area-inset-bottom, 0px));
+}
+
+.cast-persistent[data-cast-min] .cast-dock__header {
+  display: contents;
+}
+
+.cast-persistent[data-cast-min] .cast-dock__poster {
+  order: 1;
+  width: 2.3rem;
+  height: 2.3rem;
+}
+
+.cast-persistent[data-cast-min] .cast-dock__meta {
+  order: 2;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.cast-persistent[data-cast-min] .cast-dock__subtitle {
+  display: none;
+}
+
+.cast-persistent[data-cast-min] cast-audio-player {
+  order: 3;
+  flex: none;
+}
+
+.cast-persistent[data-cast-min] .cast-dock__minify {
+  order: 4;
+}
+
+.cast-persistent[data-cast-min] .cast-dock__close {
+  order: 5;
+}
+
+.cast-persistent[data-cast-min] .cast-player__seek,
+.cast-persistent[data-cast-min] .cast-player__remaining,
+.cast-persistent[data-cast-min] .cast-player__share,
+.cast-persistent[data-cast-min] .cast-player__shortcuts-btn,
+.cast-persistent[data-cast-min] .cast-player__panels {
+  display: none;
+}
+
+.cast-persistent[data-cast-min] .cast-player__transport {
+  gap: 0.5rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .cast-dock__inner {
+    transition: max-width 0.25s ease, padding 0.25s ease;
+  }
 }
 
 /* Blend the player's own pill transport into the dock surface so it does not

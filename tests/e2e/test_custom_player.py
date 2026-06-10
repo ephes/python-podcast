@@ -126,9 +126,10 @@ def _verify_player(page, url, theme):
     play_button = page.locator(".cast-player__play")
     expect(play_button).to_be_visible()
 
-    # Shrink the transcript scroll container so auto-scroll is observable
-    # (only ~1 cue fits, so any later active cue must scroll into view).
-    page.add_style_tag(content=".cast-transcript__cues { max-height: 36px !important; overflow-y: auto !important; }")
+    # Shrink the transcript scroll container so auto-scroll is observable.
+    # 200px leaves room for the cue plus its follow-along look-ahead margins
+    # (scroll-margin-block 2.25rem/7rem) while still forcing scrolling.
+    page.add_style_tag(content=".cast-transcript__cues { max-height: 200px !important; overflow-y: auto !important; }")
 
     # The transcript starts folded on load (shipped revision-4 behavior) and is
     # fetched lazily, so open it before asserting the rendered cues.
@@ -159,14 +160,17 @@ def _verify_player(page, url, theme):
         }""",
         timeout=10000,
     )
-    # active cue is scrolled into view (visible within the constrained container)
+    # The container scrolled and the active cue is visible inside it. (The
+    # look-ahead scroll margins position the cue clear of the edges, so assert
+    # visibility + scrolling instead of strict containment.)
     page.wait_for_function(
         """() => {
             const c = document.querySelector('.cast-transcript__cues');
             const a = document.querySelector('.cast-transcript__cue[aria-current="true"]');
             if (!c || !a) return false;
             const cr = c.getBoundingClientRect(), ar = a.getBoundingClientRect();
-            return ar.bottom <= cr.bottom + 1 && ar.top >= cr.top - 1;
+            const visible = ar.bottom > cr.top + 1 && ar.top < cr.bottom - 1;
+            return visible && c.scrollTop > 0;
         }""",
         timeout=4000,
     )

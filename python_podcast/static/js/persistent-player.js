@@ -47,6 +47,9 @@
 
   var CLOSE_ICON =
     '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+  // Chevron-down; CSS rotates it 180° while the dock is minimized.
+  var MINIFY_ICON =
+    '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
 
   var state = {
     activePayloadId: null,
@@ -270,6 +273,32 @@
     updateCardTime();
   }
 
+  // ---- dock minimize / expand -----------------------------------------------
+
+  function syncMinifyButton(region, button) {
+    var minimized = region.hasAttribute("data-cast-min");
+    button.setAttribute("aria-label", minimized ? "Expand player" : "Minimize player");
+    button.setAttribute("aria-expanded", minimized ? "false" : "true");
+  }
+
+  function toggleMinimized() {
+    var region = getRegion();
+    if (!region) {
+      return;
+    }
+    if (region.hasAttribute("data-cast-min")) {
+      region.removeAttribute("data-cast-min");
+    } else {
+      region.setAttribute("data-cast-min", "");
+    }
+    var button = region.querySelector(".cast-dock__minify");
+    if (button) {
+      syncMinifyButton(region, button);
+    }
+    // The ResizeObserver follows the height change and shrinks/grows the
+    // body's reserved space automatically.
+  }
+
   // The active episode's card is a thin proxy for the dock: clicking it again
   // toggles pause/resume on the single live controller instead of restarting.
   function toggleActive() {
@@ -394,6 +423,15 @@
       meta.appendChild(subtitle);
     }
     header.appendChild(meta);
+    // Minimize/expand: collapses the dock to a one-row strip (poster, title,
+    // play, elapsed) and back. The attribute lives on the REGION, so the choice
+    // survives episode switches (the inner is rebuilt, the region is not).
+    var minify = document.createElement("button");
+    minify.type = "button";
+    minify.className = "cast-dock__minify";
+    minify.innerHTML = MINIFY_ICON;
+    minify.addEventListener("click", toggleMinimized);
+    header.appendChild(minify);
     var close = document.createElement("button");
     close.type = "button";
     close.className = "cast-dock__close";
@@ -401,6 +439,7 @@
     close.innerHTML = CLOSE_ICON;
     close.addEventListener("click", closeDock);
     header.appendChild(close);
+    syncMinifyButton(region, minify);
 
     var dataScript = document.createElement("script");
     dataScript.type = "application/json";
@@ -567,6 +606,7 @@
       region.hidden = true;
       region.removeAttribute("data-cast-active");
       region.removeAttribute("data-cast-closing");
+      region.removeAttribute("data-cast-min"); // a future dock starts expanded
       document.body.classList.remove("cast-dock-open");
       state.activePayloadId = null;
       state.activeAudioId = null;
@@ -824,6 +864,10 @@
       // The reserved dock height custom property ("" when no dock is open).
       dockHeight: function () {
         return document.documentElement.style.getPropertyValue("--cast-dock-height");
+      },
+      isMinimized: function () {
+        var region = getRegion();
+        return !!region && region.hasAttribute("data-cast-min");
       },
     };
   }
