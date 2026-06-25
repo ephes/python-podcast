@@ -50,6 +50,21 @@ jobs. Full-episode Voxhelm diarization can exceed django-cast's default polling
 window, so this project sets ``CAST_VOXHELM_POLL_TIMEOUT`` to six hours by
 default.
 
+Public transcript artifacts
+---------------------------
+
+Published transcript artifacts (Podlove/WebVTT/DOTe) are public for this
+podcast: podcast feeds link to transcript endpoints and the transcript text is
+intended to be available to listeners. django-cast reads raw transcript artifacts
+through the ``cast_private_media`` storage alias, so this project points that
+alias at the same public S3 media storage as ``default``. This lets django-cast
+read the existing S3 objects by their stored names while the public transcript
+HTML, player cues, PodcastIndex JSON, and WebVTT remain served through Django.
+
+Private known-speaker suggestion sidecars and contributor voice references are a
+separate concern and use the ``cast_voice_references`` filesystem storage under
+``private_media/``.
+
 Voxhelm credentials should be supplied through deployment-managed environment
 variables rather than relying on the Wagtail database token field. Configure
 ``CAST_VOXHELM_API_BASE`` and ``CAST_VOXHELM_API_KEY`` in the shared

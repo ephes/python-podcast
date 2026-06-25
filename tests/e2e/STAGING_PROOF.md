@@ -1,16 +1,17 @@
 # Persistent Audio Player — Staging Proof (completion evidence)
 
 Goal: prove on `python-podcast.staging.django-cast.com` that the custom audio
-player keeps playing across internal navigation, behind a staging-only flag,
-with production unchanged. Spec/PRD: django-cast
+player can keep playing across internal navigation behind the persistent-player
+flag. Production uses the same custom persistent player. Spec/PRD: django-cast
 `backlog/2026-06-08-persistent-player-staging.md`. Now extended to the
 **bootstrap5** theme (the site's default) with **per-episode play actions on the
 overview**.
 
 ## What was built (python-podcast only; django-cast & cast-bootstrap5 unchanged)
 
+- `CAST_AUDIO_PLAYER = "custom"` in production/staging/local/e2e.
 - `PYTHON_PODCAST_PERSISTENT_AUDIO_PLAYER` flag: ON in `staging.py`/`local.py`/
-  `e2e.py`, **pinned False in `production.py`**.
+  e2e persistent-player tests, and `production.py`.
 - Works on **both** server-rendered themes, gated on custom-player mode:
   - **bootstrap5** (staging default): persistent region in `cast/bootstrap5/base.html`
     (`{% block modal %}`, outside `#main-content`); enhanced-nav swap target
@@ -50,13 +51,13 @@ overview**.
   from `pytest`; run via `just test-e2e`.
 - **django-cast `just check`**: pass (lint + typecheck + tests, 100% coverage).
 - **Deploy hygiene**: `pyproject`/`uv.lock` pin django-cast/cast-bootstrap5;
-  production keeps the flag off.
+  production and staging both use the persistent custom player.
 
 ## Staging defaults
 
 On staging the `show` blog + site `TemplateBaseDirectory` are set to `bootstrap5`
 (reversible staging-DB settings) so the persistent player is the default visit
-experience. Production is a separate site/DB, unaffected.
+experience. Production is a separate site/DB and uses the same player behavior.
 
 ## Beautification verified live on staging (2026-06-10)
 
@@ -64,8 +65,8 @@ The persistent player was beautified (commit *"Persistent player: beautiful
 fixed bottom dock, play card, and view-transition morph"*) and **deployed to
 staging** via `just deploy-staging` (Ansible rsync of the working tree +
 `collectstatic`; `staging: ok=117 changed=8 failed=0`). The change is python-podcast
-only and stays gated behind `PYTHON_PODCAST_PERSISTENT_AUDIO_PLAYER`; production
-(Podlove, flag pinned `False`) is untouched.
+only and stays gated behind `PYTHON_PODCAST_PERSISTENT_AUDIO_PLAYER`, which is
+enabled in production for the same overview play-card and dock transcript flow.
 
 `tests/e2e/staging_beautification.py` re-runs against the real site and asserts
 the beautification is genuinely live; the recorded run against
@@ -92,9 +93,7 @@ console is error-free. Screenshots: `staging-idle.png`, `staging-dock.png`.
 
 ## Known, accepted-out-of-scope item
 
-The `[tool.uv.sources]` refs (`cast-bootstrap5` → `feat/custom-player-rev4`,
-`django-cast` → `develop`) are shared by staging + production installs and
-predate this work. Production behaviour is unchanged (Podlove,
-`CAST_AUDIO_PLAYER != "custom"`, persistent flag pinned `False`). A production
-rollout must revert these to release/main refs first — tracked in the django-cast
-follow-ups note. Not a defect of this slice.
+The `[tool.uv.sources]` refs (`cast-bootstrap5` -> `feat/custom-player-rev4`,
+`django-cast` -> `develop`) are shared by staging + production installs and
+predate this work. Production now exercises the custom persistent player. Move
+these refs back to release/main once the custom-player work is released upstream.

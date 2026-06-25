@@ -8,10 +8,12 @@ from sentry_sdk.integrations.django import DjangoIntegration
 from .base import *  # noqa
 from .base import env
 
-# The persistent-audio-player staging proof must never run on production: keep
-# Podlove + page-local players. (base defaults this to False; pin it here so an
-# env var cannot silently enable it in production.)
-PYTHON_PODCAST_PERSISTENT_AUDIO_PLAYER = False
+# Use django-cast's custom web-component player in production.
+CAST_AUDIO_PLAYER = "custom"
+
+# Keep one player alive across internal navigation and show play actions on
+# overview cards, with transcript/chapter panels attached to the dock.
+PYTHON_PODCAST_PERSISTENT_AUDIO_PLAYER = True
 
 # GENERAL
 # ------------------------------------------------------------------------------

@@ -52,14 +52,10 @@ dev = [
 
 [tool.uv.sources]
 cast-vue = { git = "https://github.com/ephes/cast-vue" }
-# Git sources for the STAGING deploy of the custom audio player (rsync sends the
-# working tree, so the deployed pyproject must resolve server-side). These feature
-# refs predate the persistent-player slice and are shared by staging + production
-# installs, so a production rollout MUST first revert them to release/main refs
-# (cast-bootstrap5 -> main, django-cast -> a release). Production today is
-# unaffected in BEHAVIOUR: it runs config.settings.production (Podlove,
-# CAST_AUDIO_PLAYER != "custom", persistent flag pinned False), so the custom-/
-# persistent-player code paths these refs carry are never exercised there.
+# Git sources for the custom audio player deploys (rsync sends the working tree,
+# so the deployed pyproject must resolve server-side). These feature refs predate
+# the persistent-player slice and are shared by staging + production installs.
+# Production and staging both use the custom persistent player.
 # Locally, restore the editable `path = "../…"` entries to resume local preview.
 cast-bootstrap5 = { git = "https://github.com/ephes/cast-bootstrap5", branch = "feat/custom-player-rev4" }
 django-cast = { git = "https://github.com/ephes/django-cast", branch = "develop" }

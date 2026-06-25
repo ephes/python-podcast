@@ -367,6 +367,12 @@ STORAGES = {
             "location": ROOT_DIR.path("backups").path("media"),
         },
     },
+    # Published transcript artifacts (Podlove/WebVTT/DOTe) are intentionally
+    # public for this podcast: feeds link to Django transcript endpoints and the
+    # underlying objects already live in the public media bucket. django-cast's
+    # raw-transcript storage alias therefore points at the same S3 storage so it
+    # can read existing transcript objects by their stored names.
+    "cast_private_media": {"BACKEND": "config.settings.local.CustomS3Boto3Storage"},
     # Private, non-public-served storage for django-cast contributor voice
     # references and the known-speaker suggestion sidecar. These must never be
     # publicly reachable, so they live on the server filesystem (not the public

@@ -355,3 +355,7 @@ specs
 
 # Playwright e2e screenshot artifacts
 tests/e2e/*.png
+
+# Runtime private media artifacts
+private_media/
+python_podcast/cast-private-media/
