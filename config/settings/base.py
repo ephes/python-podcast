@@ -367,6 +367,16 @@ STORAGES = {
             "location": ROOT_DIR.path("backups").path("media"),
         },
     },
+    # Private, non-public-served storage for django-cast contributor voice
+    # references and the known-speaker suggestion sidecar. These must never be
+    # publicly reachable, so they live on the server filesystem (not the public
+    # S3 media bucket) and are read server-side only.
+    "cast_voice_references": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "OPTIONS": {
+            "location": ROOT_DIR.path("private_media").path("cast_voice_references"),
+        },
+    },
 }
 MEDIA_URL = f"https://{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/"
 
