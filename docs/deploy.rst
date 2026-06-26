@@ -55,15 +55,17 @@ Public transcript artifacts
 
 Published transcript artifacts (Podlove/WebVTT/DOTe) are public for this
 podcast: podcast feeds link to transcript endpoints and the transcript text is
-intended to be available to listeners. django-cast reads raw transcript artifacts
-through the ``cast_private_media`` storage alias, so this project points that
-alias at the same public S3 media storage as ``default``. This lets django-cast
-read the existing S3 objects by their stored names while the public transcript
-HTML, player cues, PodcastIndex JSON, and WebVTT remain served through Django.
+intended to be available to listeners. django-cast reads and writes these public
+artifacts through the ``cast_public_transcripts`` storage alias, which this
+project points at the same public S3 media storage as ``default``. This lets
+django-cast read the existing ``cast_transcript/`` S3 objects by their stored
+names while the public transcript HTML, player cues, PodcastIndex JSON, and
+WebVTT remain served through Django.
 
 Private known-speaker suggestion sidecars and contributor voice references are a
 separate concern and use the ``cast_voice_references`` filesystem storage under
-``private_media/``.
+``private_media/``. ``cast_private_media`` is not used as the public transcript
+workaround anymore.
 
 Voxhelm credentials should be supplied through deployment-managed environment
 variables rather than relying on the Wagtail database token field. Configure
