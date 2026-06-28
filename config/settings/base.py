@@ -384,6 +384,14 @@ STORAGES = {
 }
 MEDIA_URL = f"https://{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/"
 
+CAST_POST_BODY_BLOCKS = {
+    "detail": [
+        "python_podcast.pp.show_notes.blocks.sponsor_block",
+        "python_podcast.pp.show_notes.blocks.link_list_block",
+        "python_podcast.pp.show_notes.blocks.heading_block",
+    ],
+}
+
 
 # Comments
 COMMENTS_APP = "cast.comments"

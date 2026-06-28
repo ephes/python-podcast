@@ -1,0 +1,11 @@
+{% load wagtailcore_tags pp_show_note_icons %}
+
+<h3>{% if not render_for_feed %}{% pp_show_note_icon display_kind %}{% endif %}{{ value.heading }}</h3>
+{% if value.copy %}
+  {{ value.copy|richtext }}
+{% else %}
+  <p><a href="{{ value.sponsor_url }}">{{ value.sponsor_name }}</a></p>
+{% endif %}
+{% if value.coupon_code %}
+  <p>Coupon code: <strong>{{ value.coupon_code }}</strong></p>
+{% endif %}

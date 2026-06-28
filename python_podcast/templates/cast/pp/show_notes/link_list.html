@@ -1,0 +1,18 @@
+{% load wagtailcore_tags pp_show_note_icons %}
+
+{% if value.show_heading %}
+  <h3>{% if not render_for_feed %}{% pp_show_note_icon display_kind %}{% endif %}{{ value.heading }}</h3>
+{% endif %}
+{% if value.intro %}{{ value.intro|richtext }}{% endif %}
+{% if value.show_items %}
+  <ul role="list">
+    {% for item in value.items %}
+      <li>
+        {{ item.prefix }}<a href="{{ item.url }}">{{ item.title }}</a>{% for extra_link in item.extra_links %}
+          / <a href="{{ extra_link.url }}">{{ extra_link.title }}</a>{% endfor %}{% if item.note %}
+            <span class="show-note-item-note">{{ item.note }}</span>{% endif %}
+        {% if item.description %}{{ item.description|richtext }}{% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+{% endif %}
