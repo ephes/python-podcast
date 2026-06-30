@@ -495,6 +495,53 @@ def test_empty_transcript_shows_status_instead_of_dead_panel(page, paginated_sit
 
 
 @pytest.mark.e2e
+def test_enhanced_nav_records_url_after_server_redirect(page, staging_site):
+    """Enhanced navigation to a URL the server redirects must record the FINAL
+    (post-redirect) URL in history.
+
+    Regression for the 'first pagination click stays on page 1' bug: reaching
+    the index via an enhanced-nav link that the server redirects (the navbar
+    'Home' link '/' -> '/show/', or any APPEND_SLASH 301) used to leave the
+    address bar on the pre-redirect URL while showing the redirected content.
+    Later *relative* htmx pagination links ('?page=N') then resolved against
+    the wrong base, hit the home redirect (which drops the query string) and
+    bounced back to page 1 — so the first click appeared to do nothing.
+    """
+    base = staging_site["base"]
+    podcast_url = staging_site["podcast_url"]  # e.g. /test-podcast/
+    assert podcast_url.endswith("/"), podcast_url
+    redirecting = podcast_url.rstrip("/")  # no trailing slash -> APPEND_SLASH 301
+
+    page.goto(base + podcast_url)
+    page.wait_for_function("() => !!window.__castPersistentAudioDebug")
+
+    # Token lets us prove this stayed a same-document (enhanced) navigation: a
+    # full browser reload would clear it. The bug only exists on the enhanced
+    # path, so a native fallback navigation must not let the test pass.
+    page.evaluate("() => { window.__E2E_TOKEN = 'redir-sync'; }")
+
+    # Inject a same-origin link to the redirecting (no-slash) URL and click it.
+    # Enhanced nav fetches it; the server 301s to the slashed URL.
+    page.evaluate(
+        """(href) => {
+            const a = document.createElement('a');
+            a.href = href; a.textContent = 'redir'; a.id = '__redir_link';
+            (document.querySelector('#main-content, #paging-area') || document.body).prepend(a);
+        }""",
+        redirecting,
+    )
+    page.locator("#__redir_link").click()
+
+    # The address bar must reflect the FINAL slashed URL, not the pre-redirect
+    # one. (Before the fix this stayed at the no-slash path and timed out.)
+    page.wait_for_function("(u) => location.pathname === u", arg=podcast_url)
+    assert page.evaluate("() => location.pathname") == podcast_url
+    assert (
+        page.evaluate("() => window.__E2E_TOKEN") == "redir-sync"
+    ), "expected an enhanced (same-document) navigation, got a full reload"
+
+
+@pytest.mark.e2e
 def test_excluded_links_fall_back_to_full_navigation(page, staging_site):
     """Feed/download/external links and forms keep normal navigation."""
     base = staging_site["base"]

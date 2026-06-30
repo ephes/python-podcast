@@ -761,14 +761,24 @@
   function navigateTo(url, options) {
     var push = !options || options.push !== false;
     var token = ++navToken;
+    // The URL the history entry / address bar must reflect. When the server
+    // redirects the fetch (e.g. "/" -> "/show/"), this becomes the *final*
+    // served URL: otherwise the address bar keeps the pre-redirect URL while
+    // showing the redirected content, and later *relative* links (htmx
+    // pagination's "?page=N") resolve against the wrong base — hitting the
+    // home redirect, which drops the query string and bounces back to page 1.
+    var finalUrl = url;
     fetch(url, { headers: { "X-Cast-Enhanced-Nav": "1" }, credentials: "same-origin" })
       .then(function (response) {
         if (token !== navToken) {
           return null; // superseded by a newer navigation
         }
+        if (response.url) {
+          finalUrl = response.url;
+        }
         var contentType = response.headers.get("content-type") || "";
         if (!response.ok || contentType.indexOf("text/html") === -1) {
-          window.location.assign(url);
+          window.location.assign(finalUrl);
           return null;
         }
         return response.text();
@@ -781,7 +791,7 @@
         var incoming = doc.getElementById(PAGING_ID);
         var current = document.getElementById(PAGING_ID);
         if (!incoming || !current) {
-          window.location.assign(url); // no enhanced target -> full load fallback
+          window.location.assign(finalUrl); // no enhanced target -> full load fallback
           return;
         }
         var adopted = document.importNode(incoming, true);
@@ -790,7 +800,7 @@
           document.title = doc.title;
         }
         if (push) {
-          window.history.pushState({ castNav: true }, "", url);
+          window.history.pushState({ castNav: true }, "", finalUrl);
         }
         window.scrollTo(0, 0);
         onContentReady();
@@ -798,7 +808,7 @@
       })
       .catch(function () {
         if (token === navToken) {
-          window.location.assign(url);
+          window.location.assign(finalUrl);
         }
       });
   }
