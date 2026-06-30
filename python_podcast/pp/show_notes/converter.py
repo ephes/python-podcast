@@ -120,6 +120,13 @@ class _Builder:
             self.add_to_pending(heading)
             return index + 1
 
+        if heading.find("a") is not None:
+            # A show_note_heading only stores plain text, so converting a heading
+            # that contains a link would drop the link. Preserve it verbatim.
+            self.warnings.append("Heading contains a link; preserved verbatim to keep the link.")
+            self.add_to_pending(heading)
+            return index + 1
+
         next_index = _next_meaningful_index(nodes, index + 1)
         next_node = nodes[next_index] if next_index is not None else None
 
@@ -342,8 +349,8 @@ def _parse_grouped_item(li: Tag, nested: Tag) -> tuple[dict | None, str | None]:
         return None, "nested group is too large to flatten"
 
     links: list[dict] = []
-    notes: list[str] = []
-    for sub in sub_items:
+    notes: list[tuple[int, str]] = []
+    for position, sub in enumerate(sub_items):
         if _direct_nested_list(sub) is not None:
             return None, "nested group is more than two levels deep"
         item, _warning = _parse_flat_item(sub)
@@ -353,16 +360,21 @@ def _parse_grouped_item(li: Tag, nested: Tag) -> tuple[dict | None, str | None]:
             return None, "a nested sub-item has multiple links or its own prefix"
         links.append({"title": item["title"], "url": item["url"]})
         if item["note"]:
-            notes.append(item["note"])
+            notes.append((position, item["note"]))
     if len(notes) > 1:
         return None, "nested group has more than one note"
+    # The flat item has a single, trailing note field. A note can only be placed
+    # faithfully when it belongs to the last sub-link; otherwise it would render
+    # after every link and read as describing the wrong one -> preserve instead.
+    if notes and notes[0][0] != len(sub_items) - 1:
+        return None, "nested group note belongs to a non-final sub-link"
 
     return {
         "prefix": _label_prefix(label),
         "title": links[0]["title"],
         "url": links[0]["url"],
         "extra_links": links[1:],
-        "note": notes[0] if notes else "",
+        "note": notes[0][1] if notes else "",
         "description": "",
     }, None
 

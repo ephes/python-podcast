@@ -136,6 +136,46 @@ def test_grouped_subitem_note_becomes_item_note():
     assert item["note"] == "Accepted PEP"
 
 
+def test_grouped_note_on_final_subitem_flattens():
+    # A note on the LAST sub-link sits correctly as a trailing item note.
+    html = (
+        "<h3>News</h3><ul>"
+        "<li>GIL<ul>"
+        '<li><a href="https://example.com/ep">Episode 2</a></li>'
+        '<li><a href="https://example.com/pep">PEP 703</a> | Accepted PEP</li>'
+        "</ul></li>"
+        "</ul>"
+    )
+
+    item = convert_paragraph_html(html).blocks[0].value["items"][0]
+
+    assert item["title"] == "Episode 2"
+    assert item["extra_links"] == [{"title": "PEP 703", "url": "https://example.com/pep"}]
+    assert item["note"] == "Accepted PEP"
+
+
+def test_grouped_note_on_non_final_subitem_preserves_section():
+    # A note on a non-final sub-link cannot be placed correctly in the flat item
+    # (it would render after every link), so the group is preserved verbatim.
+    html = (
+        "<h3>News</h3><ul>"
+        "<li>GIL<ul>"
+        '<li><a href="https://example.com/paper">Biased Reference Counting</a> | Paper von 2018</li>'
+        '<li><a href="https://example.com/keynote">Keynote</a></li>'
+        "</ul></li>"
+        "</ul>"
+    )
+
+    conversion = convert_paragraph_html(html)
+
+    assert _types(conversion) == ["show_note_heading", "paragraph"]
+    rendered = " ".join(str(block.value) for block in conversion.blocks)
+    assert "example.com/paper" in rendered
+    assert "example.com/keynote" in rendered
+    assert "Paper von 2018" in rendered
+    assert conversion.warnings
+
+
 def test_grouped_multilink_subitem_preserves_section():
     html = (
         "<h3>News</h3><ul>"
@@ -319,6 +359,31 @@ def test_list_with_consecutive_ambiguous_items_groups_them():
     # both no-link items land in a single preserved fragment
     assert "no link one" in conversion.blocks[2].value
     assert "no link two" in conversion.blocks[2].value
+
+
+def test_heading_containing_a_link_is_preserved_verbatim():
+    # A heading with an inline link cannot become a plain text show_note_heading
+    # without dropping the link, so the whole heading is preserved verbatim.
+    html = '<h3>Typing Quadrants aus <a href="https://example.com/book">Fluent Python</a></h3>'
+
+    conversion = convert_paragraph_html(html)
+
+    assert any("https://example.com/book" in str(block.value) for block in conversion.blocks)
+    assert any(block.type == "paragraph" for block in conversion.blocks)
+    assert conversion.warnings
+
+
+def test_heading_with_link_before_list_keeps_link_and_preserves_list():
+    html = (
+        '<h3>Books from <a href="https://example.com/src">Source</a></h3>'
+        '<ul><li><a href="https://example.com/a">A</a></li></ul>'
+    )
+
+    conversion = convert_paragraph_html(html)
+
+    rendered = " ".join(str(block.value) for block in conversion.blocks)
+    assert "https://example.com/src" in rendered
+    assert "https://example.com/a" in rendered
 
 
 def test_ordered_list_is_preserved_verbatim():
