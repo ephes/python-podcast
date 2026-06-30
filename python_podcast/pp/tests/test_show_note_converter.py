@@ -386,6 +386,49 @@ def test_heading_with_link_before_list_keeps_link_and_preserves_list():
     assert "https://example.com/a" in rendered
 
 
+def test_br_separated_prose_links_keep_their_separators():
+    html = "<h2>Shownotes</h2>" '<a href="https://example.com/a">A</a><br/>' '<a href="https://example.com/b">B</a>'
+
+    conversion = convert_paragraph_html(html)
+
+    paragraph = next(block.value for block in conversion.blocks if block.type == "paragraph")
+    assert "<br" in paragraph
+    assert "https://example.com/a" in paragraph
+    assert "https://example.com/b" in paragraph
+
+
+def test_zero_width_space_is_stripped_from_prefix():
+    html = "<h3>X</h3><ul><li>Network Automation​​: " '<a href="https://example.com/a">Liste</a></li></ul>'
+
+    item = convert_paragraph_html(html).blocks[0].value["items"][0]
+
+    assert "​" not in item["prefix"]
+    assert item["prefix"] == "Network Automation: "
+
+
+def test_group_with_long_descriptive_label_is_preserved():
+    desc = (
+        "Ansible ist ein Werkzeug zum Managen von Servern. Benannt nach einem "
+        "Science-Fiction-Geraet, das FTL-Kommunikation ermoeglicht."
+    )
+    html = (
+        "<h3>Tools</h3><ul>"
+        f"<li>{desc}<ul>"
+        '<li><a href="https://example.com/a">ansible</a></li>'
+        '<li><a href="https://example.com/b">chef</a></li>'
+        "</ul></li>"
+        "</ul>"
+    )
+
+    conversion = convert_paragraph_html(html)
+
+    assert _types(conversion) == ["show_note_heading", "paragraph"]
+    rendered = " ".join(str(block.value) for block in conversion.blocks)
+    assert "https://example.com/a" in rendered
+    assert "https://example.com/b" in rendered
+    assert conversion.warnings
+
+
 def test_ordered_list_is_preserved_verbatim():
     # Ordered lists carry meaningful numbering, so they are preserved rather
     # than flattened into an unordered link list.

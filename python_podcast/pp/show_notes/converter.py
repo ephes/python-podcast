@@ -43,6 +43,9 @@ _WEB_SCHEMES = ("http://", "https://")
 # Largest "topic label + sub-links" group we will flatten into a single link
 # item. Bigger groups are preserved as prose to avoid an unreadable link row.
 MAX_GROUP_SUBITEMS = 6
+# A group label longer than this is treated as descriptive prose rather than a
+# short topic label, so the group is preserved instead of flattened.
+MAX_GROUP_LABEL_LENGTH = 60
 
 
 @dataclass
@@ -74,17 +77,12 @@ def convert_paragraph_html(html: str) -> ParagraphConversion:
     index = 0
     while index < len(nodes):
         node = nodes[index]
-        if _is_blank(node):
-            index += 1
-            continue
-
         if isinstance(node, Tag) and node.name in HEADING_TAGS:
             index = builder.handle_heading(node, nodes, index)
-        elif isinstance(node, Tag) and node.name in LIST_TAGS:
-            # A list without a preceding heading is preserved untouched.
-            builder.add_to_pending(node)
-            index += 1
         else:
+            # Everything else - including <br> and whitespace - is buffered as
+            # prose so separators survive; a list here has no preceding heading
+            # and stays untouched. Pure-whitespace buffers are dropped on flush.
             builder.add_to_pending(node)
             index += 1
 
@@ -333,6 +331,10 @@ def _parse_grouped_item(li: Tag, nested: Tag) -> tuple[dict | None, str | None]:
     label = _clean_text("".join(payload for kind, payload in label_tokens if kind == "text"))
     if not label:
         return None, "nested list without a topic label"
+    if len(label) > MAX_GROUP_LABEL_LENGTH:
+        # A long label is descriptive prose, not a short topic label; flattening
+        # it into a prefix (and demoting peers to extra links) would mislead.
+        return None, "nested group label is descriptive prose, not a topic label"
 
     # The nested list must contain only <li> items, nothing stray.
     for child in nested.children:
@@ -437,7 +439,8 @@ def _has_meaningful_content(html: str) -> bool:
 
 
 def _clean_text(text: str) -> str:
-    return re.sub(r"\s+", " ", (text or "").replace("\xa0", " ")).strip()
+    text = (text or "").replace("\xa0", " ").replace("​", "")
+    return re.sub(r"\s+", " ", text).strip()
 
 
 def _is_separator_only(text: str) -> bool:
