@@ -22,3 +22,31 @@ h1, h2, h3, h4, h5, h6 {
     font-family: 'Hubot-Sans', sans-serif;
     font-weight: normal; /* or any appropriate weight */
 }
+
+/* Structured show-note accents live in this already-required stylesheet so
+   enhanced navigation can render them without another render-blocking request. */
+.show-note-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5em;
+    height: 1.5em;
+    margin-right: 0.4em;
+    border-radius: 999px;
+    background: var(--cast-accent-light, #ede9fe);
+    color: var(--cast-accent, #7c3aed);
+    font-family: system-ui, sans-serif;
+    font-size: 0.8em;
+    vertical-align: 0.12em;
+}
+
+/* The icon also carries show-note-icon--{kind} for future per-kind styling. */
+.show-note-item-note {
+    color: inherit;
+}
+
+.show-note-item-note::before {
+    content: "—";
+    margin-inline: 0.45em;
+    color: var(--cast-text-light, #8a8a8a);
+}

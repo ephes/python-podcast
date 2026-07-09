@@ -310,14 +310,11 @@ AWS_S3_SIGNATURE_VERSION = "s3v4"
 AWS_S3_FILE_OVERWRITE = True
 AWS_S3_CUSTOM_DOMAIN = env("CLOUDFRONT_DOMAIN")
 
-# AWS cache settings, don't change unless you know what you're doing:
+# Cache public media for one week. django-storages 1.14 reads object metadata
+# from AWS_S3_OBJECT_PARAMETERS; the old AWS_HEADERS setting is no longer used.
 AWS_EXPIRY = 60 * 60 * 24 * 7
-
-# TODO See: https://github.com/jschneier/django-storages/issues/47
-# Revert the following and use str after the above-mentioned bug is fixed in
-# either django-storage-redux or boto
 control = "max-age=%d, s-maxage=%d, must-revalidate" % (AWS_EXPIRY, AWS_EXPIRY)
-AWS_HEADERS = {"Cache-Control": bytes(control, encoding="latin-1")}
+AWS_S3_OBJECT_PARAMETERS = {"CacheControl": control}
 
 from storages.backends.s3boto3 import S3Boto3Storage
 

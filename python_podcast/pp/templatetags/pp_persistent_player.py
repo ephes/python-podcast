@@ -16,6 +16,31 @@ from django.utils.html import json_script
 
 register = template.Library()
 
+CARD_POSTER_RENDITION_SPEC = "max-128x128|format-webp"
+
+
+def _card_poster_url(post: Any, request: Any, fallback: str) -> str:
+    """Return a small poster for the compact page card.
+
+    The player's payload keeps django-cast's 512 px poster for consumers that
+    may render it larger. The initial page card is at most 54 px wide, so it can
+    use a much smaller Wagtail rendition and avoid downloading the player-sized
+    artwork before anyone starts playback.
+    """
+    episode = getattr(post, "specific", post)
+    blog_page = getattr(post, "blog", None)
+    blog = getattr(blog_page, "specific", blog_page)
+    cover_image = getattr(episode, "cover_image", None)
+    if cover_image is None and blog is not None:
+        cover_image = getattr(blog, "cover_image", None)
+    if cover_image is None:
+        return fallback
+
+    poster_url = cover_image.get_rendition(CARD_POSTER_RENDITION_SPEC).url
+    if request is not None and hasattr(request, "build_absolute_uri"):
+        poster_url = request.build_absolute_uri(poster_url)
+    return poster_url
+
 
 def _format_duration(seconds: Any) -> str:
     """Render a payload duration (seconds) as a compact human label.
@@ -61,14 +86,16 @@ def cast_player_payload(context: dict[str, Any], audio: Any, post: Any) -> dict[
         post = Page.objects.get(pk=post.pk).specific
     payload = build_player_payload(audio, post=post, request=request)
     payload_id = f"cast-player-data-{audio.pk}"
+    poster = payload.get("poster", "")
     return {
         "player_script": json_script(payload, payload_id),
         "payload_id": payload_id,
         "player_id": f"cast-player-{audio.pk}",
         "title": payload.get("title", ""),
-        # Exposed so the episode play card can show a poster + duration (and the
-        # dock can morph the poster). Empty poster / "" duration are omitted in
-        # the template.
-        "poster": payload.get("poster", ""),
+        # The dock can use the player-sized payload poster after interaction;
+        # the initial card gets a responsive rendition sized for its 46–54 px
+        # display box. Empty poster / "" duration are omitted in the template.
+        "poster": poster,
+        "card_poster": _card_poster_url(post, request, poster) if poster else "",
         "duration_display": _format_duration(payload.get("duration")),
     }

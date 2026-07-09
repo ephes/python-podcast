@@ -33,12 +33,11 @@
     <link rel="stylesheet" href="{% static 'css/project.css' %}">
   </noscript>
   <link rel="stylesheet" href="{% static 'css/site-overrides.css' %}">
-  <link rel="stylesheet" href="{% static 'css/show-notes.css' %}">
   {% cast_audio_player_mode as audio_player_mode %}
   {% if persistent_audio_player and audio_player_mode == "custom" %}
     {# Persistent-player dock + play-card styling (loaded after site-overrides so #}
     {# its tokens win; only when the staging proof is on, so production is unaffected). #}
-    <link rel="stylesheet" href="{% static 'css/persistent-player.css' %}">
+    <link rel="stylesheet" href="{% static 'css/persistent-player.min.css' %}">
   {% endif %}
 {% endblock css %}
 
@@ -105,7 +104,7 @@
     {# persistent-player manager / enhanced navigation. #}
     {% vite_hmr_client app="cast" %}
     {% vite_asset 'src/audio/custom-player.ts' app="cast" %}
-    <script src="{% static 'js/persistent-player.js' %}" defer></script>
+    <script src="{% static 'js/persistent-player.min.js' %}" defer></script>
   {% endif %}
   <script>
     (function () {

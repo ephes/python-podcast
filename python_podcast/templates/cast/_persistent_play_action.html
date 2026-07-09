@@ -14,9 +14,9 @@
 <div class="cast-play-card {{ card_class }}"
      data-cast-episode-payload="{{ payload.payload_id }}"
      data-cast-player-id="{{ payload.player_id }}">
-  {% if payload.poster %}
+  {% if payload.card_poster %}
     <span class="cast-play-card__posterwrap">
-      <img class="cast-play-card__poster" src="{{ payload.poster }}" alt="" loading="lazy">
+      <img class="cast-play-card__poster" src="{{ payload.card_poster }}" alt="" loading="lazy" width="128" height="128">
       <span class="cast-play-card__eq" aria-hidden="true"><i></i><i></i><i></i></span>
     </span>
   {% endif %}

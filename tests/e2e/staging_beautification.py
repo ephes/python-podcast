@@ -51,7 +51,7 @@ def main() -> int:
 
     # 1) The staging-gated CSS is served and contains the beautification rules.
     try:
-        with urllib.request.urlopen(base + "/static/css/persistent-player.css", timeout=20) as r:
+        with urllib.request.urlopen(base + "/static/css/persistent-player.min.css", timeout=20) as r:
             body = r.read().decode("utf-8", "replace")
         check("css_status", r.status == 200, r.status)
         check("css_fixed_dock", ".cast-persistent" in body and "position: fixed" in body)

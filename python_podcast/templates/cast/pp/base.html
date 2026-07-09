@@ -22,11 +22,10 @@
 
     {% block css %}
       <link href="{% static 'css/pp/style.css' %}" rel="stylesheet">
-      <link href="{% static 'css/show-notes.css' %}" rel="stylesheet">
       {% if persistent_audio_player and audio_player_mode == "custom" %}
         {# Persistent-player dock + play-card styling; only when the staging proof #}
         {# is on, so production is unaffected. #}
-        <link href="{% static 'css/persistent-player.css' %}" rel="stylesheet">
+        <link href="{% static 'css/persistent-player.min.css' %}" rel="stylesheet">
       {% endif %}
     {% endblock %}
   </head>
@@ -73,7 +72,7 @@
         {# then load the manager + enhanced navigation. #}
         {% vite_hmr_client app="cast" %}
         {% vite_asset 'src/audio/custom-player.ts' app="cast" %}
-        <script src="{% static 'js/persistent-player.js' %}" defer></script>
+        <script src="{% static 'js/persistent-player.min.js' %}" defer></script>
       {% endif %}
     {% endblock javascript %}
   </body>

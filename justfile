@@ -148,6 +148,10 @@ install:
 update-hooks:
     env -u VIRTUAL_ENV uv run prek auto-update
 
+# Regenerate the committed minified persistent-player assets
+minify-static:
+    uv run python scripts/minify_static.py
+
 # Build documentation
 docs:
     uv run python commands.py docs
