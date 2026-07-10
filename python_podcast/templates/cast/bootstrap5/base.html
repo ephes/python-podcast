@@ -35,9 +35,11 @@
   <link rel="stylesheet" href="{% static 'css/site-overrides.css' %}">
   {% cast_audio_player_mode as audio_player_mode %}
   {% if persistent_audio_player and audio_player_mode == "custom" %}
-    {# Persistent-player dock + play-card styling (loaded after site-overrides so #}
-    {# its tokens win; only when the staging proof is on, so production is unaffected). #}
-    <link rel="stylesheet" href="{% static 'css/persistent-player.min.css' %}">
+    {# Cards are initial content, so keep their small critical slice inline. The #}
+    {# hidden dock can load without blocking the first paint. #}
+    <style>{% include "cast/_persistent_player_critical.min.css" %}</style>
+    <link rel="stylesheet" href="{% static 'css/persistent-player-dock.min.css' %}"
+          media="print" onload="this.media='all'">
   {% endif %}
 {% endblock css %}
 
@@ -103,7 +105,7 @@
     {# Define the custom-player web components on every page + load the #}
     {# persistent-player manager / enhanced navigation. #}
     {% vite_hmr_client app="cast" %}
-    {% vite_asset 'src/audio/custom-player.ts' app="cast" %}
+    {% pp_vite_asset_deferred_css 'src/audio/custom-player.ts' 'cast' %}
     <script src="{% static 'js/persistent-player.min.js' %}" defer></script>
   {% endif %}
   <script>

@@ -15,6 +15,7 @@ from python_podcast.pp.context_processors import persistent_audio_player
 from python_podcast.pp.templatetags.pp_persistent_player import (
     CARD_POSTER_RENDITION_SPEC,
     cast_player_payload,
+    pp_vite_asset_deferred_css,
 )
 
 
@@ -51,6 +52,22 @@ def test_templatetag_enabled():
 def test_templatetag_disabled():
     out = Template("{% load pp_persistent_player %}{% pp_persistent_player_enabled as f %}{{ f }}").render(Context())
     assert out == "False"
+
+
+def test_vite_player_stylesheet_is_non_render_blocking():
+    vite_html = (
+        '<link rel="stylesheet" href="/static/custom-player.css">\n'
+        '<script type="module" src="/static/custom-player.js"></script>'
+    )
+    with patch(
+        "python_podcast.pp.templatetags.pp_persistent_player.DjangoViteAssetLoader.instance"
+    ) as loader_instance:
+        loader_instance.return_value.generate_vite_asset.return_value = vite_html
+        html = pp_vite_asset_deferred_css("src/audio/custom-player.ts", "cast")
+
+    assert 'media="print"' in html
+    assert "onload=\"this.media='all'\"" in html
+    assert '<script type="module" src="/static/custom-player.js"></script>' in html
 
 
 def test_player_payload_uses_small_rendition_for_initial_card():

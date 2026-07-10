@@ -51,11 +51,10 @@ def main() -> int:
 
     # 1) The staging-gated CSS is served and contains the beautification rules.
     try:
-        with urllib.request.urlopen(base + "/static/css/persistent-player.min.css", timeout=20) as r:
+        with urllib.request.urlopen(base + "/static/css/persistent-player-dock.min.css", timeout=20) as r:
             body = r.read().decode("utf-8", "replace")
         check("css_status", r.status == 200, r.status)
-        check("css_fixed_dock", ".cast-persistent" in body and "position: fixed" in body)
-        check("css_play_card", ".cast-play-card" in body)
+        check("css_fixed_dock", ".cast-persistent" in body and "position:fixed" in body)
     except Exception as e:  # noqa: BLE001
         check("css_fetch", False, repr(e))
 
@@ -70,9 +69,11 @@ def main() -> int:
         check("manager_loaded", pg.evaluate("() => !!window.__castPersistentAudioDebug"))
         check(
             "css_linked",
-            pg.evaluate("() => !!document.querySelector('link[href*=\"persistent-player\"]')"),
+            pg.evaluate("() => !!document.querySelector('link[href*=\"persistent-player-dock\"]')"),
         )
         check("play_cards", pg.locator(".cast-play-card").count() > 0, pg.locator(".cast-play-card").count())
+        card_display = pg.locator(".cast-play-card").first.evaluate("el => getComputedStyle(el).display")
+        check("play_card_styled", card_display == "flex", card_display)
         pg.wait_for_selector("[data-cast-play]", timeout=15000)
         pg.screenshot(path=str(out / "staging-idle.png"))
 

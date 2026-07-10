@@ -15,33 +15,11 @@
  * `--cast-dock-*` namespace.
  */
 
-:root {
-  --cast-dock-radius: 1.1rem;
-  --cast-dock-gap: 0.9rem;
-  --cast-dock-max: 46rem; /* centred floating width on wide viewports */
-}
-
-/* Derived colour tokens are declared on the subtree roots (NOT :root) so the
-   var(--cast-player-*) they reference resolve against the inherited per-theme
-   token values at this element. Declaring them on :root would substitute the
-   light-theme values once at :root and inherit those everywhere — breaking dark
-   mode (light text on a light dock). */
-.cast-persistent,
+/* Derived colour tokens live on the card rather than :root so inherited
+   per-theme player tokens resolve correctly in both light and dark mode. */
 .cast-play-card {
   --cast-dock-surface: var(--cast-player-bg, Canvas);
   --cast-dock-line: color-mix(in srgb, var(--cast-player-fg, CanvasText) 12%, transparent);
-  --cast-dock-shadow: 0 -1px 0 color-mix(in srgb, var(--cast-player-fg, #111) 8%, transparent),
-    0 12px 40px -12px color-mix(in srgb, #000 55%, transparent),
-    0 4px 14px -8px color-mix(in srgb, #000 40%, transparent);
-}
-
-/* Reserve real space so the fixed dock never hides content. --cast-dock-height
-   tracks the dock's actual rendered height (the manager keeps it current with a
-   ResizeObserver), so even an expanded transcript/chapters sheet (~42vh) leaves
-   the last paragraphs, footer, and pagination reachable below the content. */
-body.cast-dock-open {
-  padding-bottom: calc(var(--cast-dock-height, 8.5rem) + 1.5rem);
-  scroll-padding-bottom: calc(var(--cast-dock-height, 8.5rem) + 1.5rem);
 }
 
 /* ==========================================================================
@@ -267,6 +245,30 @@ body.cast-dock-open {
    bottom edge (this is the fix for "the player renders below the pagination":
    the region used to sit in normal flow at the very end of the page).
    ========================================================================== */
+
+:root {
+  --cast-dock-radius: 1.1rem;
+  --cast-dock-gap: 0.9rem;
+  --cast-dock-max: 46rem; /* centred floating width on wide viewports */
+}
+
+/* As on the play card, keep derived colours on the themed subtree root. */
+.cast-persistent {
+  --cast-dock-surface: var(--cast-player-bg, Canvas);
+  --cast-dock-line: color-mix(in srgb, var(--cast-player-fg, CanvasText) 12%, transparent);
+  --cast-dock-shadow: 0 -1px 0 color-mix(in srgb, var(--cast-player-fg, #111) 8%, transparent),
+    0 12px 40px -12px color-mix(in srgb, #000 55%, transparent),
+    0 4px 14px -8px color-mix(in srgb, #000 40%, transparent);
+}
+
+/* Reserve real space so the fixed dock never hides content. --cast-dock-height
+   tracks the dock's actual rendered height (the manager keeps it current with a
+   ResizeObserver), so even an expanded transcript/chapters sheet (~42vh) leaves
+   the last paragraphs, footer, and pagination reachable below the content. */
+body.cast-dock-open {
+  padding-bottom: calc(var(--cast-dock-height, 8.5rem) + 1.5rem);
+  scroll-padding-bottom: calc(var(--cast-dock-height, 8.5rem) + 1.5rem);
+}
 
 .cast-persistent {
   position: fixed;

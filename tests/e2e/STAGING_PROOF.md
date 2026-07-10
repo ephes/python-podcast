@@ -74,8 +74,9 @@ the beautification is genuinely live; the recorded run against
 
 ```json
 {
-  "css_status": 200, "css_fixed_dock": true, "css_play_card": true,
+  "css_status": 200, "css_fixed_dock": true,
   "manager_loaded": true, "css_linked": true, "play_cards": 5,
+  "play_card_styled": "flex",
   "dock_position_fixed": "fixed", "dock_bottom_0": "0px",
   "dock_inner": true, "dock_poster": true, "dock_close": true,
   "dock_transport": true, "dock_title": "Data Science",
@@ -84,9 +85,10 @@ the beautification is genuinely live; the recorded run against
 }
 ```
 
-Key facts proven on the live site: the staging-gated `persistent-player.css` is
-served (200) and linked; episode cards render the play card; starting an episode
-builds a dock that is `position: fixed` pinned to `bottom: 0` (lifted out of flow
+Key facts proven on the live site: critical play-card CSS is inlined and the
+staging-gated `persistent-player-dock.min.css` is served (200) and loaded
+asynchronously; episode cards render styled; starting an episode builds a dock
+that is `position: fixed` pinned to `bottom: 0` (lifted out of flow
 — no longer "below the pagination") with poster/title/close + the live transport;
 the one-host invariant holds (`hostCount === 1`, `audioCount === 1`) and the
 console is error-free. Screenshots: `staging-idle.png`, `staging-dock.png`.

@@ -13,6 +13,8 @@ from cast.player import build_player_payload
 from django import template
 from django.conf import settings
 from django.utils.html import json_script
+from django.utils.safestring import mark_safe
+from django_vite.core.asset_loader import DjangoViteAssetLoader
 
 register = template.Library()
 
@@ -63,6 +65,22 @@ def _format_duration(seconds: Any) -> str:
 def pp_persistent_player_enabled() -> bool:
     """Return whether the persistent-audio-player staging proof is enabled."""
     return bool(getattr(settings, "PYTHON_PODCAST_PERSISTENT_AUDIO_PLAYER", False))
+
+
+@register.simple_tag
+@mark_safe
+def pp_vite_asset_deferred_css(path: str, app: str) -> str:
+    """Render a Vite module while making its dependent CSS non-blocking.
+
+    The custom player does not exist before the first play action, so its Vite
+    stylesheet can download at print-media priority without delaying FCP/LCP.
+    The module script and modulepreload tags keep django-vite's normal output.
+    """
+    asset_html = DjangoViteAssetLoader.instance().generate_vite_asset(path, app)
+    return asset_html.replace(
+        'rel="stylesheet"',
+        'rel="stylesheet" media="print" onload="this.media=\'all\'"',
+    )
 
 
 @register.simple_tag(takes_context=True)
