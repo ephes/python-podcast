@@ -55,12 +55,11 @@ dev = [
 
 [tool.uv.sources]
 cast-vue = { git = "https://github.com/ephes/cast-vue" }
-# Git sources for the custom audio player deploys (rsync sends the working tree,
-# so the deployed pyproject must resolve server-side). These feature refs predate
-# the persistent-player slice and are shared by staging + production installs.
-# Production and staging both use the custom persistent player.
+# Git sources for deploys (rsync sends the working tree, so the deployed
+# pyproject must resolve server-side). Production and staging both use the
+# persistent player from cast-bootstrap5 main.
 # Locally, restore the editable `path = "../…"` entries to resume local preview.
-cast-bootstrap5 = { git = "https://github.com/ephes/cast-bootstrap5", branch = "feat/custom-player-rev4" }
+cast-bootstrap5 = { git = "https://github.com/ephes/cast-bootstrap5" }
 django-cast = { git = "https://github.com/ephes/django-cast", branch = "develop" }
 django-indieweb = { git = "https://github.com/ephes/django-indieweb", branch = "develop" }
 
