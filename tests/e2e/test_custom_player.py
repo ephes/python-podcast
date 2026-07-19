@@ -48,6 +48,7 @@ def episode_path(live_server, settings, tmp_path):
     settings.MEDIA_ROOT = str(tmp_path)
     from _helpers import ensure_site
     from cast.devdata import create_episode, create_podcast
+    from cast.media_derivation import save_audio_with_derivations
     from cast.models import Audio
     from cast.models.audio import ChapterMark
     from django.contrib.auth import get_user_model
@@ -66,7 +67,7 @@ def episode_path(live_server, settings, tmp_path):
         mp3=SimpleUploadedFile("clip.mp3", _synth_audio("mp3", "libmp3lame"), content_type="audio/mpeg"),
         m4a=SimpleUploadedFile("clip.m4a", _synth_audio("m4a", "aac"), content_type="audio/mp4"),
     )
-    audio.save()  # computes duration via ffprobe
+    save_audio_with_derivations(audio)  # computes duration via ffprobe
 
     # Inline transcript: NUM_CUES one-second cues with distinct text.
     cues = [

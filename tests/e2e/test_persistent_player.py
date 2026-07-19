@@ -49,6 +49,7 @@ def _synth_audio(ext: str, codec: str, seconds: int = CLIP_SECONDS) -> bytes:
 
 def _make_episode(*, blog, num, title, user, root_collection, seconds=CLIP_SECONDS, num_cues=NUM_CUES):
     from cast.devdata import create_episode, create_transcript
+    from cast.media_derivation import save_audio_with_derivations
     from cast.models import Audio
     from cast.models.audio import ChapterMark
 
@@ -61,7 +62,7 @@ def _make_episode(*, blog, num, title, user, root_collection, seconds=CLIP_SECON
         ),
         m4a=SimpleUploadedFile("clip.m4a", _synth_audio("m4a", "aac", seconds=seconds), content_type="audio/mp4"),
     )
-    audio.save()  # computes duration via ffprobe
+    save_audio_with_derivations(audio)  # computes duration via ffprobe
 
     cues = [
         {"start_ms": i * 1000, "end_ms": (i + 1) * 1000, "text": f"{title} transcript cue {i}."}
