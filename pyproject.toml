@@ -25,7 +25,7 @@ dependencies = [
     "python-dotenv",
     "pyzmq>=25.1.1",           # needed for Python >= 3.12
     "sentry-sdk",
-    "wagtail>=7.4,<7.5",
+    "wagtail>=8.0,<8.1",
     "whitenoise",
 ]
 
