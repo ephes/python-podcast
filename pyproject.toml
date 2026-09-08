@@ -76,6 +76,8 @@ omit = ["apps/*/tests/*", "apps/*/migrations/*"]
 command_line = "-m pytest"
 
 [tool.pytest.ini_options]
+# List new test roots here so default discovery includes them.
+testpaths = ["python_podcast", "tests"]
 DJANGO_SETTINGS_MODULE = "config.settings.test"
 filterwarnings = []
 # e2e tests are excluded by default: they need config.settings.e2e, built Vite
