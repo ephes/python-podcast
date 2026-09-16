@@ -60,6 +60,17 @@ chromium`` and run ``just test-e2e``. Before deploying, also check the new froze
 environment with production settings and ``migrate --plan`` against PostgreSQL,
 and retain a fresh database backup and the previous commit/lock for rollback.
 
+2026-09-16 django-cast release pin
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The focused django-cast refresh advances the intentionally retained Git pin
+from ``b36ddd4b`` to the released 0.2.65 commit ``1021142d``. PyPI now also
+publishes 0.2.65. No other locked dependency changed. See the
+`final release notes <https://github.com/ephes/django-cast/blob/0.2.65/docs/releases/0.2.65.rst>`_.
+The 82 application tests and all 11 Chromium browser tests passed on Python
+3.14.5. The migration graph applied to empty SQLite, and the settings,
+model-change, changed-file hook, and documentation checks also completed.
+
 2026-09-08 refresh
 ~~~~~~~~~~~~~~~~~~
 

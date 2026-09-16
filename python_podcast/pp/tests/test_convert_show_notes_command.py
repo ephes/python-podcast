@@ -5,7 +5,7 @@ from io import StringIO
 
 import pytest
 from cast.devdata import create_image
-from cast.models import Episode, Podcast
+from cast.models import Audio, Episode, Podcast
 from django.conf import settings
 from django.core.management import call_command
 from wagtail.coreutils import get_supported_content_language_variant
@@ -44,6 +44,7 @@ def _make_episode(*, slug, detail_children, num=1, overview=None):
         slug=slug,
         owner=podcast.owner,
         body=json.dumps(body),
+        podcast_audio=Audio.objects.create(user=podcast.owner, title=f"Episode {num} audio"),
     )
     podcast.add_child(instance=episode)
     return episode
