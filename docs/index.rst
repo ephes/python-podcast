@@ -14,7 +14,9 @@ Contents:
    install
    deploy
    docker_ec2
-   tests
+   convert-show-notes-runbook
+   known-speaker-runbook
+   pycharm/configuration
 
 
 

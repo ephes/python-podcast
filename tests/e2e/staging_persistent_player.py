@@ -46,7 +46,8 @@ def _wait_advancing(page, label, results):
     before = _audio_advancing(page)
     t0 = before["t"] if before else -1
     page.wait_for_function(
-        "(t0) => { const a = window.__castPersistentAudioDebug.getActiveAudio(); return a && !a.paused && a.currentTime > t0 + 0.2; }",
+        "(t0) => { const a = window.__castPersistentAudioDebug.getActiveAudio(); "
+        "return a && !a.paused && a.currentTime > t0 + 0.2; }",
         arg=t0,
         timeout=12000,
     )
@@ -103,7 +104,8 @@ def run(base, episode_path, headed=False):
         page.locator("[data-cast-play]").first.click()
         page.wait_for_function("() => window.__castPersistentAudioDebug.hostCount() === 1", timeout=15000)
         page.wait_for_function(
-            "() => { const a = window.__castPersistentAudioDebug.getActiveAudio(); return a && a.currentTime > 0.3 && !a.paused; }",
+            "() => { const a = window.__castPersistentAudioDebug.getActiveAudio(); "
+            "return a && a.currentTime > 0.3 && !a.paused; }",
             timeout=15000,
         )
         audio0 = page.evaluate_handle("() => window.__castPersistentAudioDebug.getActiveAudio()")
@@ -151,7 +153,8 @@ def run(base, episode_path, headed=False):
             switches_before = page.evaluate("() => window.__castPersistentAudioDebug.switchCount")
             page.locator("[data-cast-play]").first.click()
             page.wait_for_function(
-                "(prev) => { const a = window.__castPersistentAudioDebug.getActiveAudio(); return a && a !== prev && a.currentTime > 0.3 && !a.paused; }",
+                "(prev) => { const a = window.__castPersistentAudioDebug.getActiveAudio(); "
+                "return a && a !== prev && a.currentTime > 0.3 && !a.paused; }",
                 arg=audio0,
                 timeout=15000,
             )

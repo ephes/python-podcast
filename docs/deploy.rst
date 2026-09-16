@@ -108,7 +108,13 @@ was empty and its settings check reported only the allauth deprecations. A fresh
 custom-format database dump was saved and its catalog checked with
 ``pg_restore --list``; the previous dependency files were also retained. No
 schema rollback is needed when redeploying the previous commit for this refresh.
-PostgreSQL's pre-existing collation-version mismatch requires separate maintenance.
+PostgreSQL's pre-existing collation-version mismatch was resolved on 2026-09-16
+by rebuilding all 114 indexes that use the database default collation
+concurrently, then refreshing the database metadata from glibc 2.35 to 2.39.
+The post-maintenance check found no invalid user indexes; system catalog indexes
+were outside the targeted rebuild. A cluster-wide check found that the
+unrelated ``lead`` and ``template1`` databases still carry the old version and
+are outside this application release follow-up.
 
 Transcript Worker
 -----------------
