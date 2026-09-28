@@ -401,6 +401,10 @@ FLUENT_COMMENTS_DEFAULT_MODERATOR = env("FLUENT_COMMENTS_DEFAULT_MODERATOR", def
 # jobs, raising django-cast's 900s default. See docs/deploy.rst.
 CAST_VOXHELM_POLL_TIMEOUT = env.float("CAST_VOXHELM_POLL_TIMEOUT", default=6 * 60 * 60)
 
+# <itunes:summary> repeats <description>; with long show notes it was 44% of
+# the raw podcast feed. Apple Podcasts reads <description>.
+CAST_FEED_ITUNES_SUMMARY = False
+
 # Persistent audio player (staging proof). When True, the `pp` theme renders a
 # single live <cast-audio-player> outside the #paging-area swap boundary and
 # progressively enhances internal navigation so playback survives page changes.
