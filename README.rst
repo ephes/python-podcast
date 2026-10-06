@@ -30,6 +30,12 @@ Setting Up Your Users
 
     $ python manage.py createsuperuser
 
+* User pages under ``/users/`` are not a public member directory. The list at
+  ``/users/`` is for staff only: anonymous visitors are sent to the login page and
+  logged-in non-staff users get a 403. A profile at ``/users/<username>/`` is shown
+  to its owner and to staff; anyone else gets a 404, so the page does not reveal
+  whether a username exists.
+
 For convenience, you can keep your normal user logged in on Chrome and your superuser logged in on Firefox (or similar), so that you can see how the site behaves for both kinds of users.
 
 Type checks
