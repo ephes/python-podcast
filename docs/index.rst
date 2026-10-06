@@ -13,6 +13,7 @@ Contents:
 
    install
    deploy
+   api_token_auth
    docker_ec2
    convert-show-notes-runbook
    known-speaker-runbook

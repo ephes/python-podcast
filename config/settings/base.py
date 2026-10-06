@@ -295,6 +295,15 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.SessionAuthentication",
         "rest_framework.authentication.TokenAuthentication",
     ),
+    # Rates for the throttled api/api-token-auth/ view only. No
+    # DEFAULT_THROTTLE_CLASSES is set, so other API views stay unthrottled.
+    # Traefik is the only reverse proxy, so the client address is the last
+    # X-Forwarded-For entry. Earlier entries are client-controlled.
+    "NUM_PROXIES": env.int("DJANGO_NUM_PROXIES", default=1),
+    "DEFAULT_THROTTLE_RATES": {
+        "api_token_auth_client": env("DJANGO_API_TOKEN_AUTH_CLIENT_RATE", default="20/hour"),
+        "api_token_auth_username": env("DJANGO_API_TOKEN_AUTH_USERNAME_RATE", default="10/hour"),
+    },
 }
 
 # STORAGE CONFIGURATION
