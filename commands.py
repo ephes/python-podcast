@@ -1,4 +1,3 @@
-import contextlib
 import datetime
 import os
 import platform
@@ -144,17 +143,6 @@ def docs():
     webbrowser.open_new_tab(file_url)
 
 
-@contextlib.contextmanager
-def working_directory(path):
-    """Changes working directory and returns to previous on exit."""
-    prev_cwd = Path.cwd().absolute()
-    try:
-        os.chdir(path)
-        yield
-    finally:
-        os.chdir(prev_cwd)
-
-
 @cli.command()
 def production_db_to_local(
     production_host: str = typer.Option("wersdoerfer.de", help="SSH host for the production server."),
@@ -213,30 +201,6 @@ def production_db_to_local(
         print(f"production backup was saved at {backup_path}")
         raise
     print(backup_path)
-
-
-@cli.command()
-def make_local_db_restorable():
-    """
-    Make a local db restorable by ansible.
-
-    Just print out help atm.
-    """
-    help = """
-        pg_dump python_podcast | gzip > backups/db.staging.psql.gz
-        cd deploy
-        ansible-playbook restore_database.yml
-    """
-    print(help)
-
-
-def deploy(environment):
-    """
-    Use legacy ansible-playbook flow under deploy/ (kept for reference).
-    """
-    deploy_root = Path(__file__).parent / "deploy"
-    with working_directory(deploy_root):
-        subprocess.call(["ansible-playbook", "deploy.yml", "--limit", environment])
 
 
 _SECTION_HEADER_RE = re.compile(r"^\s*\[.*\]\s*(?:#.*)?$")

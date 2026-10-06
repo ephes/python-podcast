@@ -1,8 +1,7 @@
 Deploy
 ========
 
-Staging and production deployments run through ops-control (SOPS-backed). The local ``deploy/``
-directory is kept as a legacy reference.
+Staging and production deployments run through ops-control (SOPS-backed).
 
 Deployment Commands
 -------------------
