@@ -16,6 +16,7 @@ Contents:
    docker_ec2
    convert-show-notes-runbook
    known-speaker-runbook
+   fediverse
    pycharm/configuration
 
 
