@@ -57,6 +57,16 @@ Running tests with py.test
 
   $ pytest
 
+Continuous Integration
+~~~~~~~~~~~~~~~~~~~~~~
+
+GitHub Actions (``.github/workflows/ci.yml``) runs on every push and pull request:
+
+* ``lint``: the pre-commit hooks via ``uv run prek run --all-files``
+* ``test``: ``pytest -m "not e2e"`` against a PostgreSQL 17 service container
+  (Python 3.14, ``uv sync --locked``), with dummy AWS settings; test settings keep
+  uploads in memory. The Playwright e2e tests are not run in CI; use ``just test-e2e``.
+
 Live reloading and Sass CSS compilation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

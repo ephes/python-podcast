@@ -11,7 +11,15 @@ import cast
 import cast_bootstrap5
 import cast_vue
 
+from .base import MEDIA_URL as BASE_MEDIA_URL
+from .base import STORAGES as BASE_STORAGES
 from .test import *  # noqa
+
+# The unit-test settings keep uploads in memory, but the browser tests need
+# media that ffprobe can read from disk and the live server can hand out, so
+# keep the base storage configuration here (unchanged e2e behaviour).
+STORAGES = BASE_STORAGES
+MEDIA_URL = BASE_MEDIA_URL
 
 # Use the custom web-component audio player for this verification.
 CAST_AUDIO_PLAYER = "custom"

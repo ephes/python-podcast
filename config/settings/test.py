@@ -57,3 +57,17 @@ TASKS = {
 
 # Your stuff...
 # ------------------------------------------------------------------------------
+
+# STORAGE
+# ------------------------------------------------------------------------------
+# Tests must never write to the S3 media bucket. Keep uploads in memory so the
+# suite runs without AWS credentials (CI) and never touches real media locally.
+# Only the generic upload aliases are swapped; dedicated aliases such as
+# cast_public_transcripts keep their configured backend so their config tests
+# still exercise the real settings.
+STORAGES = {
+    **STORAGES,  # noqa F405
+    "default": {"BACKEND": "django.core.files.storage.InMemoryStorage"},
+    "production": {"BACKEND": "django.core.files.storage.InMemoryStorage"},
+}
+MEDIA_URL = "/media/"

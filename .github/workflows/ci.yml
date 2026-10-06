@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Production runs Python 3.14 (ops-control wagtail_python_version).
+  PYTHON_VERSION: "3.14"
+  UV_VERSION: "0.12.23"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Python dependencies
+        run: uv sync --locked
+
+      - name: Cache prek hook environments
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/prek
+          key: prek-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
+
+      # The repo's lint setup is the pre-commit config (black, isort, flake8,
+      # pyupgrade, django-upgrade, djhtml, file hygiene); ruff is not configured.
+      - name: Run pre-commit hooks (prek)
+        run: uv run --locked prek run --all-files --show-diff-on-failure
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DJANGO_SETTINGS_MODULE: config.settings.test
+      DJANGO_READ_DOT_ENV_FILE: "False"
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/python_podcast
+      LEGACY_DATABASE_URL: postgres://postgres:postgres@localhost:5432/python_podcast_legacy
+      # base.py requires these; test settings keep uploads in memory, so the
+      # values are deliberately invalid and S3 access would fail loudly.
+      DJANGO_AWS_ACCESS_KEY_ID: test-invalid-access-key
+      DJANGO_AWS_SECRET_ACCESS_KEY: test-invalid-secret-key
+      DJANGO_AWS_STORAGE_BUCKET_NAME: test-bucket
+      CLOUDFRONT_DOMAIN: cdn.invalid
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Python dependencies
+        run: uv sync --locked
+
+      # pyproject addopts deselect the Playwright e2e tests (-m "not e2e");
+      # they need built Vite assets, browsers and ffmpeg and run via `just test-e2e`.
+      - name: Run test suite (excluding e2e)
+        run: uv run --locked pytest --create-db -p no:sugar -m "not e2e"
