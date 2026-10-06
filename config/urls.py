@@ -6,12 +6,13 @@ from django.urls import include, path
 from django.views.generic import RedirectView, TemplateView
 from wagtail import urls as wagtail_urls
 from wagtail.admin import urls as wagtailadmin_urls
+from wagtail.admin.views import account as wagtailadmin_account
 from wagtail.api.v2.views import PagesAPIViewSet
 from wagtail.documents import urls as wagtaildocs_urls
 
 from python_podcast.core import views as core_views
 from python_podcast.pp import views as pp_views
-from python_podcast.users import api_auth
+from python_podcast.users import api_auth, login_throttle
 
 handler404 = default_views_cast.page_not_found
 handler500 = default_views_cast.server_error
@@ -44,6 +45,8 @@ urlpatterns = [
         name="impressum",
     ),
     # Django Admin, use {% url 'admin:index' %}
+    # Failed logins are throttled: see docs/admin_login_throttle.rst
+    path(f"{settings.ADMIN_URL}login/", login_throttle.throttle_failed_logins(admin.site.login)),
     path(settings.ADMIN_URL, admin.site.urls),
     # User management
     path(
@@ -66,6 +69,11 @@ urlpatterns = [
     # Fediverse redirects etc.
     path("", include("python_podcast.fedi.urls", namespace="fedi")),
     # Wagtail
+    # Failed logins are throttled: see docs/admin_login_throttle.rst
+    path(
+        f"{settings.WAGTAILADMIN_BASE_URL}login/",
+        login_throttle.throttle_failed_logins(wagtailadmin_account.LoginView.as_view()),
+    ),
     path(settings.WAGTAILADMIN_BASE_URL, include(wagtailadmin_urls)),
     path("documents/", include(wagtaildocs_urls)),
     path("", include(wagtail_urls)),  # default is wagtail

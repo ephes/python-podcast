@@ -58,7 +58,8 @@ Other login surfaces
 * allauth's ``ACCOUNT_RATE_LIMITS`` defaults apply to ``/accounts/login/``,
   because the project does not override them.
 * The Django admin login (``ADMIN_URL``) and the Wagtail admin login
-  (``WAGTAILADMIN_BASE_URL``) have no rate limit of their own.
+  (``WAGTAILADMIN_BASE_URL``) throttle failed attempts with their own limits
+  in the same cache. See :doc:`admin_login_throttle`.
 
 Change history
 --------------
