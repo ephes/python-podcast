@@ -150,6 +150,28 @@ middleware to match, then submit the domain at https://hstspreload.org/.
 Until then the ``stsPreload`` flag in the Traefik middleware should be dropped
 in ops-library so both layers agree.
 
+2026-10-09 database connection recovery
+----------------------------------------
+
+Production and staging enable ``CONN_HEALTH_CHECKS`` on the default database.
+Django checks persistent connections before reuse during a request and replaces
+connections closed by a PostgreSQL restart. The existing 60-second
+``CONN_MAX_AGE`` remains unchanged. Requests made while PostgreSQL is unavailable
+can still fail; this setting does not retry interrupted transactions.
+
+The verified recovery path is persistent connection reuse by web requests;
+this is not a retry mechanism for interrupted transcript tasks. The transcript
+worker retains systemd's automatic restart on unexpected database connection
+failures. For planned PostgreSQL maintenance, pause task producers, drain both
+``READY`` and ``RUNNING`` tasks, and gracefully stop active database task workers.
+Verify clean shutdown and re-check queue state before restarting PostgreSQL;
+restore workers and producers after database readiness. The current worker stop
+timeout is 90 seconds, so a long task must finish before maintenance. PostgreSQL
+is shared with other applications; coordinate their workers and maintenance
+window too.
+The operator procedure and staging verification are recorded in ops-control's
+``runbooks/python-podcast-database-maintenance.md``.
+
 Transcript Worker
 -----------------
 
