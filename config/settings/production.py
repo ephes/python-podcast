@@ -169,9 +169,10 @@ sentry_sdk.init(
     # of transactions for performance monitoring.
     # We recommend adjusting this value in production,
     traces_sample_rate=0.01,
-    # If you wish to associate users to errors (assuming you are using
-    # django.contrib.auth) you may enable sending PII data.
-    send_default_pii=True,
+    # Do not send visitor IPs, user identities, cookies or request bodies to
+    # Sentry. Error reports keep stack traces and the request URL only.
+    send_default_pii=False,
+    max_request_body_size="never",
     # By default the SDK will try to use the SENTRY_RELEASE
     # environment variable, or infer a git commit
     # SHA as release, however you may want to set

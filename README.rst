@@ -92,6 +92,9 @@ The system is setup with reasonable defaults, including 404 logging and integrat
 
 You must set the DSN url in production.
 
+Visitor IPs, user identities, cookies and request bodies are not sent to Sentry;
+see ``docs/deploy.rst`` (Sentry Privacy).
+
 
 Deployment
 ----------
