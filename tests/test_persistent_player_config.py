@@ -5,6 +5,8 @@ cheap checks that the staging flag reaches templates and that the audio-block
 override publishes a payload + inert action (not an in-body live player) when on.
 """
 
+import json
+import re
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -96,6 +98,87 @@ def test_player_payload_uses_small_rendition_for_initial_card():
     assert payload["poster"] == player_payload["poster"]
     assert payload["card_poster"] == "https://testserver/media/cover.max-128x128.webp"
     assert payload["duration_display"] == "1 h"
+
+
+def _post(pk, **kwargs):
+    post = SimpleNamespace(pk=pk, content_type_id=1, cover_image=None, blog=None, **kwargs)
+    post.specific = post
+    return post
+
+
+def _fake_payload(audio, post=None, request=None):
+    # Like django-cast, the title comes from the audio; the poster depends on the post.
+    poster = f"https://media.example/post-{post.pk}.webp" if getattr(post, "pk", None) else ""
+    return {"title": "Shared Audio", "duration": 60, "poster": poster}
+
+
+def _render_cards(audio, posts):
+    from django.template.loader import render_to_string
+
+    with patch(
+        "python_podcast.pp.templatetags.pp_persistent_player.build_player_payload",
+        side_effect=_fake_payload,
+    ):
+        payloads = [cast_player_payload({}, audio, post) for post in posts]
+    html = "".join(render_to_string("cast/_persistent_play_action.html", {"payload": payload}) for payload in payloads)
+    return payloads, html
+
+
+def test_posts_sharing_one_audio_publish_distinct_payloads():
+    """Two overview cards for different posts must not share a payload id.
+
+    persistent-player.js resolves a play action with getElementById, so a shared
+    id made the second card load the first post's poster and transcript link.
+    """
+    audio = SimpleNamespace(pk=7)
+    payloads, html = _render_cards(audio, [_post(11, title="Episode Alpha"), _post(12, title="Episode Beta")])
+
+    assert [payload["payload_id"] for payload in payloads] == [
+        "cast-player-data-7-post-11",
+        "cast-player-data-7-post-12",
+    ]
+    assert [payload["player_id"] for payload in payloads] == ["cast-player-7-post-11", "cast-player-7-post-12"]
+    script_ids = re.findall(r'<script id="([^"]+)" type="application/json">', html)
+    assert script_ids == ["cast-player-data-7-post-11", "cast-player-data-7-post-12"]
+    for payload, post_pk in zip(payloads, [11, 12]):
+        script = re.search(rf'<script id="{payload["payload_id"]}" type="application/json">(.*?)</script>', html)
+        assert json.loads(script.group(1))["poster"] == f"https://media.example/post-{post_pk}.webp"
+        # Every hook of one card names that card's own payload.
+        assert html.count(f'data-cast-play="{payload["payload_id"]}"') == 1
+        assert html.count(f'data-cast-episode-payload="{payload["payload_id"]}"') == 1
+        assert html.count(f'data-cast-player-id="{payload["player_id"]}"') == 1
+
+
+def test_same_post_keeps_one_payload_id_on_detail_page_and_list_card():
+    audio = SimpleNamespace(pk=7)
+    with patch(
+        "python_podcast.pp.templatetags.pp_persistent_player.build_player_payload",
+        side_effect=_fake_payload,
+    ):
+        detail = cast_player_payload({}, audio, _post(11, title="Episode Alpha"))
+        with patch("wagtail.models.Page.objects") as page_objects:
+            # Cached overview repositories hand out a lightweight post without a content type.
+            page_objects.get.return_value.specific = _post(11, title="Episode Alpha")
+            card = cast_player_payload({}, audio, SimpleNamespace(pk=11, content_type_id=None))
+
+    page_objects.get.assert_called_once_with(pk=11)
+    assert detail["payload_id"] == card["payload_id"] == "cast-player-data-7-post-11"
+    assert detail["player_id"] == card["player_id"] == "cast-player-7-post-11"
+    assert card["poster"] == detail["poster"] == "https://media.example/post-11.webp"
+
+
+@pytest.mark.parametrize("post", [None, SimpleNamespace(pk=None, content_type_id=None, title="unsaved")])
+def test_payload_without_saved_post_keeps_audio_only_identity(post):
+    audio = SimpleNamespace(pk=7)
+    with patch(
+        "python_podcast.pp.templatetags.pp_persistent_player.build_player_payload",
+        side_effect=_fake_payload,
+    ):
+        payload = cast_player_payload({}, audio, post)
+
+    assert payload["payload_id"] == "cast-player-data-7"
+    assert payload["player_id"] == "cast-player-7"
+    assert '<script id="cast-player-data-7" type="application/json">' in payload["player_script"]
 
 
 def test_persistent_play_action_partial_renders_payload_and_inert_action():

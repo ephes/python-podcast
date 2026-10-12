@@ -55,6 +55,28 @@ entry, forward entries kept), so the address bar and relative links such as
 ``?page=2`` match the page shown. A redirect to an excluded route or another
 origin falls back to a full navigation, as above.
 
+Payload identity
+----------------
+
+Every play card publishes its player payload as a ``json_script`` and points
+to it by id (``data-cast-play`` and ``data-cast-episode-payload``); the script
+looks the payload up with ``getElementById``. The payload depends on the post
+(cover poster, transcript link), so the id names the audio and the post:
+``cast-player-data-<audio pk>-post-<post pk>``, with the matching
+``cast-player-<audio pk>-post-<post pk>`` in ``data-cast-player-id``.
+
+* Two posts that reuse one audio on an overview get two different ids, so each
+  card loads its own payload and only the started card mirrors the playback
+  state.
+* One post has the same id on its detail page and on every list card. That is
+  how a list card shows the playing state after enhanced navigation.
+* Without a saved post the audio-only id ``cast-player-data-<audio pk>`` is
+  used.
+
+The ids are built in ``cast_player_payload``
+(``python_podcast/pp/templatetags/pp_persistent_player.py``); templates must
+take all three attributes from that payload and not build ids themselves.
+
 Tests
 -----
 

@@ -89,15 +89,31 @@ def pp_vite_asset_deferred_css(path: str, app: str) -> str:
     )
 
 
+def _payload_identity(audio: Any, post: Any) -> str:
+    """Return the id suffix shared by a payload script and its play card."""
+    post_pk = getattr(post, "pk", None)
+    if post_pk is None:
+        return f"{audio.pk}"
+    return f"{audio.pk}-post-{post_pk}"
+
+
 @register.simple_tag(takes_context=True)
 def cast_player_payload(context: dict[str, Any], audio: Any, post: Any) -> dict[str, Any]:
     """Return the sanitized custom-player payload + ids for ``audio``.
 
     Use as ``{% cast_player_payload value page as payload %}``; the theme then
     renders ``{{ payload.player_script }}`` (a ``json_script``) plus an inert
-    ``[data-cast-play="{{ payload.payload_id }}"]`` action. Mirrors django-cast's
-    ``cast_custom_player`` id scheme so the same payload contract drives the
-    single live persistent player, with no in-body ``<cast-audio-player>``.
+    ``[data-cast-play="{{ payload.payload_id }}"]`` action. The same payload
+    contract as django-cast's ``cast_custom_player`` drives the single live
+    persistent player, with no in-body ``<cast-audio-player>``.
+
+    The payload carries post context (cover poster, transcript link), so its ids name the
+    audio *and* the post: ``cast-player-data-<audio pk>-post-<post pk>``. Two
+    posts that reuse one audio on an overview therefore publish two distinct
+    payloads, while the same post keeps one id on its detail page and on every
+    list card, which is what lets a card mirror the playing dock after
+    navigation. Without a saved post the audio-only django-cast id
+    ``cast-player-data-<audio pk>`` is kept.
     """
     request = context.get("request")
     # Overview/list cards come from the cached repository and can supply a
@@ -109,12 +125,13 @@ def cast_player_payload(context: dict[str, Any], audio: Any, post: Any) -> dict[
 
         post = Page.objects.get(pk=post.pk).specific
     payload = build_player_payload(audio, post=post, request=request)
-    payload_id = f"cast-player-data-{audio.pk}"
+    identity = _payload_identity(audio, post)
+    payload_id = f"cast-player-data-{identity}"
     poster = payload.get("poster", "")
     return {
         "player_script": json_script(payload, payload_id),
         "payload_id": payload_id,
-        "player_id": f"cast-player-{audio.pk}",
+        "player_id": f"cast-player-{identity}",
         "title": payload.get("title", ""),
         # The dock can use the player-sized payload poster after interaction;
         # the initial card gets a responsive rendition sized for its 46–54 px

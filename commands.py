@@ -5,8 +5,11 @@ import os
 import platform
 import re
 import shlex
+import shutil
 import subprocess
 import sys
+import tempfile
+import tomllib
 import webbrowser
 import zlib
 from pathlib import Path
@@ -39,6 +42,7 @@ except ImportError:
     import typer
 
 from rich import print  # noqa
+from rich.markup import escape  # noqa
 
 cli = typer.Typer()
 
@@ -428,43 +432,199 @@ def _find_table_range(lines, header):
     return start_idx, end_idx
 
 
-def _upsert_single_line_entries_in_table(pyproject_text, header, entries):
+_TOML_KEY_PART = r"""(?:"(?:[^"\\]|\\.)*"|'[^']*'|[A-Za-z0-9_-]+)"""
+_ASSIGNMENT_RE = re.compile(rf"[ \t]*({_TOML_KEY_PART})((?:[ \t]*\.[ \t]*{_TOML_KEY_PART})*)[ \t]*=")
+
+
+class SourceSwitchError(Exception):
+    """Switching package sources was refused or failed; the message says what state was left behind."""
+
+
+def _unquote_toml_key(key):
+    if key.startswith('"'):
+        return tomllib.loads(f"{key} = 0").popitem()[0]
+    if key.startswith("'"):
+        return key[1:-1]
+    return key
+
+
+def _toml_value_end(text, pos):
+    """Return the offset just past the line that ends the value starting at ``pos``.
+
+    A value may continue over several lines: arrays, inline tables and multi-line
+    strings. Brackets and comment markers inside strings do not count.
+    """
+    depth = 0
+    length = len(text)
+    while pos < length:
+        char = text[pos]
+        if text.startswith('"""', pos) or text.startswith("'''", pos):
+            quote = text[pos] * 3
+            pos += 3
+            while pos < length and not text.startswith(quote, pos):
+                pos += 2 if quote == '"""' and text[pos] == "\\" else 1
+            pos += 3
+            # Up to two more quotes may belong to the string content.
+            while pos < length and text[pos] == quote[0]:
+                pos += 1
+            continue
+        if char == '"':
+            pos += 1
+            while pos < length and text[pos] not in '"\n':
+                pos += 2 if text[pos] == "\\" else 1
+            if pos < length and text[pos] == '"':
+                pos += 1
+            continue
+        if char == "'":
+            pos += 1
+            while pos < length and text[pos] not in "'\n":
+                pos += 1
+            if pos < length and text[pos] == "'":
+                pos += 1
+            continue
+        if char == "#":
+            while pos < length and text[pos] != "\n":
+                pos += 1
+            continue
+        if char in "[{":
+            depth += 1
+        elif char in "]}":
+            depth -= 1
+        elif char == "\n" and depth <= 0:
+            return pos + 1
+        pos += 1
+    return length
+
+
+def _upsert_entries_in_table(pyproject_text, header, entries):
+    """Replace or add ``key = value`` entries in the table ``header``.
+
+    A replaced entry is removed completely, including a value that spans several
+    lines. Everything else in the document is kept byte for byte.
+    """
     lines = pyproject_text.splitlines(keepends=True)
-    start_idx, end_idx = _find_table_range(lines, header)
+    start_idx, _ = _find_table_range(lines, header)
+    newline = "\r\n" if "\r\n" in pyproject_text else "\n"
+    new_block = "".join(f"{key} = {value}{newline}" for key, value in entries.items())
 
     if start_idx is None:
-        if lines and not lines[-1].endswith("\n"):
-            lines[-1] = lines[-1] + "\n"
-        if lines and lines[-1].strip():
-            lines.append("\n")
-        lines.append(f"{header}\n")
-        for key, value in entries.items():
-            lines.append(f"{key} = {value}\n")
-        return "".join(lines)
+        text = pyproject_text
+        if text and not text.endswith("\n"):
+            text += newline
+        if text.strip():
+            text += newline
+        return f"{text}{header}{newline}{new_block}"
 
-    table_start = start_idx + 1
-    table_end = end_idx
-
-    keys = set(entries.keys())
-    for i in range(table_end - 1, table_start - 1, -1):
-        line = lines[i]
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#"):
+    body_start = sum(len(line) for line in lines[: start_idx + 1])
+    text = pyproject_text
+    length = len(text)
+    kept = []
+    pos = body_start
+    table_end = length
+    while pos < length:
+        line_end = text.find("\n", pos)
+        line_end = length if line_end == -1 else line_end + 1
+        stripped = text[pos:line_end].strip()
+        if stripped.startswith("["):
+            table_end = pos
+            break
+        match = None if not stripped or stripped.startswith("#") else _ASSIGNMENT_RE.match(text, pos, line_end)
+        if match is None:
+            kept.append(text[pos:line_end])
+            pos = line_end
             continue
-        match = re.match(r"^\s*([A-Za-z0-9_.-]+)\s*=", line)
-        if not match:
-            continue
-        if match.group(1) in keys:
-            del lines[i]
-            table_end -= 1
+        statement_end = _toml_value_end(text, match.end())
+        is_replaced = not match.group(2) and _unquote_toml_key(match.group(1)) in entries
+        if not is_replaced:
+            kept.append(text[pos:statement_end])
+        pos = statement_end
 
-    insert_at = table_end
-    while insert_at > table_start and not lines[insert_at - 1].strip():
-        insert_at -= 1
+    body = "".join(kept)
+    content = body.rstrip()
+    trailing = body.removeprefix(content)
+    if content:
+        content += newline
+        trailing = trailing.removeprefix("\r").removeprefix("\n")
+    return text[:body_start] + content + new_block + trailing + text[table_end:]
 
-    new_lines = [f"{key} = {value}\n" for key, value in entries.items()]
-    lines[insert_at:insert_at] = new_lines
-    return "".join(lines)
+
+def _parse_pyproject(text, description):
+    try:
+        return tomllib.loads(text)
+    except tomllib.TOMLDecodeError as error:
+        raise SourceSwitchError(
+            f"{description} is not valid TOML ({error}); pyproject.toml was left unchanged."
+        ) from error
+
+
+def _write_text_atomically(path, text):
+    fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
+    tmp_path = Path(tmp_name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="") as handle:
+            handle.write(text)
+            handle.flush()
+            os.fsync(handle.fileno())
+        shutil.copymode(path, tmp_path)
+        os.replace(tmp_path, path)
+    except BaseException:
+        tmp_path.unlink(missing_ok=True)
+        raise
+
+
+def _update_uv_sources(pyproject_path, sources):
+    """Set the given ``[tool.uv.sources]`` entries, or leave the file untouched.
+
+    The proposed document is parsed before the file is replaced: it must be valid
+    TOML, carry exactly the requested sources and differ from the original in
+    nothing else. Otherwise ``SourceSwitchError`` is raised and no byte changes.
+    """
+    try:
+        with open(pyproject_path, encoding="utf-8", newline="") as handle:
+            original_text = handle.read()
+    except (OSError, UnicodeDecodeError) as error:
+        raise SourceSwitchError(f"cannot read {pyproject_path} ({error}); nothing was changed.") from error
+    original = _parse_pyproject(original_text, "pyproject.toml")
+
+    entries = {name: _format_inline_table(source) for name, source in sources.items()}
+    updated_text = _upsert_entries_in_table(original_text, "[tool.uv.sources]", entries)
+    updated = _parse_pyproject(updated_text, "the updated pyproject.toml")
+
+    tool = original.setdefault("tool", {})
+    uv = tool.setdefault("uv", {}) if isinstance(tool, dict) else None
+    expected_sources = uv.setdefault("sources", {}) if isinstance(uv, dict) else None
+    if not isinstance(expected_sources, dict):
+        raise SourceSwitchError("[tool.uv.sources] is not a table; pyproject.toml was left unchanged.")
+    expected_sources.update(sources)
+    if updated != original:
+        raise SourceSwitchError(
+            "the source entries could not be replaced without changing other settings; "
+            "pyproject.toml was left unchanged."
+        )
+    _write_text_atomically(pyproject_path, updated_text)
+
+
+def _sync_environment(args, pyproject_path):
+    """Run ``uv sync`` and fail when it fails; ``pyproject.toml`` is not rolled back."""
+    try:
+        returncode = subprocess.run(args).returncode
+    except OSError as error:
+        returncode = 1
+        detail = f"could not be started ({error})"
+    else:
+        detail = f"exited with status {returncode}"
+    if returncode != 0:
+        raise SourceSwitchError(
+            f"`{' '.join(args)}` {detail}, so the installed environment was NOT updated. "
+            f"{pyproject_path} keeps the new source entries; fix the problem and rerun this command, "
+            "or run the opposite switch command to go back. Start it with `uv run --no-sync commands.py ...`: "
+            "a plain `uv run` syncs first and fails the same way."
+        )
+
+
+def _fail_source_switch(error):
+    print(f"source switch failed: {escape(str(error))}")
+    raise typer.Exit(1) from error
 
 
 @cli.command()
@@ -488,23 +648,21 @@ def switch_to_dev_environment():
 
     print("Switching to local development sources in pyproject.toml...")
 
-    sources_modified = False
     updates = {}
     for package_name, package_path in packages:
         if package_path.exists():
-            updates[package_name] = _format_inline_table({"path": f"../{package_path.name}", "editable": True})
+            updates[package_name] = {"path": f"../{package_path.name}", "editable": True}
             print(f"✓ {package_name} -> {package_path}")
-            sources_modified = True
         else:
             print(f"Warning: {package_path} does not exist, skipping")
 
-    if sources_modified:
-        pyproject_text = pyproject_path.read_text(encoding="utf-8")
-        updated = _upsert_single_line_entries_in_table(pyproject_text, "[tool.uv.sources]", updates)
-        pyproject_path.write_text(updated, encoding="utf-8")
-
-        print("\nRunning uv sync to apply changes...")
-        subprocess.call(["uv", "sync"])
+    if updates:
+        try:
+            _update_uv_sources(pyproject_path, updates)
+            print("\nRunning uv sync to apply changes...")
+            _sync_environment(["uv", "sync"], pyproject_path)
+        except SourceSwitchError as error:
+            _fail_source_switch(error)
 
         print("\nDevelopment environment activated!")
         print("Local packages are now installed in editable mode.")
@@ -532,17 +690,15 @@ def switch_to_git_sources():
     }
 
     print("Restoring git sources in pyproject.toml...")
-    updates = {}
     for package_name, git_source in default_sources.items():
-        updates[package_name] = _format_inline_table(git_source)
         print(f"✓ {package_name} -> {git_source}")
 
-    pyproject_text = pyproject_path.read_text(encoding="utf-8")
-    updated = _upsert_single_line_entries_in_table(pyproject_text, "[tool.uv.sources]", updates)
-    pyproject_path.write_text(updated, encoding="utf-8")
-
-    print("\nRunning uv sync to apply changes...")
-    subprocess.call(["uv", "sync", "--reinstall"])
+    try:
+        _update_uv_sources(pyproject_path, default_sources)
+        print("\nRunning uv sync to apply changes...")
+        _sync_environment(["uv", "sync", "--reinstall"], pyproject_path)
+    except SourceSwitchError as error:
+        _fail_source_switch(error)
 
     print("\nSwitched back to git sources!")
     print("All packages are now installed from their git repositories.")

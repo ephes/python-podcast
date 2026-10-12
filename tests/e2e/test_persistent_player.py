@@ -129,6 +129,7 @@ def staging_site(request, live_server, settings, tmp_path):
         "episode_a_slug": episode_a.slug,
         "episode_b_slug": episode_b.slug,
         "episode_a_audio_pk": episode_a.podcast_audio_id,
+        "episode_a_pk": episode_a.pk,
     }
 
 
@@ -344,7 +345,7 @@ def test_play_card_mirror_and_dock_space_reservation(page, paginated_site):
 
     site = paginated_site
     base = site["base"]
-    active_payload_id = f"cast-player-data-{site['episode_a_audio_pk']}"
+    active_payload_id = f"cast-player-data-{site['episode_a_audio_pk']}-post-{site['episode_a_pk']}"
 
     # --- Start Episode A from its detail-page play card ---------------------
     page.goto(base + site["episode_a_url"])
@@ -560,3 +561,58 @@ def test_excluded_links_fall_back_to_full_navigation(page, staging_site):
         }""")
     assert feed_enhanced != "no-feed-link", "expected an RSS feed link on the index"
     assert "feed" in feed_enhanced
+
+
+@pytest.mark.e2e
+def test_posts_sharing_one_audio_each_load_their_own_payload(page, staging_site):
+    """Two overview cards that reuse one Audio publish distinct payload ids.
+
+    The payload carries post context (cover poster, transcript link), so a
+    shared audio-only id made the second card resolve (getElementById) to the
+    first post's payload and both cards mirror one playback state.
+    """
+    from cast.devdata import create_episode
+    from cast.models import Audio, Podcast
+
+    errors = []
+    page.on("console", lambda m: errors.append(f"{m.type}: {m.text}") if m.type == "error" else None)
+    page.on("pageerror", lambda e: errors.append(f"pageerror: {e}"))
+
+    audio = Audio.objects.get(pk=staging_site["episode_a_audio_pk"])
+    podcast = Podcast.objects.get(pk=staging_site["podcast_pk"])
+    body = [
+        {"type": "overview", "value": [{"type": "audio", "value": audio.id}]},
+        {"type": "detail", "value": [{"type": "heading", "value": "Rerun detail"}]},
+    ]
+    rerun = create_episode(blog=podcast, podcast_audio=audio, body=json.dumps(body), num=3)
+    rerun.title = "Episode Alpha Rerun"
+    rerun.live = True
+    rerun.save()
+    rerun.save_revision().publish()
+
+    alpha_id = f"cast-player-data-{audio.pk}-post-{staging_site['episode_a_pk']}"
+    rerun_id = f"cast-player-data-{audio.pk}-post-{rerun.pk}"
+
+    page.goto(staging_site["base"] + staging_site["podcast_url"])
+    page.wait_for_function("() => !!window.__castPersistentAudioDebug")
+    script_ids = page.evaluate(
+        "() => Array.from(document.querySelectorAll('script[id^=\"cast-player-data-\"]')).map((s) => s.id)"
+    )
+    assert len(script_ids) == len(set(script_ids)), script_ids
+    assert {alpha_id, rerun_id} <= set(script_ids)
+
+    for payload_id in (rerun_id, alpha_id):
+        assert page.locator(f'[data-cast-play="{payload_id}"]').count() == 1
+        page.locator(f'[data-cast-play="{payload_id}"]').click()
+        page.wait_for_function("(id) => window.__castPersistentAudioDebug.activePayloadId === id", arg=payload_id)
+        page.wait_for_function(
+            "(id) => ['playing', 'paused'].includes(window.__castPersistentAudioDebug.cardStates()[id])",
+            arg=payload_id,
+        )
+        assert page.evaluate("() => window.__castPersistentAudioDebug.hostCount()") == 1
+        states = page.evaluate("() => window.__castPersistentAudioDebug.cardStates()")
+        other = alpha_id if payload_id == rerun_id else rerun_id
+        assert states[payload_id] in ("playing", "paused")
+        assert states[other] not in ("playing", "paused")
+
+    assert errors == []
