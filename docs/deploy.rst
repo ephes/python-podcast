@@ -59,6 +59,50 @@ chromium`` and run ``just test-e2e``. Before deploying, also check the new froze
 environment with production settings and ``migrate --plan`` against PostgreSQL,
 and retain a fresh database backup and the previous commit/lock for rollback.
 
+2026-10-12 security library refresh
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``uv.lock`` moves django-indieweb ``develop`` from ``289ea25a`` to ``c7b8da62``,
+django-cast ``develop`` from ``95965b91`` to ``8205bc48`` (0.2.68 development),
+cast-bootstrap5 ``main`` from ``4ed370aa`` to ``d0ea6879`` and cast-vue ``main``
+from ``a0db14fb`` to ``0e1d408b``. No other locked package changed. None of the
+updates has a migration, and no settings change is needed.
+
+* django-indieweb parses fetched Webmention source and Vouch documents in a
+  short-lived child process, ``python -m indieweb.webmention_parse_worker``,
+  one per fetched document. The child limits itself to 512 MiB of address
+  space and 20 s of CPU time; the receiving process ends it after 30 s. Over a
+  limit the Webmention is marked ``failed`` and nothing from the document is
+  stored. The ``INDIEWEB_WEBMENTION_PARSE_*`` settings stay at these defaults.
+  This project installs ``indieweb`` but does not route ``indieweb.urls``, so
+  no Webmention endpoint is exposed and the child process is not started in
+  production. Should the endpoint be added later: the ``wagtail_deploy`` units
+  (``NoNewPrivileges``, ``PrivateTmp``, ``ProtectSystem=strict``) have no
+  system call filter, memory limit or task limit that would stop the child or
+  its ``setrlimit`` calls, and gunicorn runs from the same virtualenv.
+* django-cast limits comment posting to ``CAST_COMMENTS_POST_RATE_LIMIT`` posts
+  (default 20) per ``CAST_COMMENTS_POST_RATE_WINDOW`` seconds (default 600) per
+  logged-in user or anonymous client address and answers further posts with
+  ``429`` and ``Retry-After``. Both settings stay at their defaults. The
+  client address comes from ``REST_FRAMEWORK["NUM_PROXIES"]``
+  (``DJANGO_NUM_PROXIES``, default ``1``), which matches Traefik as the only
+  reverse proxy; see :doc:`admin_login_throttle`. The counters live in the
+  ``default`` cache, not in ``api_token_auth_throttle``.
+  The production ``default`` cache is a file cache with Django's default
+  ``MAX_ENTRIES`` of 300. When it is full, culling removes entries at random,
+  which can drop a counter and reset that client's budget early.
+* django-cast ``media_replace --yes`` and ``recalc_video_posters`` now exit
+  non-zero when at least one item failed, and ``media_backup`` has a new
+  ``--refresh-changed`` option. No deploy step or scheduled job here runs these
+  commands.
+* cast-bootstrap5 and cast-vue ship rebuilt bundles (gallery metadata and modal
+  focus fixes; comment drafts and list state fixes), so ``collectstatic`` picks
+  up new hashed assets.
+
+The 269 application tests passed on Python 3.14.8 against PostgreSQL; browser
+tests were not run. ``makemigrations
+--check`` reported no changes.
+
 2026-10-12 cast-bootstrap5 refresh
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
