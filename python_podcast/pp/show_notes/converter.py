@@ -446,6 +446,8 @@ def _tokenize_item(li: Tag, skip: Tag | None = None) -> list[tuple[str, object]]
                 inner = child.find(True)
                 if inner is not None:
                     tokens.append(("formatting", f"has <{inner.name}> markup inside a link title"))
+                elif _has_non_text_string(child):
+                    tokens.append(("formatting", "has a comment or other non-text markup inside a link title"))
                 tokens.append(("link", {"title": _clean_text(child.get_text()), "url": child.get("href", "")}))
             elif child.name == "br":
                 tokens.append(("text", " "))
@@ -456,6 +458,8 @@ def _tokenize_item(li: Tag, skip: Tag | None = None) -> list[tuple[str, object]]
                 nested = child.find(lambda tag: tag.name not in INLINE_TEXT_TAGS and tag.name != "br")
                 if nested is not None:
                     tokens.append(("formatting", f"has <{nested.name}> markup inside <{child.name}>"))
+                elif _has_non_text_string(child):
+                    tokens.append(("formatting", f"has a comment or other non-text markup inside <{child.name}>"))
                 elif not _is_separator_only(text):
                     tokens.append(("formatting", f"has <{child.name}> formatting that a plain-text field cannot keep"))
                 tokens.append(("text", text))
@@ -463,6 +467,11 @@ def _tokenize_item(li: Tag, skip: Tag | None = None) -> list[tuple[str, object]]
                 # Unknown tag: be conservative.
                 return None
     return tokens
+
+
+def _has_non_text_string(tag: Tag) -> bool:
+    """Whether ``tag`` holds a comment/CDATA/... anywhere; ``get_text()`` skips those."""
+    return any(isinstance(node, PreformattedString) for node in tag.descendants)
 
 
 def _first_formatting(tokens: list[tuple[str, object]]) -> str | None:

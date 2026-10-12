@@ -577,6 +577,9 @@ def test_converted_plain_headings_are_idempotent_input():
         '<li><a href="https://example.com/x"><code>uv</code> Dokumentation</a></li>',
         '<li><a href="https://example.com/x">X</a><!-- recorded later --></li>',
         '<li><a href="https://example.com/x">X</a> H<sub>2</sub>O</li>',
+        '<li><a href="https://example.com/x">X<!-- keep me --></a></li>',
+        '<li><a href="https://example.com/x">X</a><b> | <!-- keep me --></b></li>',
+        '<li><a href="https://example.com/x">X</a><span><i><!-- keep me --></i></span></li>',
     ],
 )
 def test_item_with_formatted_prefix_or_note_is_preserved(item):
