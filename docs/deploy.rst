@@ -59,6 +59,26 @@ chromium`` and run ``just test-e2e``. Before deploying, also check the new froze
 environment with production settings and ``migrate --plan`` against PostgreSQL,
 and retain a fresh database backup and the previous commit/lock for rollback.
 
+2026-10-12 django-cast and django-indieweb refresh
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``uv.lock`` moves django-cast ``develop`` from ``0e55a47b`` to ``95965b91`` and
+django-indieweb ``develop`` from ``5187311d`` to ``289ea25a``. No other locked
+package changed. cast-bootstrap5 stays at ``bcd0b513``: its ``main`` now pins
+django-cast to a fixed commit in ``tool.uv.sources``, which conflicts with
+tracking ``develop`` here.
+
+* django-indieweb migration ``0029_reconcile_no_scope_grants`` deletes duplicate
+  no-scope tokens and auth codes before ``0030_scope_not_null`` makes the scope
+  column non-null. Take a database backup before deploying.
+* django-cast strips EXIF GPS from new image uploads. Existing originals are not
+  rewritten; ``python manage.py report_image_gps`` lists them read-only.
+* django-cast restricts the Wagtail images API to staff unless
+  ``CAST_PUBLIC_IMAGES_API`` is ``True``. The setting stays unset here.
+
+The 153 application tests passed on Python 3.14.7 against PostgreSQL; browser
+tests were not run. ``makemigrations --check`` reported no changes.
+
 2026-09-16 django-cast release pin
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
