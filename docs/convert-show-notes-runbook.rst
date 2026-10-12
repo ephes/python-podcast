@@ -53,7 +53,8 @@ Safety model
 * ``--apply`` creates a Wagtail **draft revision**. The live page is unchanged
   until the revision is published, so the conversion can be reviewed in Wagtail
   before going live.
-* ``--publish`` publishes the created revision (implies ``--apply``).
+* ``--publish`` publishes the created revision (implies ``--apply``). It only
+  ever puts the conversion live; see `Publish conflicts`_.
 * ``--slug <slug>`` limits the run to one episode; it may be given multiple
   times.
 * ``--force`` re-converts from the original legacy body, ignoring the "already
@@ -65,6 +66,31 @@ Safety model
   unconverted version anywhere (its legacy body was overwritten and never saved
   as a revision), it is skipped with "no legacy body to re-convert"; restore that
   episode's legacy body from a backup before re-converting.
+
+Publish conflicts
+-----------------
+
+A Wagtail revision holds the whole page, so publishing a draft publishes every
+pending edit in it. ``--publish`` therefore compares the draft with the live
+page and publishes only when they differ in nothing but the ``detail`` section
+(the conversion itself, including corrections made to it during review).
+
+If the draft also changes anything else — an ``overview`` edit, a new title, a
+different cover image — the episode is a *conflict*:
+
+* nothing is published for that episode and the live page stays as it is;
+* the pending edit is kept. When the conversion had not been applied yet, it is
+  saved as a new draft revision on top of the pending edit; an existing
+  conversion draft is left untouched;
+* the report names the fields that differ, for example
+  ``-> conflict: not published, the draft (revision 42) also changes title``;
+* other episodes of the same run are still processed, the summary counts the
+  conflicts and the command exits with an error that lists the affected slugs.
+
+This applies in either order: an unrelated edit saved after ``--apply``, or
+``--publish`` run for an episode that already had a pending draft. To resolve a
+conflict, review the draft in the Wagtail admin and publish it there once the
+other edits are meant to go live too.
 
 Usage
 -----
@@ -98,7 +124,8 @@ Recommended procedure
 3. Convert a few episodes with ``--apply`` and review the draft revisions in
    Wagtail.
 4. Publish the reviewed episodes (re-run with ``--publish`` for those slugs, or
-   publish the drafts from the Wagtail admin).
+   publish the drafts from the Wagtail admin). Episodes reported as a conflict
+   are not published by the command; handle them in the Wagtail admin.
 5. Repeat in batches. Because the command is idempotent, already-converted
    episodes are skipped automatically.
 

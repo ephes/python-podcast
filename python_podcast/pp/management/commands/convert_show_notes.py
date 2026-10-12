@@ -12,6 +12,12 @@ The command is conservative and safe to run repeatedly:
 
 By default the command performs a dry run and writes nothing. Use ``--apply`` to
 create a Wagtail draft revision and ``--publish`` to publish that revision.
+
+``--publish`` only ever puts the conversion live. If the draft differs from the
+live page in anything but the ``detail`` section (an overview edit, a changed
+title, ...), publishing it would put those unrelated edits live as well. Such an
+episode is reported as a conflict: the draft is kept, nothing is published and
+the command exits with an error.
 """
 
 from __future__ import annotations
@@ -21,11 +27,37 @@ import uuid
 from dataclasses import dataclass, field
 
 from cast.models import Episode
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
+from django.core.serializers.json import DjangoJSONEncoder
 
 from python_podcast.pp.show_notes.converter import ConvertedBlock, convert_paragraph_html
 
 SHOW_NOTE_TYPES = frozenset({"show_note_heading", "show_note_link_list", "show_note_sponsor"})
+
+# Page fields that describe the publication state of the page rather than its
+# content. A revision stores the values from the moment it was saved, so they
+# legitimately differ from the live row and say nothing about pending edits.
+REVISION_BOOKKEEPING_FIELDS = frozenset(
+    {
+        "live",
+        "has_unpublished_changes",
+        "first_published_at",
+        "last_published_at",
+        "live_revision",
+        "latest_revision",
+        "latest_revision_created_at",
+        "draft_title",
+        "url_path",
+        "path",
+        "depth",
+        "numchild",
+        "locked",
+        "locked_at",
+        "locked_by",
+        "comments",
+        "wagtail_admin_comments",
+    }
+)
 
 
 @dataclass
@@ -38,6 +70,8 @@ class EpisodeResult:
     after_types: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     revision_pk: int | None = None
+    # Why --publish was refused: the unrelated parts of the draft that differ from live.
+    publish_conflict: list[str] = field(default_factory=list)
 
 
 class Command(BaseCommand):
@@ -52,7 +86,10 @@ class Command(BaseCommand):
         parser.add_argument(
             "--publish",
             action="store_true",
-            help="Publish the created revision. Implies --apply.",
+            help=(
+                "Publish the created revision. Implies --apply. Refused for an episode whose draft "
+                "also contains unpublished changes outside the detail section."
+            ),
         )
         parser.add_argument(
             "--slug",
@@ -91,6 +128,14 @@ class Command(BaseCommand):
 
         self._report_summary(results, apply=apply, publish=publish)
 
+        conflicts = [result.slug for result in results if result.publish_conflict]
+        if conflicts:
+            raise CommandError(
+                f"{len(conflicts)} episode(s) were not published because their draft contains unrelated "
+                f"unpublished changes: {', '.join(conflicts)}. Nothing was published for them and their pending "
+                "edits are kept; review and publish the drafts in the Wagtail admin."
+            )
+
     # -- per-episode ----------------------------------------------------
     def _process_episode(self, episode: Episode, *, apply: bool, publish: bool, force: bool) -> EpisodeResult:
         # The detail conversion source: normally the latest revision (the current
@@ -116,6 +161,19 @@ class Command(BaseCommand):
             live_converted = bool(live_detail) and self._already_converted(live_detail)
             if publish and episode.has_unpublished_changes and not live_converted:
                 revision = episode.get_latest_revision()
+                unrelated = self._unrelated_draft_changes(episode, revision.as_object())
+                if unrelated:
+                    # A later edit was saved on top of the conversion draft (or the
+                    # conversion was applied on top of a pending edit). Publishing the
+                    # latest revision would put that edit live too.
+                    return EpisodeResult(
+                        episode.slug,
+                        episode.pk,
+                        "skipped",
+                        reason="converted draft not published",
+                        revision_pk=revision.pk,
+                        publish_conflict=unrelated,
+                    )
                 revision.publish()
                 return EpisodeResult(
                     episode.slug,
@@ -147,14 +205,51 @@ class Command(BaseCommand):
             # detail section is swapped in -- with --force the converted detail
             # comes from the legacy body while everything else stays current.
             target = episode.get_latest_revision_as_object()
+            # Checked before the conversion is merged in: whatever differs from the
+            # live page now is somebody else's pending edit.
+            unrelated = self._unrelated_draft_changes(episode, target) if publish else []
             merged_top = self._merge_detail(target.body.raw_data, new_top)
             target.body = target.body.stream_block.to_python(merged_top)
             revision = target.save_revision()
             result.revision_pk = revision.pk
-            if publish:
+            if unrelated:
+                result.publish_conflict = unrelated
+            elif publish:
                 revision.publish()
 
         return result
+
+    @staticmethod
+    def _unrelated_draft_changes(episode: Episode, draft: Episode) -> list[str]:
+        """Name what differs between the live page and ``draft`` outside the detail section.
+
+        An empty list means publishing ``draft`` changes nothing but the detail
+        section, so it is safe to publish as "the conversion".
+        """
+
+        def content(page: Episode) -> dict:
+            # Normalise the way a revision stores it (e.g. datetimes lose their
+            # microseconds), otherwise an untouched field looks changed.
+            return json.loads(json.dumps(page.serializable_data(), cls=DjangoJSONEncoder))
+
+        live_data = content(episode)
+        draft_data = content(draft)
+        ignored = REVISION_BOOKKEEPING_FIELDS | {"body"}
+        changed = sorted(
+            key
+            for key in live_data.keys() | draft_data.keys()
+            if key not in ignored and live_data.get(key) != draft_data.get(key)
+        )
+
+        def outside_detail(raw: list[dict]) -> list[dict]:
+            # A detail section is only a placeholder that keeps the section order.
+            # Its block id is ignored too: rebuilding the section in the editor
+            # gives it a new id without changing anything outside of it.
+            return [{"type": "detail"} if block["type"] == "detail" else block for block in raw]
+
+        if outside_detail(list(episode.body.raw_data)) != outside_detail(list(draft.body.raw_data)):
+            changed.append("body outside the detail section")
+        return changed
 
     @staticmethod
     def _merge_detail(target_raw: list[dict], converted_top: list[dict]) -> list[dict]:
@@ -241,6 +336,19 @@ class Command(BaseCommand):
     # -- reporting ------------------------------------------------------
     def _report(self, result: EpisodeResult) -> None:
         self.stdout.write(f"Episode {result.slug} (pk={result.pk})")
+        if result.publish_conflict:
+            if result.before_types:
+                self.stdout.write(f"  before: {', '.join(result.before_types) or '(empty)'}")
+                self.stdout.write(f"  after:  {', '.join(result.after_types) or '(empty)'}")
+                for warning in result.warnings:
+                    self.stdout.write(f"  warning: {warning}")
+                self.stdout.write(f"  -> changed (draft revision {result.revision_pk})")
+            self.stdout.write(
+                f"  -> conflict: not published, the draft (revision {result.revision_pk}) also changes "
+                f"{', '.join(result.publish_conflict)}"
+            )
+            return
+
         if result.status == "skipped":
             self.stdout.write(f"  -> skipped: {result.reason}")
             return
@@ -263,11 +371,17 @@ class Command(BaseCommand):
         changed = sum(1 for result in results if result.status == "changed")
         skipped = sum(1 for result in results if result.status == "skipped")
         with_warnings = sum(1 for result in results if result.warnings)
+        conflicts = sum(1 for result in results if result.publish_conflict)
 
         self.stdout.write("")
-        self.stdout.write(f"Summary: {changed} changed, {skipped} skipped, {with_warnings} with warnings")
+        summary = f"Summary: {changed} changed, {skipped} skipped, {with_warnings} with warnings"
+        if conflicts:
+            summary += f", {conflicts} not published (conflict)"
+        self.stdout.write(summary)
         if not apply:
             self.stdout.write("Dry run: no changes written. Re-run with --apply to create revisions.")
+        elif publish and conflicts:
+            self.stdout.write("Applied revisions; published only the episodes without a conflict.")
         elif publish:
             self.stdout.write("Applied and published revisions.")
         else:
