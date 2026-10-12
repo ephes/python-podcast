@@ -15,6 +15,7 @@ Contents:
    deploy
    api_token_auth
    admin_login_throttle
+   enhanced_navigation
    docker_ec2
    convert-show-notes-runbook
    known-speaker-runbook

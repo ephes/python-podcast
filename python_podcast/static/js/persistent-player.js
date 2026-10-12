@@ -14,6 +14,10 @@
  * <cast-audio-player data-payload>), so it needs no django-cast internals. htmx
  * is used only, optionally, to re-process swapped-in content (pagination).
  *
+ * Enhanced navigation re-checks the final (post-redirect) URL, has a deadline
+ * with a full-load fallback, and reconciles redirected back/forward entries;
+ * see docs/enhanced_navigation.rst.
+ *
  * Diagnostics for tests live on window.__castPersistentAudioDebug.
  */
 (function () {
@@ -44,6 +48,10 @@
   ];
   // Path suffixes (feed / download / media files) that must use a full load.
   var EXCLUDED_SUFFIXES = [".mp3", ".m4a", ".oga", ".opus", ".xml", ".rss", ".json", ".zip", ".pdf"];
+  // Deadline for one enhanced navigation (request + body). Past it the browser
+  // does a normal full load instead. Themes/tests may override it on the region
+  // via data-cast-nav-timeout-ms. Resolved in init().
+  var NAV_TIMEOUT_MS = 15000;
 
   var CLOSE_ICON =
     '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
@@ -694,16 +702,24 @@
     } catch (err) {
       return false;
     }
+    if (url.hash) {
+      return false; // any fragment link (same- or cross-page) -> let the
+      // browser handle native fragment scrolling; enhanced nav would otherwise
+      // scroll to top and drop the #fragment.
+    }
+    return isEnhanceableUrl(url);
+  }
+
+  // The public-navigation policy for a URL: same origin as this document and
+  // not one of the excluded (admin/account/media/feed/download) routes. Applied
+  // to the clicked link AND to the final URL a fetch ended up at, because a
+  // public link may redirect to a login/admin page or to another origin.
+  function isEnhanceableUrl(url) {
     if (url.protocol !== "http:" && url.protocol !== "https:") {
       return false;
     }
     if (url.origin !== window.location.origin) {
       return false; // external
-    }
-    if (url.hash) {
-      return false; // any fragment link (same- or cross-page) -> let the
-      // browser handle native fragment scrolling; enhanced nav would otherwise
-      // scroll to top and drop the #fragment.
     }
     var path = url.pathname.toLowerCase();
     for (var p = 0; p < EXCLUDED_PREFIXES.length; p++) {
@@ -757,10 +773,43 @@
   }
 
   var navToken = 0;
+  // The AbortController and deadline timer of the navigation in flight (if any).
+  var navController = null;
+  var navTimer = null;
+
+  // Abort the in-flight navigation's request and drop its deadline. Callers bump
+  // navToken first, so the aborted request's handlers see they were superseded
+  // and never fall back to a full load on behalf of a stale navigation.
+  function cancelPendingNavigation() {
+    if (navTimer !== null) {
+      window.clearTimeout(navTimer);
+      navTimer = null;
+    }
+    if (navController) {
+      var controller = navController;
+      navController = null;
+      controller.abort();
+    }
+  }
+
+  function sameUrlIgnoringHash(a, b) {
+    try {
+      var first = new URL(a, window.location.href);
+      var second = new URL(b, window.location.href);
+      first.hash = "";
+      second.hash = "";
+      return first.href === second.href;
+    } catch (err) {
+      return false;
+    }
+  }
 
   function navigateTo(url, options) {
     var push = !options || options.push !== false;
     var token = ++navToken;
+    cancelPendingNavigation(); // a newer navigation supersedes (and aborts) the old one
+    var controller = typeof AbortController === "function" ? new AbortController() : null;
+    navController = controller;
     // The URL the history entry / address bar must reflect. When the server
     // redirects the fetch (e.g. "/" -> "/show/"), this becomes the *final*
     // served URL: otherwise the address bar keeps the pre-redirect URL while
@@ -768,32 +817,84 @@
     // pagination's "?page=N") resolve against the wrong base — hitting the
     // home redirect, which drops the query string and bounces back to page 1.
     var finalUrl = url;
-    fetch(url, { headers: { "X-Cast-Enhanced-Nav": "1" }, credentials: "same-origin" })
+    var settled = false;
+
+    function isCurrent() {
+      return token === navToken && !settled;
+    }
+
+    // Finish this navigation exactly once; a superseded navigation never does.
+    function settle() {
+      settled = true;
+      if (navController === controller) {
+        navController = null;
+      }
+      if (navTimer !== null) {
+        window.clearTimeout(navTimer);
+        navTimer = null;
+      }
+    }
+
+    // Hand the navigation back to the browser (full document load).
+    function fullLoad() {
+      if (!isCurrent()) {
+        return;
+      }
+      settle();
+      if (controller) {
+        controller.abort(); // stop downloading a response we will not use
+      }
+      window.location.assign(finalUrl);
+    }
+
+    // Whole-navigation deadline (headers AND body): a stalled response must not
+    // leave the clicked destination unreachable.
+    navTimer = window.setTimeout(fullLoad, NAV_TIMEOUT_MS);
+
+    var fetchOptions = { headers: { "X-Cast-Enhanced-Nav": "1" }, credentials: "same-origin" };
+    if (controller) {
+      fetchOptions.signal = controller.signal;
+    }
+    fetch(url, fetchOptions)
       .then(function (response) {
-        if (token !== navToken) {
-          return null; // superseded by a newer navigation
+        if (!isCurrent()) {
+          return null; // superseded by a newer navigation, or already handed back
         }
         if (response.url) {
           finalUrl = response.url;
         }
+        // Revalidate where the request ENDED UP before reading its body: a
+        // redirect may have left this origin or landed on an excluded route
+        // (login, admin, ...). Those are never imported as public content.
+        var destination;
+        try {
+          destination = new URL(finalUrl, window.location.href);
+        } catch (err) {
+          destination = null;
+        }
+        if (!destination || !isEnhanceableUrl(destination)) {
+          fullLoad();
+          return null;
+        }
         var contentType = response.headers.get("content-type") || "";
         if (!response.ok || contentType.indexOf("text/html") === -1) {
-          window.location.assign(finalUrl);
+          fullLoad();
           return null;
         }
         return response.text();
       })
       .then(function (text) {
-        if (text === null || token !== navToken) {
+        if (text === null || text === undefined || !isCurrent()) {
           return;
         }
         var doc = new DOMParser().parseFromString(text, "text/html");
         var incoming = doc.getElementById(PAGING_ID);
         var current = document.getElementById(PAGING_ID);
         if (!incoming || !current) {
-          window.location.assign(finalUrl); // no enhanced target -> full load fallback
+          fullLoad(); // no enhanced target -> full load fallback
           return;
         }
+        settle();
         var adopted = document.importNode(incoming, true);
         current.replaceWith(adopted);
         if (doc.title) {
@@ -801,15 +902,18 @@
         }
         if (push) {
           window.history.pushState({ castNav: true }, "", finalUrl);
+        } else if (!sameUrlIgnoringHash(finalUrl, window.location.href)) {
+          // Back/forward to an entry whose URL now redirects: correct THIS
+          // entry's URL in place (same state, no new entry) so the address bar
+          // and relative links match the displayed page.
+          window.history.replaceState(window.history.state, "", finalUrl);
         }
         window.scrollTo(0, 0);
         onContentReady();
         focusHeading(adopted);
       })
       .catch(function () {
-        if (token === navToken) {
-          window.location.assign(finalUrl);
-        }
+        fullLoad(); // no-op when superseded: an old abort never navigates away
       });
   }
 
@@ -891,6 +995,10 @@
     }
     // Theme-declared content swap target (pp: paging-area, bootstrap5: main-content).
     PAGING_ID = region.getAttribute("data-cast-swap-target") || PAGING_ID;
+    var navTimeout = Number(region.getAttribute("data-cast-nav-timeout-ms"));
+    if (isFinite(navTimeout) && navTimeout > 0) {
+      NAV_TIMEOUT_MS = navTimeout;
+    }
     installDiagnostics();
     document.addEventListener("click", onClick);
     window.addEventListener("popstate", onPopState);
