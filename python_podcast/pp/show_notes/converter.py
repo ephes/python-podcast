@@ -16,6 +16,10 @@ Design rules (see the conversion spec):
 * Anything ambiguous (nested lists, block content, items without a single web
   link, non-separator text between links) is preserved verbatim as a
   ``paragraph`` with a warning rather than risk a lossy conversion.
+* The structured fields (heading, prefix, link title, note) are plain text. A
+  heading or list item whose text carries markup those fields cannot keep - an
+  image or embed in a heading, ``<code>``/``<em>``/``<strong>`` formatting in a
+  prefix, link title or note - is preserved verbatim with a warning as well.
 """
 
 from __future__ import annotations
@@ -24,13 +28,17 @@ import re
 from dataclasses import dataclass, field
 
 from bs4 import BeautifulSoup, NavigableString, Tag
+from bs4.element import PreformattedString
 
 from python_podcast.pp.show_notes.icons import materialize_icon
 
 HEADING_TAGS = {"h1", "h2", "h3", "h4", "h5", "h6"}
 LIST_TAGS = {"ul", "ol"}
 
-# Inline formatting tags that may legitimately wrap prefix/note text.
+# Inline formatting tags that may appear in a list item without making it
+# block-level. The destination fields are plain text, so an item is only
+# converted when such a tag wraps nothing but whitespace/separators; formatting
+# around real prefix/note text keeps the item as prose (see ``_tokenize_item``).
 INLINE_TEXT_TAGS = {"strong", "b", "em", "i", "code", "span", "sup", "sub", "small", "u"}
 # Block-level tags inside a list item signal a richer structure we will not flatten.
 BLOCK_TAGS = {"p", "div", "blockquote", "pre", "table", "ul", "ol", "img"} | HEADING_TAGS
@@ -39,6 +47,13 @@ _SEPARATOR_CHARS = "|/–—·•-"
 _SEPARATOR_RE = re.compile(rf"^[\s{re.escape(_SEPARATOR_CHARS)}]+")
 _SEPARATOR_TRAIL_RE = re.compile(rf"[\s{re.escape(_SEPARATOR_CHARS)}]+$")
 _WEB_SCHEMES = ("http://", "https://")
+
+# Markup a plain-text ``show_note_heading`` represents without visible loss: a
+# heading is rendered bold anyway. Everything else (images, embeds, code,
+# emphasis, ...) keeps the heading as original HTML.
+HEADING_TRANSPARENT_TAGS = {"b", "strong"}
+# Stand-in for a <br> while a heading's text is collected (never valid in HTML).
+_LINE_BREAK = "\x00"
 
 # Largest "topic label + sub-links" group we will flatten into a single link
 # item. Bigger groups are preserved as prose to avoid an unreadable link row.
@@ -124,6 +139,18 @@ class _Builder:
             self.warnings.append("Heading contains a link; preserved verbatim to keep the link.")
             self.add_to_pending(heading)
             return index + 1
+
+        plain_text, unsupported = _plain_heading_text(heading)
+        if plain_text is None:
+            # Same reasoning for any other markup the plain text field cannot
+            # hold (image, embed, code, emphasis, ...). A following list stays
+            # prose too: it has no converted heading to attach to.
+            self.warnings.append(
+                f"Heading contains {unsupported}; preserved verbatim because a show-note heading stores plain text."
+            )
+            self.add_to_pending(heading)
+            return index + 1
+        heading_text = plain_text
 
         next_index = _next_meaningful_index(nodes, index + 1)
         next_node = nodes[next_index] if next_index is not None else None
@@ -274,6 +301,10 @@ def _parse_flat_item(li: Tag) -> tuple[dict | None, str | None]:
     if tokens is None:
         return None, "contains a link nested inside formatting"
 
+    formatting = _first_formatting(tokens)
+    if formatting is not None:
+        return None, formatting
+
     links = [token for token in tokens if token[0] == "link"]
     if not links:
         return None, "has no link"
@@ -328,6 +359,9 @@ def _parse_grouped_item(li: Tag, nested: Tag) -> tuple[dict | None, str | None]:
     label_tokens = _tokenize_item(li, skip=nested)
     if label_tokens is None or any(kind == "link" for kind, _ in label_tokens):
         return None, "group label contains a link or unsupported markup"
+    formatting = _first_formatting(label_tokens)
+    if formatting is not None:
+        return None, f"group label {formatting}"
     label = _clean_text("".join(payload for kind, payload in label_tokens if kind == "text"))
     if not label:
         return None, "nested list without a topic label"
@@ -387,31 +421,84 @@ def _label_prefix(label: str) -> str:
 
 
 def _tokenize_item(li: Tag, skip: Tag | None = None) -> list[tuple[str, object]] | None:
-    """Flatten an ``li`` into an ordered list of ('text', str) / ('link', dict).
+    """Flatten an ``li`` into ordered ('text', str) / ('link', dict) / ('formatting', str) tokens.
 
     ``skip`` is an optional direct child (e.g. a nested list) to ignore. Returns
     ``None`` if a link is nested inside an inline formatting tag, which we treat
     as too ambiguous to convert safely.
+
+    A ``formatting`` token names markup the plain-text destination fields cannot
+    keep: an inline formatting tag around real text, or any element inside a
+    link. Formatting that wraps only whitespace/separators carries nothing and
+    is tokenized as plain text.
     """
     tokens: list[tuple[str, object]] = []
     for child in li.children:
         if child is skip:
             continue
-        if isinstance(child, NavigableString):
+        if isinstance(child, PreformattedString):
+            # Comments, CDATA etc. are not text and have no structured field.
+            tokens.append(("formatting", "has a comment or other non-text markup"))
+        elif isinstance(child, NavigableString):
             tokens.append(("text", str(child)))
         elif isinstance(child, Tag):
             if child.name == "a":
+                inner = child.find(True)
+                if inner is not None:
+                    tokens.append(("formatting", f"has <{inner.name}> markup inside a link title"))
                 tokens.append(("link", {"title": _clean_text(child.get_text()), "url": child.get("href", "")}))
             elif child.name == "br":
                 tokens.append(("text", " "))
             elif child.name in INLINE_TEXT_TAGS:
                 if child.find("a") is not None:
                     return None
-                tokens.append(("text", child.get_text()))
+                text = child.get_text()
+                nested = child.find(lambda tag: tag.name not in INLINE_TEXT_TAGS and tag.name != "br")
+                if nested is not None:
+                    tokens.append(("formatting", f"has <{nested.name}> markup inside <{child.name}>"))
+                elif not _is_separator_only(text):
+                    tokens.append(("formatting", f"has <{child.name}> formatting that a plain-text field cannot keep"))
+                tokens.append(("text", text))
             else:
                 # Unknown tag: be conservative.
                 return None
     return tokens
+
+
+def _first_formatting(tokens: list[tuple[str, object]]) -> str | None:
+    """Return the reason of the first ``formatting`` token, if any."""
+    for kind, payload in tokens:
+        if kind == "formatting":
+            return str(payload)
+    return None
+
+
+def _plain_heading_text(heading: Tag) -> tuple[str | None, str]:
+    """Return ``(text, "")`` when ``heading`` is representable as plain text.
+
+    Otherwise ``(None, description)`` names the markup that would be lost. Text,
+    ``<b>``/``<strong>`` wrappers and a leading/trailing ``<br>`` are
+    representable; a ``<br>`` between words, comments and every other element
+    are not.
+    """
+    parts: list[str] = []
+    for node in heading.descendants:
+        if isinstance(node, PreformattedString):
+            return None, "a comment or other non-text markup"
+        if isinstance(node, NavigableString):
+            parts.append(str(node))
+        elif isinstance(node, Tag):
+            if node.name == "br":
+                parts.append(_LINE_BREAK)
+            elif node.name not in HEADING_TRANSPARENT_TAGS:
+                return None, f"<{node.name}>"
+    # Line breaks at either end carry nothing; one between words is structure.
+    text = _clean_text("".join(parts).replace(_LINE_BREAK, f" {_LINE_BREAK} "))
+    while text.startswith(_LINE_BREAK) or text.endswith(_LINE_BREAK):
+        text = text.strip(_LINE_BREAK).strip()
+    if _LINE_BREAK in text:
+        return None, "a line break"
+    return text, ""
 
 
 def _next_meaningful_index(nodes: list[object], start: int) -> int | None:

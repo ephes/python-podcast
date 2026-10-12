@@ -499,3 +499,51 @@ def test_slug_filter_limits_scope():
     _run("--slug", "target-ep", "--apply")
 
     assert other.revisions.count() == 0
+
+
+RICH_SHOWNOTE_HTML = (
+    "<h2>Shownotes</h2>"
+    "<h3>News</h3><ul>"
+    '<li><a href="https://example.com/a">Article A</a> | plain note</li>'
+    '<li><strong>Wichtig:</strong> <a href="https://example.com/sec">Security Release</a> | '
+    "<code>pip install -U django</code></li>"
+    "</ul>"
+    '<h3><img alt="Werbung" src="https://example.com/sponsor.png"/> Werbung</h3>'
+    '<ul><li><a href="https://example.com/sponsor">Sponsor</a></li></ul>'
+)
+
+
+def _detail_children(page):
+    for block in page.body.raw_data:
+        if block["type"] == "detail":
+            return block["value"]
+    return None
+
+
+@pytest.mark.django_db
+def test_apply_persists_unrepresentable_markup_in_the_revision():
+    episode = _make_episode(slug="rich-ep", detail_children=[{"type": "paragraph", "value": RICH_SHOWNOTE_HTML}])
+
+    output = _run("--slug", "rich-ep", "--apply")
+
+    children = _detail_children(_latest_revision_object(episode))
+    assert [child["type"] for child in children] == [
+        "show_note_heading",
+        "show_note_heading",
+        "show_note_link_list",
+        "paragraph",
+        "paragraph",
+    ]
+    items = children[2]["value"]["items"]
+    assert [(item["title"], item["note"]) for item in items] == [("Article A", "plain note")]
+    # The formatted item and the heading with its image are stored unchanged.
+    assert children[3]["value"] == (
+        '<ul><li><strong>Wichtig:</strong> <a href="https://example.com/sec">Security Release</a> | '
+        "<code>pip install -U django</code></li></ul>"
+    )
+    assert children[4]["value"] == (
+        '<h3><img alt="Werbung" src="https://example.com/sponsor.png"/> Werbung</h3>'
+        '<ul><li><a href="https://example.com/sponsor">Sponsor</a></li></ul>'
+    )
+    assert output.count("warning:") == 2
+    assert "Heading contains <img>" in output
