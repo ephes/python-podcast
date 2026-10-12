@@ -828,7 +828,7 @@ wheels = [
 [[package]]
 name = "django-cast"
 version = "0.2.67"
-source = { git = "https://github.com/ephes/django-cast?branch=develop#0e55a47b3bd88850c105246840c1d361682e8257" }
+source = { git = "https://github.com/ephes/django-cast?branch=develop#95965b915b014c9075237652d71fe4c0a9ed629a" }
 dependencies = [
     { name = "crispy-bootstrap4" },
     { name = "django" },
@@ -942,7 +942,7 @@ wheels = [
 [[package]]
 name = "django-indieweb"
 version = "0.6.2"
-source = { git = "https://github.com/ephes/django-indieweb?branch=develop#5187311de147faf677ca36dec5b1ea4f5ad5be11" }
+source = { git = "https://github.com/ephes/django-indieweb?branch=develop#289ea25ab9b755a5b731f87a126349d4c66ff139" }
 dependencies = [
     { name = "beautifulsoup4" },
     { name = "cryptography" },
