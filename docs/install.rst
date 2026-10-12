@@ -141,3 +141,12 @@ back: it keeps the new source entries while the installed environment is still
 the old one. Fix the cause (a missing checkout, an unreachable Git remote, an
 incompatible dependency) and run the same command again, or run the opposite
 switch command to go back.
+
+``uv run`` syncs the environment from ``pyproject.toml`` before it starts
+``commands.py``. With sources that cannot be installed it fails in the same way
+and the command never starts. Recover with ``--no-sync``, which runs the
+command in the environment as it is:
+
+.. code-block:: console
+
+   $ uv run --no-sync commands.py switch-to-git-sources

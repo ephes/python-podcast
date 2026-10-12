@@ -617,7 +617,8 @@ def _sync_environment(args, pyproject_path):
         raise SourceSwitchError(
             f"`{' '.join(args)}` {detail}, so the installed environment was NOT updated. "
             f"{pyproject_path} keeps the new source entries; fix the problem and rerun this command, "
-            "or run the opposite switch command to go back."
+            "or run the opposite switch command to go back. Start it with `uv run --no-sync commands.py ...`: "
+            "a plain `uv run` syncs first and fails the same way."
         )
 
 
