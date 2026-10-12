@@ -8,6 +8,7 @@ override publishes a payload + inert action (not an in-body live player) when on
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import pytest
 from django.template import Context, Template
 from django.test import override_settings
 
@@ -131,3 +132,59 @@ def test_persistent_play_action_partial_renders_payload_and_inert_action():
     assert "cover.max-512x512.webp" not in html
     assert "<cast-audio-player" not in html  # no in-body live player
     assert "<cast-transcript" not in html
+
+
+@pytest.mark.parametrize(
+    "seconds",
+    [
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        True,
+        False,
+        0,
+        0.0,
+        -30,
+        None,
+        "3600",
+        "",
+        [3600],
+    ],
+)
+def test_format_duration_omits_label_for_unknown_or_malformed_values(seconds):
+    from python_podcast.pp.templatetags.pp_persistent_player import _format_duration
+
+    assert _format_duration(seconds) == ""
+
+
+@pytest.mark.parametrize(
+    ("seconds", "label"),
+    [
+        (1, "1 min"),
+        (29.4, "1 min"),
+        (90, "2 min"),
+        (2700, "45 min"),
+        (3570.0, "1 h"),
+        (3600, "1 h"),
+        (5400, "1 h 30 min"),
+        (7260.5, "2 h 1 min"),
+    ],
+)
+def test_format_duration_keeps_known_positive_labels(seconds, label):
+    from python_podcast.pp.templatetags.pp_persistent_player import _format_duration
+
+    assert _format_duration(seconds) == label
+
+
+@pytest.mark.parametrize("duration", [float("nan"), float("inf"), True])
+def test_cast_player_payload_survives_malformed_duration(duration):
+    from python_podcast.pp.templatetags.pp_persistent_player import cast_player_payload
+
+    post = SimpleNamespace(pk=3, content_type_id=1, cover_image=None, blog=None)
+    with patch(
+        "python_podcast.pp.templatetags.pp_persistent_player.build_player_payload",
+        return_value={"title": "Episode", "duration": duration, "poster": "https://media.example/p.webp"},
+    ):
+        payload = cast_player_payload({"request": None}, SimpleNamespace(pk=7), post)
+
+    assert payload["duration_display"] == ""
