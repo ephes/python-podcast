@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 import json
 from io import StringIO
 
@@ -547,3 +548,166 @@ def test_apply_persists_unrepresentable_markup_in_the_revision():
     )
     assert output.count("warning:") == 2
     assert "Heading contains <img>" in output
+
+
+# Edits saved while the command is running
+
+
+def _run_expecting_error(*args):
+    out = StringIO()
+    with pytest.raises(CommandError) as error:
+        call_command("convert_show_notes", *args, stdout=out, stderr=out)
+    return out.getvalue(), str(error.value)
+
+
+def _edit_after(monkeypatch, name, edit, *, slug):
+    """Run ``edit`` once, right after the command's ``name`` step for the episode ``slug``.
+
+    At that point the command has read the episode and computed what it is going
+    to write, but has not written anything yet.
+    """
+    from python_podcast.pp.management.commands.convert_show_notes import Command
+
+    original = getattr(Command, name)
+    is_static = isinstance(inspect.getattr_static(Command, name), staticmethod)
+    pending = [edit]
+
+    def step_then_edit(*args, **kwargs):
+        result = original(*args, **kwargs)
+        if pending and Episode.objects.filter(slug=slug).exists():
+            pending.pop()()
+        return result
+
+    monkeypatch.setattr(Command, name, staticmethod(step_then_edit) if is_static else step_then_edit)
+
+
+EDITOR_DETAIL = [{"type": "paragraph", "value": "<p>Editor rewrote the detail.</p>"}]
+
+
+def _editor_saves_detail(episode, *, publish=False):
+    """What the Wagtail editor does: a fresh page object, a detail-only change, a new revision."""
+
+    def edit():
+        draft = Episode.objects.get(pk=episode.pk).get_latest_revision_as_object()
+        raw = [
+            {**block, "value": EDITOR_DETAIL} if block["type"] == "detail" else block for block in draft.body.raw_data
+        ]
+        draft.body = draft.body.stream_block.to_python(raw)
+        revision = draft.save_revision()
+        if publish:
+            revision.publish()
+
+    return edit
+
+
+def _detail_values(page):
+    return [child.value.source for block in page.body if block.block_type == "detail" for child in block.value]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("mode", ["--apply", "--publish"])
+def test_detail_edit_saved_during_conversion_is_not_replaced(monkeypatch, mode):
+    episode = _make_episode(slug="race-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
+    _edit_after(monkeypatch, "_convert_top", _editor_saves_detail(episode), slug="race-ep")
+
+    output, error = _run_expecting_error("--slug", "race-ep", mode)
+
+    stored = Episode.objects.get(pk=episode.pk)
+    # The editor's revision is the only one and still the latest; nothing went live.
+    assert stored.revisions.count() == 1
+    assert _detail_values(stored.get_latest_revision_as_object()) == ["<p>Editor rewrote the detail.</p>"]
+    assert _detail_types(stored) == ["paragraph"]
+    assert _detail_values(stored) == [SHOWNOTE_HTML]
+    assert stored.has_unpublished_changes is True
+    assert "conflict: not converted, the episode changed while the command was running" in output
+    assert "1 changed during the run (conflict)" in output
+    assert "race-ep" in error
+    assert "changed while the command was running" in error
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("mode", ["--apply", "--publish"])
+def test_detail_edit_published_during_conversion_is_not_replaced(monkeypatch, mode):
+    episode = _make_episode(slug="race-live-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
+    _edit_after(monkeypatch, "_convert_top", _editor_saves_detail(episode, publish=True), slug="race-live-ep")
+
+    _output, error = _run_expecting_error("--slug", "race-live-ep", mode)
+
+    stored = Episode.objects.get(pk=episode.pk)
+    assert stored.revisions.count() == 1
+    assert _detail_values(stored) == ["<p>Editor rewrote the detail.</p>"]
+    assert stored.has_unpublished_changes is False
+    assert "race-live-ep" in error
+
+
+@pytest.mark.django_db
+def test_force_does_not_replace_detail_edit_saved_during_conversion(monkeypatch):
+    episode = _make_episode(slug="race-force-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
+    _run("--slug", "race-force-ep", "--apply")
+    _edit_after(monkeypatch, "_convert_top", _editor_saves_detail(episode), slug="race-force-ep")
+
+    _output, error = _run_expecting_error("--slug", "race-force-ep", "--apply", "--force")
+
+    stored = Episode.objects.get(pk=episode.pk)
+    assert stored.revisions.count() == 2
+    assert _detail_values(stored.get_latest_revision_as_object()) == ["<p>Editor rewrote the detail.</p>"]
+    assert "race-force-ep" in error
+
+
+@pytest.mark.django_db
+def test_existing_conversion_draft_edited_during_publish_is_not_published(monkeypatch):
+    episode = _make_episode(slug="race-draft-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
+    _run("--slug", "race-draft-ep", "--apply")
+    conversion_revision = Episode.objects.get(pk=episode.pk).latest_revision_id
+    _edit_after(monkeypatch, "_unrelated_draft_changes", _editor_saves_detail(episode), slug="race-draft-ep")
+
+    output, error = _run_expecting_error("--slug", "race-draft-ep", "--publish")
+
+    stored = Episode.objects.get(pk=episode.pk)
+    assert stored.revisions.count() == 2
+    assert stored.latest_revision_id != conversion_revision
+    # Neither the conversion draft nor the editor's newer draft went live.
+    assert stored.live_revision_id is None
+    assert _detail_values(stored) == [SHOWNOTE_HTML]
+    assert "conflict: not converted" in output
+    assert "race-draft-ep" in error
+
+
+@pytest.mark.django_db
+def test_episode_deleted_during_conversion_is_reported(monkeypatch):
+    episode = _make_episode(slug="race-gone-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
+    _edit_after(monkeypatch, "_convert_top", lambda: Episode.objects.get(pk=episode.pk).delete(), slug="race-gone-ep")
+
+    _output, error = _run_expecting_error("--slug", "race-gone-ep", "--apply")
+
+    assert not Episode.objects.filter(pk=episode.pk).exists()
+    assert "race-gone-ep" in error
+
+
+@pytest.mark.django_db
+def test_edit_conflict_does_not_block_other_episodes(monkeypatch):
+    raced = _make_episode(slug="race-first-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
+    other = _make_episode(
+        slug="race-second-ep", num=2, detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}]
+    )
+    _edit_after(monkeypatch, "_convert_top", _editor_saves_detail(raced), slug="race-first-ep")
+
+    output, error = _run_expecting_error("--slug", "race-first-ep", "--slug", "race-second-ep", "--publish")
+
+    assert _detail_values(Episode.objects.get(pk=raced.pk)) == [SHOWNOTE_HTML]
+    assert "show_note_link_list" in _detail_types(Episode.objects.get(pk=other.pk))
+    assert "Summary: 1 changed, 1 skipped, 0 with warnings, 1 changed during the run (conflict)" in output
+    assert "race-first-ep" in error
+    assert "race-second-ep" not in error
+
+
+@pytest.mark.django_db
+def test_dry_run_reports_conversion_of_unchanged_episode_without_locking(monkeypatch):
+    from python_podcast.pp.management.commands.convert_show_notes import Command
+
+    _make_episode(slug="race-dry-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
+    monkeypatch.setattr(Command, "_locked_unchanged", None)
+
+    output = _run("--slug", "race-dry-ep")
+
+    assert "would change (dry run)" in output
