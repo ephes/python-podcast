@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import inspect
 import json
+import threading
 from io import StringIO
+from unittest.mock import patch
 
 import pytest
 from cast.devdata import create_image
@@ -9,6 +12,7 @@ from cast.models import Audio, Episode, Podcast
 from django.conf import settings
 from django.core.management import call_command
 from django.core.management.base import CommandError
+from django.db import connection, transaction
 from wagtail.coreutils import get_supported_content_language_variant
 from wagtail.models import Collection, Locale, Page, Site
 
@@ -547,3 +551,298 @@ def test_apply_persists_unrepresentable_markup_in_the_revision():
     )
     assert output.count("warning:") == 2
     assert "Heading contains <img>" in output
+
+
+# Edits saved while the command is running
+
+
+def _run_expecting_error(*args):
+    out = StringIO()
+    with pytest.raises(CommandError) as error:
+        call_command("convert_show_notes", *args, stdout=out, stderr=out)
+    return out.getvalue(), str(error.value)
+
+
+def _edit_after(monkeypatch, name, edit, *, slug):
+    """Run ``edit`` once, right after the command's ``name`` step for the episode ``slug``.
+
+    At that point the command has read the episode and computed what it is going
+    to write, but has not written anything yet.
+    """
+    from python_podcast.pp.management.commands.convert_show_notes import Command
+
+    original = getattr(Command, name)
+    is_static = isinstance(inspect.getattr_static(Command, name), staticmethod)
+    pending = [edit]
+
+    def step_then_edit(*args, **kwargs):
+        result = original(*args, **kwargs)
+        if pending and Episode.objects.filter(slug=slug).exists():
+            pending.pop()()
+        return result
+
+    monkeypatch.setattr(Command, name, staticmethod(step_then_edit) if is_static else step_then_edit)
+
+
+EDITOR_DETAIL = [{"type": "paragraph", "value": "<p>Editor rewrote the detail.</p>"}]
+
+
+def _editor_saves_detail(episode, *, publish=False):
+    """What the Wagtail editor does: a fresh page object, a detail-only change, a new revision."""
+
+    def edit():
+        draft = Episode.objects.get(pk=episode.pk).get_latest_revision_as_object()
+        raw = [
+            {**block, "value": EDITOR_DETAIL} if block["type"] == "detail" else block for block in draft.body.raw_data
+        ]
+        draft.body = draft.body.stream_block.to_python(raw)
+        revision = draft.save_revision()
+        if publish:
+            revision.publish()
+
+    return edit
+
+
+def _detail_values(page):
+    return [child.value.source for block in page.body if block.block_type == "detail" for child in block.value]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("mode", ["--apply", "--publish"])
+def test_detail_edit_saved_during_conversion_is_not_replaced(monkeypatch, mode):
+    episode = _make_episode(slug="race-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
+    _edit_after(monkeypatch, "_convert_top", _editor_saves_detail(episode), slug="race-ep")
+
+    output, error = _run_expecting_error("--slug", "race-ep", mode)
+
+    stored = Episode.objects.get(pk=episode.pk)
+    # The editor's revision is the only one and still the latest; nothing went live.
+    assert stored.revisions.count() == 1
+    assert _detail_values(stored.get_latest_revision_as_object()) == ["<p>Editor rewrote the detail.</p>"]
+    assert _detail_types(stored) == ["paragraph"]
+    assert _detail_values(stored) == [SHOWNOTE_HTML]
+    assert stored.has_unpublished_changes is True
+    assert "conflict: not converted, the episode changed while the command was running" in output
+    assert "1 changed during the run (conflict)" in output
+    assert "race-ep" in error
+    assert "changed while the command was running" in error
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("mode", ["--apply", "--publish"])
+def test_detail_edit_published_during_conversion_is_not_replaced(monkeypatch, mode):
+    episode = _make_episode(slug="race-live-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
+    _edit_after(monkeypatch, "_convert_top", _editor_saves_detail(episode, publish=True), slug="race-live-ep")
+
+    _output, error = _run_expecting_error("--slug", "race-live-ep", mode)
+
+    stored = Episode.objects.get(pk=episode.pk)
+    assert stored.revisions.count() == 1
+    assert _detail_values(stored) == ["<p>Editor rewrote the detail.</p>"]
+    assert stored.has_unpublished_changes is False
+    assert "race-live-ep" in error
+
+
+@pytest.mark.django_db
+def test_force_does_not_replace_detail_edit_saved_during_conversion(monkeypatch):
+    episode = _make_episode(slug="race-force-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
+    _run("--slug", "race-force-ep", "--apply")
+    _edit_after(monkeypatch, "_convert_top", _editor_saves_detail(episode), slug="race-force-ep")
+
+    _output, error = _run_expecting_error("--slug", "race-force-ep", "--apply", "--force")
+
+    stored = Episode.objects.get(pk=episode.pk)
+    assert stored.revisions.count() == 2
+    assert _detail_values(stored.get_latest_revision_as_object()) == ["<p>Editor rewrote the detail.</p>"]
+    assert "race-force-ep" in error
+
+
+@pytest.mark.django_db
+def test_existing_conversion_draft_edited_during_publish_is_not_published(monkeypatch):
+    episode = _make_episode(slug="race-draft-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
+    _run("--slug", "race-draft-ep", "--apply")
+    conversion_revision = Episode.objects.get(pk=episode.pk).latest_revision_id
+    _edit_after(monkeypatch, "_unrelated_draft_changes", _editor_saves_detail(episode), slug="race-draft-ep")
+
+    output, error = _run_expecting_error("--slug", "race-draft-ep", "--publish")
+
+    stored = Episode.objects.get(pk=episode.pk)
+    assert stored.revisions.count() == 2
+    assert stored.latest_revision_id != conversion_revision
+    # Neither the conversion draft nor the editor's newer draft went live.
+    assert stored.live_revision_id is None
+    assert _detail_values(stored) == [SHOWNOTE_HTML]
+    assert "conflict: not converted" in output
+    assert "race-draft-ep" in error
+
+
+@pytest.mark.django_db
+def test_episode_deleted_during_conversion_is_reported(monkeypatch):
+    episode = _make_episode(slug="race-gone-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
+    _edit_after(monkeypatch, "_convert_top", lambda: Episode.objects.get(pk=episode.pk).delete(), slug="race-gone-ep")
+
+    _output, error = _run_expecting_error("--slug", "race-gone-ep", "--apply")
+
+    assert not Episode.objects.filter(pk=episode.pk).exists()
+    assert "race-gone-ep" in error
+
+
+@pytest.mark.django_db
+def test_edit_conflict_does_not_block_other_episodes(monkeypatch):
+    raced = _make_episode(slug="race-first-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
+    other = _make_episode(
+        slug="race-second-ep", num=2, detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}]
+    )
+    _edit_after(monkeypatch, "_convert_top", _editor_saves_detail(raced), slug="race-first-ep")
+
+    output, error = _run_expecting_error("--slug", "race-first-ep", "--slug", "race-second-ep", "--publish")
+
+    assert _detail_values(Episode.objects.get(pk=raced.pk)) == [SHOWNOTE_HTML]
+    assert "show_note_link_list" in _detail_types(Episode.objects.get(pk=other.pk))
+    assert "Summary: 1 changed, 1 skipped, 0 with warnings, 1 changed during the run (conflict)" in output
+    assert "race-first-ep" in error
+    assert "race-second-ep" not in error
+
+
+@pytest.mark.django_db
+def test_dry_run_reports_conversion_of_unchanged_episode_without_locking(monkeypatch):
+    from python_podcast.pp.management.commands.convert_show_notes import Command
+
+    _make_episode(slug="race-dry-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
+    monkeypatch.setattr(Command, "_locked_unchanged", None)
+
+    output = _run("--slug", "race-dry-ep")
+
+    assert "would change (dry run)" in output
+
+
+@pytest.mark.django_db
+def test_episode_with_a_draft_deleted_before_it_is_read_is_reported(monkeypatch):
+    """The batch holds the episode as loaded; its latest revision is gone when it is read."""
+    from python_podcast.pp.management.commands.convert_show_notes import Command
+
+    gone = _make_episode(slug="race-deleted-draft-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
+    _save_overview_draft(gone)
+    other = _make_episode(
+        slug="race-survivor-ep", num=2, detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}]
+    )
+    take_snapshot = Command._snapshot
+    pending = [gone.pk]
+
+    def delete_then_snapshot(self, episode):
+        if pending and episode.pk == pending[0]:
+            Episode.objects.get(pk=pending.pop()).delete()
+        return take_snapshot(self, episode)
+
+    monkeypatch.setattr(Command, "_snapshot", delete_then_snapshot)
+
+    output, error = _run_expecting_error("--apply")
+
+    assert not Episode.objects.filter(pk=gone.pk).exists()
+    assert "show_note_link_list" in _detail_types(_latest_revision_object(other))
+    assert "1 changed during the run (conflict)" in output
+    assert "race-deleted-draft-ep" in error and "race-survivor-ep" not in error
+
+
+def _editor_overwrites_draft_in_another_transaction(episode, *, revision_locked, release, errors):
+    """An autosave in the Wagtail editor: it rewrites the latest revision, then updates the page.
+
+    Runs in its own thread and therefore on its own database connection. After
+    the revision row is written (and locked) it waits for ``release``.
+    """
+    save_page = Episode.save
+
+    def pause_after_the_revision_is_written(self, *args, **kwargs):
+        # ``save_revision`` writes the revision row first and the page row second.
+        if threading.current_thread() is editor:
+            revision_locked.set()
+            release.wait(timeout=5)
+        return save_page(self, *args, **kwargs)
+
+    def save():
+        try:
+            with patch.object(Episode, "save", pause_after_the_revision_is_written):
+                with transaction.atomic():
+                    stored = Episode.objects.get(pk=episode.pk)
+                    draft = stored.get_latest_revision_as_object()
+                    draft.title = "Editor autosave"
+                    draft.save_revision(overwrite_revision=stored.latest_revision, clean=False)
+        except Exception as exc:  # noqa: BLE001 - reported to the test
+            errors.append(exc)
+        finally:
+            revision_locked.set()
+            connection.close()
+
+    editor = threading.Thread(target=save)
+    return editor
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize("args", [("--publish",), ("--apply", "--force"), ("--publish", "--force")])
+def test_editor_overwriting_the_draft_is_neither_blocked_nor_rolled_back(args):
+    """Two real transactions: the command must not wait for the editor's revision lock."""
+    episode = _make_episode(slug="race-lock-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
+    _run("--slug", "race-lock-ep", "--apply")
+    conversion_revision = Episode.objects.get(pk=episode.pk).latest_revision_id
+    revision_locked, release, errors = threading.Event(), threading.Event(), []
+    editor = _editor_overwrites_draft_in_another_transaction(
+        episode, revision_locked=revision_locked, release=release, errors=errors
+    )
+    editor.start()
+    try:
+        assert revision_locked.wait(timeout=10)
+        assert errors == []
+
+        output, error = _run_expecting_error("--slug", "race-lock-ep", *args)
+    finally:
+        release.set()
+        editor.join(timeout=20)
+
+    assert not editor.is_alive()
+    # The editor's save went through: no deadlock victim, no lost edit.
+    assert errors == []
+    stored = Episode.objects.get(pk=episode.pk)
+    assert stored.latest_revision_id == conversion_revision
+    assert stored.revisions.count() == 1
+    assert stored.get_latest_revision_as_object().title == "Editor autosave"
+    # The command wrote nothing and published nothing.
+    assert stored.live_revision_id is None
+    assert _detail_values(stored) == [SHOWNOTE_HTML]
+    assert "conflict: not converted" in output
+    assert "race-lock-ep" in error
+
+
+@pytest.mark.django_db(transaction=True)
+def test_editor_save_waits_for_the_conversion_and_then_completes():
+    """The other direction: the command holds the locks, an editor save arrives meanwhile."""
+    from python_podcast.pp.management.commands.convert_show_notes import Command
+
+    episode = _make_episode(slug="race-wait-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
+    errors, started = [], threading.Event()
+
+    def editor_saves_draft():
+        try:
+            started.set()
+            draft = Episode.objects.get(pk=episode.pk).get_latest_revision_as_object()
+            draft.title = "Saved after the conversion"
+            draft.save_revision(clean=False)
+        except Exception as exc:  # noqa: BLE001 - reported to the test
+            errors.append(exc)
+        finally:
+            connection.close()
+
+    editor = threading.Thread(target=editor_saves_draft)
+    command = Command()
+    stored = Episode.objects.get(pk=episode.pk)
+    with command._locked_unchanged(stored, command._snapshot(stored)) as current:
+        assert current is not None
+        editor.start()
+        assert started.wait(timeout=10)
+        editor.join(timeout=1)
+        # The editor's page update is waiting for the lock held here.
+        assert editor.is_alive()
+    editor.join(timeout=20)
+
+    assert not editor.is_alive()
+    assert errors == []
+    assert Episode.objects.get(pk=episode.pk).get_latest_revision_as_object().title == "Saved after the conversion"

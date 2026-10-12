@@ -109,6 +109,51 @@ This applies in either order: an unrelated edit saved after ``--apply``, or
 conflict, review the draft in the Wagtail admin and publish it there once the
 other edits are meant to go live too.
 
+Edits made while the command runs
+---------------------------------
+
+A conversion is bound to the page state it was computed from. Right before the
+command saves or publishes a revision it locks the page row and the rows of the
+page's revisions, reads the episode again and compares it with that state: the
+latest and the live revision, the publication flags and the content of the
+draft and of the live page.
+
+If the episode was edited, published, unpublished or deleted in the Wagtail
+admin in between, even when only its ``detail`` section changed, or if somebody
+is saving it at that very moment, the episode is an *edit conflict*:
+
+* nothing is written: no revision is created and nothing is published. The
+  editor's revision stays the latest one;
+* the older conversion is neither merged into the newer content nor silently
+  recomputed from it;
+* the report says ``-> conflict: not converted, the episode changed while the
+  command was running; nothing was written``;
+* other episodes of the same run are still processed, the summary counts the
+  episodes as ``changed during the run (conflict)`` and the command exits with
+  an error that lists the affected slugs.
+
+This holds for ``--apply``, ``--publish`` and ``--force``, and also when
+``--publish`` only publishes an existing conversion draft. To resolve it, run
+the command again for the listed slugs: it then starts from the current
+content. A dry run takes no lock.
+
+The command never waits for a lock. Wagtail locks the page row and its revision
+rows in different orders depending on the action (overwriting a draft: revision,
+then page; save and publish: page, then revisions), so a command that waited
+for one while holding the other could deadlock with an editor, and PostgreSQL
+would end the deadlock by aborting one of the two, possibly the editor's save.
+The locks are therefore requested with ``NOWAIT``: when any of the rows is held
+by somebody else, the episode is being saved right now and is reported as an
+edit conflict. An editor save that starts while the command holds the locks
+waits for the short moment in which the revision is written and then completes.
+
+The locks cannot show a new revision that another database transaction has
+inserted but not committed yet. Such a save completes afterwards and remains the
+latest revision, so the edit is kept in that case as well.
+
+An episode that is deleted while the batch runs, at any point, is also reported
+as an edit conflict and does not stop the remaining episodes.
+
 Usage
 -----
 
@@ -144,7 +189,8 @@ Recommended procedure
    publish the drafts from the Wagtail admin). Episodes reported as a conflict
    are not published by the command; handle them in the Wagtail admin.
 5. Repeat in batches. Because the command is idempotent, already-converted
-   episodes are skipped automatically.
+   episodes are skipped automatically. Re-run the slugs reported as changed
+   during the run.
 
 Implementation
 --------------
