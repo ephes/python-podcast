@@ -97,3 +97,47 @@ To override the SSH host or database names, see:
 .. code-block:: console
 
    $ uv run commands.py production-db-to-local --help
+
+Work on local package checkouts
+-------------------------------
+
+``django-cast``, ``cast-bootstrap5``, ``cast-vue`` and ``django-indieweb`` are
+installed from Git by default. Two commands rewrite their entries in
+``[tool.uv.sources]`` of ``pyproject.toml`` and then run ``uv sync``:
+
+.. code-block:: console
+
+   $ uv run commands.py switch-to-dev-environment   # editable ../<package> checkouts
+   $ uv run commands.py switch-to-git-sources       # back to the Git sources
+
+``switch-to-dev-environment`` only switches packages whose checkout exists next
+to this repository.
+
+What happens to ``pyproject.toml``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* A replaced entry is removed completely, also when its value spans several
+  lines (an array of sources with markers, for example) or its key is quoted.
+  Other tables, other source entries and comments are kept byte for byte.
+* The new document is parsed before the file is replaced. It has to be valid
+  TOML, contain the requested sources and differ from the old document in
+  nothing else. Otherwise the command exits with status 1 and
+  ``pyproject.toml`` keeps its original bytes. This also applies to a
+  ``pyproject.toml`` that is already invalid, and to sources written as dotted
+  keys (``django-cast.git = ...``) or sub-tables
+  (``[tool.uv.sources.django-cast]``); convert those to ``name = { ... }``
+  entries first.
+* The check uses Python's ``tomllib`` (TOML 1.0). An inline table that is spread
+  over several lines is TOML 1.1 and is refused in the same way.
+* The file is replaced atomically, so an interrupted run leaves either the old
+  or the new file.
+
+When ``uv sync`` fails
+~~~~~~~~~~~~~~~~~~~~~~
+
+If ``uv sync`` exits with an error or cannot be started, the command exits with
+status 1 and does not report success. ``pyproject.toml`` is **not** rolled
+back: it keeps the new source entries while the installed environment is still
+the old one. Fix the cause (a missing checkout, an unreachable Git remote, an
+incompatible dependency) and run the same command again, or run the opposite
+switch command to go back.
