@@ -242,7 +242,10 @@ class Command(BaseCommand):
         )
 
         def outside_detail(raw: list[dict]) -> list[dict]:
-            return [{"type": "detail", "id": block.get("id")} if block["type"] == "detail" else block for block in raw]
+            # A detail section is only a placeholder that keeps the section order.
+            # Its block id is ignored too: rebuilding the section in the editor
+            # gives it a new id without changing anything outside of it.
+            return [{"type": "detail"} if block["type"] == "detail" else block for block in raw]
 
         if outside_detail(list(episode.body.raw_data)) != outside_detail(list(draft.body.raw_data)):
             changed.append("body outside the detail section")

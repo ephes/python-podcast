@@ -59,6 +59,19 @@ chromium`` and run ``just test-e2e``. Before deploying, also check the new froze
 environment with production settings and ``migrate --plan`` against PostgreSQL,
 and retain a fresh database backup and the previous commit/lock for rollback.
 
+2026-10-12 cast-bootstrap5 refresh
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``uv.lock`` moves cast-bootstrap5 ``main`` from ``bcd0b513`` to ``4ed370aa``. No
+other locked package changed. The source conflict that kept it at ``bcd0b513``
+(see the refresh note below) is resolved: cast-bootstrap5 ``main`` now takes
+django-cast from the ``develop`` branch, as this project does.
+
+The update brings the search suggestion input fixes (text composition and
+modified clicks are respected) with a rebuilt search modal bundle, so
+``collectstatic`` picks up a new hashed asset. It has no migrations and needs no
+settings change.
+
 2026-10-12 django-cast and django-indieweb refresh
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

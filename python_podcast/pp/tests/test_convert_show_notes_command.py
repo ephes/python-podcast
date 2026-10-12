@@ -319,6 +319,48 @@ def test_publish_accepts_reviewed_detail_edit_in_conversion_draft():
 
 
 @pytest.mark.django_db
+def test_publish_accepts_detail_section_rebuilt_with_a_new_block_id():
+    episode = _make_episode(
+        slug="rebuilt-detail-ep",
+        detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}],
+    )
+    _run("--slug", "rebuilt-detail-ep", "--apply")
+    draft = Episode.objects.get(pk=episode.pk).get_latest_revision_as_object()
+    raw = [dict(block) for block in draft.body.raw_data]
+    live_ids = [block.get("id") for block in Episode.objects.get(pk=episode.pk).body.raw_data]
+    for block in raw:
+        if block["type"] == "detail":
+            block["id"] = "11111111-2222-3333-4444-555555555555"
+    draft.body = draft.body.stream_block.to_python(raw)
+    draft.save_revision()
+
+    _run("--slug", "rebuilt-detail-ep", "--publish")
+
+    live = Episode.objects.get(pk=episode.pk)
+    assert "show_note_link_list" in _detail_types(live)
+    assert [block.get("id") for block in live.body.raw_data] != live_ids
+    assert not live.has_unpublished_changes
+
+
+@pytest.mark.django_db
+def test_publish_refuses_draft_that_reorders_sections():
+    episode = _make_episode(
+        slug="reordered-ep",
+        detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}],
+    )
+    _run("--slug", "reordered-ep", "--apply")
+    draft = Episode.objects.get(pk=episode.pk).get_latest_revision_as_object()
+    raw = [dict(block) for block in draft.body.raw_data]
+    draft.body = draft.body.stream_block.to_python(list(reversed(raw)))
+    draft.save_revision()
+
+    output, _ = _run_expecting_conflict("--slug", "reordered-ep", "--publish")
+
+    assert [block["type"] for block in Episode.objects.get(pk=episode.pk).body.raw_data] == ["overview", "detail"]
+    assert "body outside the detail section" in output
+
+
+@pytest.mark.django_db
 def test_force_preserves_current_overview():
     episode = _make_episode(
         slug="force-overview-ep",

@@ -193,7 +193,9 @@ def test_dump_without_completion_marker_is_rejected(fake_postgres, tmp_path, con
     fake = fake_postgres(databases={"python_podcast"})
 
     with pytest.raises(commands.LocalRestoreError, match="completion marker"):
-        commands._restore_dump_into_local_database(write_dump(tmp_path / "dump.sql.gz", content), "python_podcast", True)
+        commands._restore_dump_into_local_database(
+            write_dump(tmp_path / "dump.sql.gz", content), "python_podcast", True
+        )
 
     assert fake.databases == {"python_podcast"}
     assert fake.ran("createdb") == []
@@ -253,7 +255,8 @@ def test_failed_cutover_puts_existing_database_back(fake_postgres, tmp_path):
 
 def test_failed_cutover_and_failed_rollback_keep_both_copies(fake_postgres, tmp_path):
     fake = fake_postgres(
-        databases={"python_podcast"}, fail={"rename:python_podcast_restore_staging", "rename:python_podcast_restore_previous"}
+        databases={"python_podcast"},
+        fail={"rename:python_podcast_restore_staging", "rename:python_podcast_restore_previous"},
     )
 
     with pytest.raises(commands.LocalRestoreError, match="python_podcast_restore_previous"):
