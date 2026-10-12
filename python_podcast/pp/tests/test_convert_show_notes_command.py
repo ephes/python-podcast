@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import inspect
 import json
+import threading
 from io import StringIO
+from unittest.mock import patch
 
 import pytest
 from cast.devdata import create_image
@@ -10,6 +12,7 @@ from cast.models import Audio, Episode, Podcast
 from django.conf import settings
 from django.core.management import call_command
 from django.core.management.base import CommandError
+from django.db import connection, transaction
 from wagtail.coreutils import get_supported_content_language_variant
 from wagtail.models import Collection, Locale, Page, Site
 
@@ -711,3 +714,135 @@ def test_dry_run_reports_conversion_of_unchanged_episode_without_locking(monkeyp
     output = _run("--slug", "race-dry-ep")
 
     assert "would change (dry run)" in output
+
+
+@pytest.mark.django_db
+def test_episode_with_a_draft_deleted_before_it_is_read_is_reported(monkeypatch):
+    """The batch holds the episode as loaded; its latest revision is gone when it is read."""
+    from python_podcast.pp.management.commands.convert_show_notes import Command
+
+    gone = _make_episode(slug="race-deleted-draft-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
+    _save_overview_draft(gone)
+    other = _make_episode(
+        slug="race-survivor-ep", num=2, detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}]
+    )
+    take_snapshot = Command._snapshot
+    pending = [gone.pk]
+
+    def delete_then_snapshot(self, episode):
+        if pending and episode.pk == pending[0]:
+            Episode.objects.get(pk=pending.pop()).delete()
+        return take_snapshot(self, episode)
+
+    monkeypatch.setattr(Command, "_snapshot", delete_then_snapshot)
+
+    output, error = _run_expecting_error("--apply")
+
+    assert not Episode.objects.filter(pk=gone.pk).exists()
+    assert "show_note_link_list" in _detail_types(_latest_revision_object(other))
+    assert "1 changed during the run (conflict)" in output
+    assert "race-deleted-draft-ep" in error and "race-survivor-ep" not in error
+
+
+def _editor_overwrites_draft_in_another_transaction(episode, *, revision_locked, release, errors):
+    """An autosave in the Wagtail editor: it rewrites the latest revision, then updates the page.
+
+    Runs in its own thread and therefore on its own database connection. After
+    the revision row is written (and locked) it waits for ``release``.
+    """
+    save_page = Episode.save
+
+    def pause_after_the_revision_is_written(self, *args, **kwargs):
+        # ``save_revision`` writes the revision row first and the page row second.
+        if threading.current_thread() is editor:
+            revision_locked.set()
+            release.wait(timeout=5)
+        return save_page(self, *args, **kwargs)
+
+    def save():
+        try:
+            with patch.object(Episode, "save", pause_after_the_revision_is_written):
+                with transaction.atomic():
+                    stored = Episode.objects.get(pk=episode.pk)
+                    draft = stored.get_latest_revision_as_object()
+                    draft.title = "Editor autosave"
+                    draft.save_revision(overwrite_revision=stored.latest_revision, clean=False)
+        except Exception as exc:  # noqa: BLE001 - reported to the test
+            errors.append(exc)
+        finally:
+            revision_locked.set()
+            connection.close()
+
+    editor = threading.Thread(target=save)
+    return editor
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize("args", [("--publish",), ("--apply", "--force"), ("--publish", "--force")])
+def test_editor_overwriting_the_draft_is_neither_blocked_nor_rolled_back(args):
+    """Two real transactions: the command must not wait for the editor's revision lock."""
+    episode = _make_episode(slug="race-lock-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
+    _run("--slug", "race-lock-ep", "--apply")
+    conversion_revision = Episode.objects.get(pk=episode.pk).latest_revision_id
+    revision_locked, release, errors = threading.Event(), threading.Event(), []
+    editor = _editor_overwrites_draft_in_another_transaction(
+        episode, revision_locked=revision_locked, release=release, errors=errors
+    )
+    editor.start()
+    try:
+        assert revision_locked.wait(timeout=10)
+        assert errors == []
+
+        output, error = _run_expecting_error("--slug", "race-lock-ep", *args)
+    finally:
+        release.set()
+        editor.join(timeout=20)
+
+    assert not editor.is_alive()
+    # The editor's save went through: no deadlock victim, no lost edit.
+    assert errors == []
+    stored = Episode.objects.get(pk=episode.pk)
+    assert stored.latest_revision_id == conversion_revision
+    assert stored.revisions.count() == 1
+    assert stored.get_latest_revision_as_object().title == "Editor autosave"
+    # The command wrote nothing and published nothing.
+    assert stored.live_revision_id is None
+    assert _detail_values(stored) == [SHOWNOTE_HTML]
+    assert "conflict: not converted" in output
+    assert "race-lock-ep" in error
+
+
+@pytest.mark.django_db(transaction=True)
+def test_editor_save_waits_for_the_conversion_and_then_completes():
+    """The other direction: the command holds the locks, an editor save arrives meanwhile."""
+    from python_podcast.pp.management.commands.convert_show_notes import Command
+
+    episode = _make_episode(slug="race-wait-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
+    errors, started = [], threading.Event()
+
+    def editor_saves_draft():
+        try:
+            started.set()
+            draft = Episode.objects.get(pk=episode.pk).get_latest_revision_as_object()
+            draft.title = "Saved after the conversion"
+            draft.save_revision(clean=False)
+        except Exception as exc:  # noqa: BLE001 - reported to the test
+            errors.append(exc)
+        finally:
+            connection.close()
+
+    editor = threading.Thread(target=editor_saves_draft)
+    command = Command()
+    stored = Episode.objects.get(pk=episode.pk)
+    with command._locked_unchanged(stored, command._snapshot(stored)) as current:
+        assert current is not None
+        editor.start()
+        assert started.wait(timeout=10)
+        editor.join(timeout=1)
+        # The editor's page update is waiting for the lock held here.
+        assert editor.is_alive()
+    editor.join(timeout=20)
+
+    assert not editor.is_alive()
+    assert errors == []
+    assert Episode.objects.get(pk=episode.pk).get_latest_revision_as_object().title == "Saved after the conversion"

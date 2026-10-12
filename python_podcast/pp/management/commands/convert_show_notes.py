@@ -20,12 +20,14 @@ episode is reported as a conflict: the draft is kept, nothing is published and
 the command exits with an error.
 
 A conversion is bound to the page state it was computed from. Before a revision
-is saved or published the command locks the page row, reads the episode again
-and compares it with that state (latest and live revision, publication flags,
-draft and live content). An episode that was edited, published, unpublished or
-deleted in between is reported as a conflict: nothing is written for it, the
-editor's revision stays the latest one and the command exits with an error. Run
-the command again to convert it from its current content.
+is saved or published the command locks the page row and the rows of the page's
+revisions without waiting, reads the episode again and compares it with that
+state (latest and live revision, publication flags, draft and live content). An
+episode that was edited, published, unpublished or deleted in between, or that
+is being saved in the Wagtail admin at that moment, is reported as a conflict:
+nothing is written for it, the editor's revision stays the latest one and the
+command exits with an error. Run the command again to convert it from its
+current content.
 """
 
 from __future__ import annotations
@@ -36,12 +38,16 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 
 from cast.models import Episode
+from django.core.exceptions import ObjectDoesNotExist
 from django.core.management.base import BaseCommand, CommandError
 from django.core.serializers.json import DjangoJSONEncoder
-from django.db import transaction
+from django.db import OperationalError, transaction
 from wagtail.models import Page
 
 from python_podcast.pp.show_notes.converter import ConvertedBlock, convert_paragraph_html
+
+# PostgreSQL's SQLSTATE for a row lock that NOWAIT could not get.
+LOCK_NOT_AVAILABLE = "55P03"
 
 SHOW_NOTE_TYPES = frozenset({"show_note_heading", "show_note_link_list", "show_note_sponsor"})
 
@@ -173,6 +179,23 @@ class Command(BaseCommand):
 
     # -- per-episode ----------------------------------------------------
     def _process_episode(self, episode: Episode, *, apply: bool, publish: bool, force: bool) -> EpisodeResult:
+        """Convert one episode; an episode that disappears meanwhile is an edit conflict.
+
+        ``episode`` was loaded with the whole batch. It, or the revision it points
+        to, can be deleted before or while it is processed, and then one of the
+        reads below fails. That is the same situation as any other edit made
+        during the run, so it is reported the same way and the batch goes on.
+        """
+        try:
+            return self._convert_episode(episode, apply=apply, publish=publish, force=force)
+        except ObjectDoesNotExist:
+            current = Episode.objects.filter(pk=episode.pk).first()
+            if current is not None and current.latest_revision_id == episode.latest_revision_id:
+                # Nothing about the episode changed, so this is not a concurrent edit.
+                raise
+            return self._edit_conflict(episode)
+
+    def _convert_episode(self, episode: Episode, *, apply: bool, publish: bool, force: bool) -> EpisodeResult:
         # The detail conversion source: normally the latest revision (the current
         # draft) so the command stays idempotent; with --force, the original
         # legacy body (most recent unconverted version) so a previously converted
@@ -290,16 +313,18 @@ class Command(BaseCommand):
 
     @contextmanager
     def _locked_unchanged(self, episode: Episode, snapshot: EpisodeSnapshot):
-        """Yield the current episode while holding its row lock, or ``None`` on a conflict.
+        """Yield the current episode while holding its row locks, or ``None`` on a conflict.
 
-        Saving a draft or publishing in the editor updates the page row. Holding
-        the lock until the block ends makes those wait, and reading the episode
-        again under the lock sees every edit committed since ``snapshot`` was
-        taken. ``None`` is yielded when the episode no longer exists or is not in
-        the snapshot's state any more; the caller must then write nothing.
+        Saving a draft or publishing in the editor updates the page row and rows
+        of the page's revisions. Holding their locks until the block ends makes
+        those wait, and reading the episode again under the locks sees every edit
+        committed since ``snapshot`` was taken. ``None`` is yielded when the
+        episode no longer exists, is not in the snapshot's state any more or is
+        being saved by somebody else right now; the caller must then write
+        nothing.
         """
         with transaction.atomic():
-            if Page.objects.select_for_update().filter(pk=episode.pk).first() is None:
+            if not self._lock_rows(episode):
                 yield None
                 return
             current = Episode.objects.filter(pk=episode.pk).first()
@@ -307,6 +332,43 @@ class Command(BaseCommand):
                 yield None
                 return
             yield current
+
+    @staticmethod
+    def _lock_rows(episode: Episode) -> bool:
+        """Lock the episode's revisions and page row without waiting; ``False`` when busy.
+
+        Wagtail takes these locks in no single order: overwriting a draft updates
+        the revision and then the page, saving and publishing in one request
+        updates the page and then every revision. Waiting for either while
+        holding the other can therefore deadlock with an editor, and PostgreSQL
+        would resolve that by aborting one side, possibly the editor's save. So
+        nothing is waited for: all rows are requested with NOWAIT, and a row that
+        somebody else holds means the episode is being saved right now, which is
+        a conflict. Once every row is held, this transaction only touches these
+        rows and rows it inserts itself, so it cannot block on an editor later.
+
+        ``no_key`` asks for the lock an UPDATE takes, so only real changes to the
+        rows count as busy, not a foreign key check that merely references them.
+        """
+        try:
+            # A refused lock fails the statement; the savepoint keeps the
+            # surrounding transaction usable.
+            with transaction.atomic():
+                list(
+                    episode.revisions.select_for_update(nowait=True, no_key=True)
+                    .order_by("pk")
+                    .values_list("pk", flat=True)
+                )
+                list(
+                    Page.objects.select_for_update(nowait=True, no_key=True)
+                    .filter(pk=episode.pk)
+                    .values_list("pk", flat=True)
+                )
+        except OperationalError as exc:
+            if getattr(exc.__cause__, "sqlstate", None) != LOCK_NOT_AVAILABLE:
+                raise
+            return False
+        return True
 
     @staticmethod
     def _edit_conflict(episode: Episode) -> EpisodeResult:
