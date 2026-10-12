@@ -294,6 +294,19 @@ def test_redirect_to_cors_readable_foreign_origin_is_not_imported(nav, site):
     assert nav.parsed == [], "foreign markup must never be parsed or imported"
 
 
+def test_failure_while_applying_the_swap_falls_back_to_full_load(nav, site):
+    # The response is fine, but recording it in history fails.
+    nav.evaluate("() => { history.pushState = () => { throw new DOMException('denied', 'SecurityError'); }; }")
+    nav.locator("#to-b").click()
+    nav.wait_for_function("() => window.__TOKEN === undefined && !!window.__castPersistentAudioDebug")
+
+    # A full load repairs the half-applied swap: page and address agree again.
+    assert _path(nav) == "/page/b"
+    assert _marker(nav) == "B PAGE"
+    assert site.seen("/page/b", enhanced=True) == 1
+    assert site.seen("/page/b", enhanced=False) == 1
+
+
 # ---- request deadline ----------------------------------------------------------
 
 

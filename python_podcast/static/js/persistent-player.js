@@ -894,7 +894,9 @@
           fullLoad(); // no enhanced target -> full load fallback
           return;
         }
-        settle();
+        // Synchronous from here on, so the deadline cannot fire in between. The
+        // navigation is settled only once the swap is complete: if anything
+        // below throws (e.g. pushState), the catch still does a full load.
         var adopted = document.importNode(incoming, true);
         current.replaceWith(adopted);
         if (doc.title) {
@@ -911,6 +913,7 @@
         window.scrollTo(0, 0);
         onContentReady();
         focusHeading(adopted);
+        settle();
       })
       .catch(function () {
         fullLoad(); // no-op when superseded: an old abort never navigates away
