@@ -8,6 +8,7 @@ from cast.devdata import create_image
 from cast.models import Audio, Episode, Podcast
 from django.conf import settings
 from django.core.management import call_command
+from django.core.management.base import CommandError
 from wagtail.coreutils import get_supported_content_language_variant
 from wagtail.models import Collection, Locale, Page, Site
 
@@ -177,6 +178,144 @@ def test_publish_does_not_publish_unrelated_draft():
         for child in block["value"]
     ]
     assert "draft only edit" not in live_overview
+
+
+def _save_overview_draft(episode, text="draft only edit", title=None):
+    """Save an unpublished edit that has nothing to do with the detail conversion."""
+    draft = Episode.objects.get(pk=episode.pk).get_latest_revision_as_object()
+    raw = [dict(block) for block in draft.body.raw_data]
+    for block in raw:
+        if block["type"] == "overview":
+            block["value"] = [{"type": "heading", "value": text}]
+    draft.body = draft.body.stream_block.to_python(raw)
+    if title is not None:
+        draft.title = title
+    return draft.save_revision()
+
+
+def _overview_values(page):
+    return [child["value"] for block in page.body.raw_data if block["type"] == "overview" for child in block["value"]]
+
+
+def _run_expecting_conflict(*args):
+    out = StringIO()
+    with pytest.raises(CommandError) as excinfo:
+        call_command("convert_show_notes", *args, stdout=out, stderr=out)
+    return out.getvalue(), str(excinfo.value)
+
+
+@pytest.mark.django_db
+def test_publish_refuses_conversion_draft_with_later_unrelated_edit():
+    episode = _make_episode(
+        slug="apply-edit-publish-ep",
+        detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}],
+    )
+    _run("--slug", "apply-edit-publish-ep", "--apply")
+    pending = _save_overview_draft(episode)
+
+    output, error = _run_expecting_conflict("--slug", "apply-edit-publish-ep", "--publish")
+
+    live = Episode.objects.get(pk=episode.pk)
+    assert _overview_values(live) == ["overview heading"]
+    assert _detail_types(live) == ["paragraph"]
+    # The pending edit survives as the latest draft, including the conversion.
+    assert live.has_unpublished_changes
+    assert live.latest_revision_id == pending.pk
+    assert live.revisions.count() == 2
+    draft = _latest_revision_object(episode)
+    assert _overview_values(draft) == ["draft only edit"]
+    assert "show_note_link_list" in _detail_types(draft)
+    assert "conflict: not published" in output
+    assert "body outside the detail section" in output
+    assert "1 not published (conflict)" in output
+    assert "apply-edit-publish-ep" in error
+
+
+@pytest.mark.django_db
+def test_publish_refuses_conversion_draft_with_later_title_edit():
+    episode = _make_episode(
+        slug="apply-title-publish-ep",
+        detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}],
+    )
+    _run("--slug", "apply-title-publish-ep", "--apply")
+    draft = Episode.objects.get(pk=episode.pk).get_latest_revision_as_object()
+    draft.title = "Draft title"
+    draft.save_revision()
+
+    output, _ = _run_expecting_conflict("--slug", "apply-title-publish-ep", "--publish")
+
+    live = Episode.objects.get(pk=episode.pk)
+    assert live.title == "Episode 1"
+    assert _detail_types(live) == ["paragraph"]
+    assert "also changes title" in output
+
+
+@pytest.mark.django_db
+def test_publish_refuses_to_convert_on_top_of_pending_unrelated_draft():
+    episode = _make_episode(
+        slug="edit-then-publish-ep",
+        detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}],
+    )
+    _save_overview_draft(episode)
+
+    output, _ = _run_expecting_conflict("--slug", "edit-then-publish-ep", "--publish")
+
+    live = Episode.objects.get(pk=episode.pk)
+    assert _overview_values(live) == ["overview heading"]
+    assert _detail_types(live) == ["paragraph"]
+    # --publish implies --apply: the conversion is saved as a draft on top of the pending edit.
+    draft = _latest_revision_object(episode)
+    assert _overview_values(draft) == ["draft only edit"]
+    assert "show_note_link_list" in _detail_types(draft)
+    assert live.revisions.count() == 2
+    assert "changed (draft revision" in output
+    assert "conflict: not published" in output
+
+
+@pytest.mark.django_db
+def test_publish_conflict_does_not_block_other_episodes():
+    conflicted = _make_episode(
+        slug="batch-conflict-ep",
+        detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}],
+        num=1,
+    )
+    clean = _make_episode(
+        slug="batch-clean-ep",
+        detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}],
+        num=2,
+    )
+    _run("--apply")
+    _save_overview_draft(conflicted)
+
+    output, error = _run_expecting_conflict("--publish")
+
+    assert _detail_types(Episode.objects.get(pk=conflicted.pk)) == ["paragraph"]
+    assert "show_note_link_list" in _detail_types(Episode.objects.get(pk=clean.pk))
+    assert "published only the episodes without a conflict" in output
+    assert "batch-conflict-ep" in error and "batch-clean-ep" not in error
+
+
+@pytest.mark.django_db
+def test_publish_accepts_reviewed_detail_edit_in_conversion_draft():
+    episode = _make_episode(
+        slug="reviewed-detail-ep",
+        detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}],
+    )
+    _run("--slug", "reviewed-detail-ep", "--apply")
+    draft = Episode.objects.get(pk=episode.pk).get_latest_revision_as_object()
+    raw = [dict(block) for block in draft.body.raw_data]
+    for block in raw:
+        if block["type"] == "detail":
+            block["value"] = [*block["value"], {"type": "paragraph", "value": "<p>reviewed</p>"}]
+    draft.body = draft.body.stream_block.to_python(raw)
+    draft.save_revision()
+
+    _run("--slug", "reviewed-detail-ep", "--publish")
+
+    live = Episode.objects.get(pk=episode.pk)
+    assert "show_note_link_list" in _detail_types(live)
+    assert _detail_types(live)[-1] == "paragraph"
+    assert not live.has_unpublished_changes
 
 
 @pytest.mark.django_db
