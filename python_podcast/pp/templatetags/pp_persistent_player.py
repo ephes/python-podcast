@@ -7,6 +7,7 @@ builds the sanitized payload + ids so a theme's audio block can PUBLISH them
 (``json_script`` + an inert play action) instead of rendering an in-body player.
 """
 
+import math
 from typing import Any
 
 from cast.player import build_player_payload
@@ -48,9 +49,14 @@ def _format_duration(seconds: Any) -> str:
     """Render a payload duration (seconds) as a compact human label.
 
     Used by the episode play card ("Play episode · 45 min"). Returns "" when the
-    duration is unknown so the template can omit the label entirely.
+    duration is unknown so the template can omit the label entirely. Only a
+    finite positive ``int``/``float`` counts as known: malformed metadata (NaN,
+    infinity, booleans, strings, ``None``, zero or negative values) yields ""
+    instead of failing the page render.
     """
-    if not isinstance(seconds, (int, float)) or seconds <= 0:
+    if isinstance(seconds, bool) or not isinstance(seconds, (int, float)):
+        return ""
+    if not math.isfinite(seconds) or seconds <= 0:
         return ""
     minutes = int(round(seconds / 60))
     if minutes < 1:

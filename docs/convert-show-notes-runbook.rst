@@ -40,6 +40,23 @@ What the command does
   than one note, more than six sub-items, or nesting deeper than two levels) —
   is preserved as a ``paragraph`` (under its heading) with a warning, rather
   than risk a lossy conversion.
+* The structured fields are **plain text**, so markup they cannot hold is never
+  flattened away. The section or item stays original HTML, with a warning:
+
+  - a heading is converted only when it consists of text, optionally wrapped in
+    ``<b>``/``<strong>`` (a heading renders bold anyway). A heading that
+    contains an image, SVG, embed, iframe, link, ``<code>``, ``<em>``, a comment
+    or a line break between words is preserved verbatim, and the list that
+    follows it stays prose with it;
+  - a list item is converted only when its prefix, link titles and note are
+    unformatted text. Inline formatting around real text (``<strong>``,
+    ``<b>``, ``<em>``, ``<i>``, ``<code>``, ``<sub>``, ``<sup>``, ``<small>``,
+    ``<u>``, ``<span>``), any element inside a link, and comments keep that item
+    as prose; the other items of the same list still convert, in order. The same
+    applies to the topic label and sub-items of a nested group. Formatting that
+    wraps only whitespace or a separator (``<b> | </b>``) carries nothing and
+    does not block the conversion.
+
 * Is **idempotent**: details that already contain ``show_note_*`` blocks are
   skipped, and the command reads the latest draft revision so re-running never
   duplicates a conversion.
