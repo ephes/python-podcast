@@ -57,6 +57,14 @@ Running type checks with mypy:
 Test coverage
 ^^^^^^^^^^^^^
 
+Install the locked development dependencies with ``uv sync --locked`` first.
+They include ``django-coverage-plugin``, which ``.coveragerc`` loads and which
+``python commands.py coverage`` requires. Template coverage additionally needs
+template debugging enabled and a coverage core that supports plugin file tracers
+(such as ``COVERAGE_CORE=ctrace``). Python 3.14's default SysMonitor core does
+not support plugin file tracers, so installing the plugin alone does not enable
+template coverage.
+
 To run the tests, check your test coverage, and generate an HTML coverage report::
 
     $ coverage run -m pytest

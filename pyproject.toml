@@ -33,6 +33,7 @@ dependencies = [
 dev = [
     "black",
     "coverage",
+    "django-coverage-plugin",
     "factory-boy",
     "flake8",
     "flit",
