@@ -70,7 +70,8 @@
     closeSeq: 0,
     closeTimer: null,
     // Same idea for the View Transition: a rapid second activate supersedes the
-    // first. vtSeq generation-scopes cleanup so a stale transition can't strip the
+    // first. vtSeq generation-scopes updates and cleanup; close and non-VT
+    // activation invalidate it too, so a stale transition can't rebuild or strip the
     // current dock's names/class; vtSourcePoster/vtSourceCard track the morph
     // sources so their names are cleared before the next snapshot (two elements
     // sharing a view-transition-name in one snapshot aborts the transition).
@@ -522,6 +523,9 @@
     // Transition callback — so its finish() can't null manager state or tear down
     // the dock we are about to build.
     cancelPendingClose();
+    var myVt = (state.vtSeq += 1);
+    clearMorphNames();
+    region.classList.remove("cast-vt-active");
 
     if (!document.startViewTransition || prefersReducedMotion()) {
       // No View Transition: the dock gets a plain CSS rise on first open (the
@@ -536,8 +540,6 @@
     // NEW snapshot, then cleared when finished. A second activate supersedes the
     // first: bump the generation and clear any names a still-in-flight prior
     // transition holds, so this snapshot is unique.
-    var myVt = (state.vtSeq += 1);
-    clearMorphNames();
     var sourcePoster = cardPosterFor(sourceButton);
     var sourceCard = cardFor(sourceButton);
     if (sourcePoster) {
@@ -551,6 +553,11 @@
     region.classList.add("cast-vt-active");
 
     var transition = document.startViewTransition(function () {
+      // The latest activation or close owns every dock mutation, including
+      // source morph names: callbacks may run after a newer explicit action.
+      if (myVt !== state.vtSeq) {
+        return;
+      }
       if (sourcePoster) {
         sourcePoster.style.viewTransitionName = "";
       }
@@ -600,6 +607,9 @@
     if (!region) {
       return;
     }
+    state.vtSeq += 1;
+    clearMorphNames();
+    region.classList.remove("cast-vt-active");
     var myClose = (state.closeSeq += 1);
     var finish = function () {
       // No-op if a re-activation (or a newer close) has superseded this one.

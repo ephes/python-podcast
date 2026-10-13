@@ -86,3 +86,25 @@ jobs:
       # they need built Vite assets, browsers and ffmpeg and run via `just test-e2e`.
       - name: Run test suite (excluding e2e)
         run: uv run --locked pytest --create-db -p no:sugar -m "not e2e"
+
+  dock-transitions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Python dependencies
+        run: uv sync --locked
+
+      - name: Install Chromium
+        run: uv run --locked playwright install --with-deps chromium
+
+      # Isolated fixtures use no Django, PostgreSQL, ffmpeg or Vite assets.
+      - name: Run dock transition browser regressions
+        run: uv run --locked pytest -p no:django -p no:sugar -o addopts='' -m e2e tests/e2e/test_dock_transitions.py
