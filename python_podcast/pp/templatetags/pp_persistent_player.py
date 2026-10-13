@@ -16,6 +16,7 @@ from django.conf import settings
 from django.utils.html import json_script
 from django.utils.safestring import mark_safe
 from django_vite.core.asset_loader import DjangoViteAssetLoader
+from wagtail.images.models import SourceImageIOError
 
 register = template.Library()
 
@@ -39,7 +40,12 @@ def _card_poster_url(post: Any, request: Any, fallback: str) -> str:
     if cover_image is None:
         return fallback
 
-    poster_url = cover_image.get_rendition(CARD_POSTER_RENDITION_SPEC).url
+    try:
+        poster_url = cover_image.get_rendition(CARD_POSTER_RENDITION_SPEC).url
+    except (FileNotFoundError, SourceImageIOError):
+        # A cached player poster can outlive the original needed for this
+        # optional smaller rendition.
+        return fallback
     if request is not None and hasattr(request, "build_absolute_uri"):
         poster_url = request.build_absolute_uri(poster_url)
     return poster_url

@@ -8,11 +8,12 @@ override publishes a payload + inert action (not an in-body live player) when on
 import json
 import re
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 from django.template import Context, Template
 from django.test import override_settings
+from wagtail.images.models import SourceImageIOError
 
 from python_podcast.pp.context_processors import persistent_audio_player
 from python_podcast.pp.templatetags.pp_persistent_player import (
@@ -104,6 +105,48 @@ def _post(pk, **kwargs):
     post = SimpleNamespace(pk=pk, content_type_id=1, cover_image=None, blog=None, **kwargs)
     post.specific = post
     return post
+
+
+@pytest.mark.parametrize("use_blog_cover", [False, True])
+@pytest.mark.parametrize("error", [FileNotFoundError, SourceImageIOError])
+def test_player_card_uses_cached_poster_when_original_is_missing(use_blog_cover, error):
+    from django.template.loader import render_to_string
+
+    class CoverImage:
+        def get_rendition(self, spec):
+            assert spec == CARD_POSTER_RENDITION_SPEC
+            raise error("original cover is missing")
+
+    post = _post(11)
+    if use_blog_cover:
+        post.blog = SimpleNamespace(cover_image=CoverImage())
+    else:
+        post.cover_image = CoverImage()
+    poster = "https://media.example/cover.max-512x512.webp"
+    request = SimpleNamespace(build_absolute_uri=lambda url: pytest.fail("fallback is already absolute"))
+    with patch(
+        "python_podcast.pp.templatetags.pp_persistent_player.build_player_payload",
+        return_value={"title": "Episode Alpha", "poster": poster},
+    ):
+        payload = cast_player_payload({"request": request}, SimpleNamespace(pk=7), post)
+    html = render_to_string("cast/_persistent_play_action.html", {"payload": payload})
+
+    assert payload["poster"] == payload["card_poster"] == poster
+    assert f'src="{poster}"' in html
+    assert json.loads(re.search(r"<script[^>]*>(.*?)</script>", html).group(1))["poster"] == poster
+
+
+def test_player_card_does_not_hide_unexpected_rendition_errors():
+    post = _post(11)
+    post.cover_image = SimpleNamespace(get_rendition=Mock(side_effect=RuntimeError("unexpected")))
+    with (
+        patch(
+            "python_podcast.pp.templatetags.pp_persistent_player.build_player_payload",
+            return_value={"poster": "https://media.example/cover.webp"},
+        ),
+        pytest.raises(RuntimeError, match="unexpected"),
+    ):
+        cast_player_payload({}, SimpleNamespace(pk=7), post)
 
 
 def _fake_payload(audio, post=None, request=None):

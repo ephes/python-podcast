@@ -77,6 +77,16 @@ The ids are built in ``cast_player_payload``
 (``python_podcast/pp/templatetags/pp_persistent_player.py``); templates must
 take all three attributes from that payload and not build ids themselves.
 
+Card artwork
+------------
+
+Play cards request a small 128 px WebP rendition of the episode or blog cover.
+If its original file is unavailable (``FileNotFoundError`` or Wagtail's
+``SourceImageIOError``), the card uses the player poster already present in the
+payload, which may be a cached rendition. This keeps the card renderable when
+only the smaller rendition cannot be generated. Other errors still propagate;
+this fallback does not repair or delete media files.
+
 Tests
 -----
 
