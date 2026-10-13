@@ -63,6 +63,20 @@ Running tests with py.test
 
   $ pytest
 
+Local quality commands
+~~~~~~~~~~~~~~~~~~~~~~
+
+With the development environment active, ``python commands.py mypy``,
+``python commands.py test`` and ``python commands.py coverage`` return a
+nonzero exit status when a tool fails (preserving its exit code), or status 1
+with an error message when a tool cannot start. Their existing tool arguments
+and test environment remain unchanged; mypy must be installed separately.
+Coverage stops at the first failed step: failed tests do not generate or open
+an HTML report, and failed HTML generation does not open a stale report.
+On macOS and supported WSL kernels, opening the generated report is best effort:
+an unavailable viewer or nonzero viewer status prints a message and leaves
+successful coverage generation successful.
+
 Continuous Integration
 ~~~~~~~~~~~~~~~~~~~~~~
 
