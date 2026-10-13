@@ -102,8 +102,8 @@ stored token.
   resolved against the fetched source URL, so posts on this site can mention
   each other with relative links; documents containing ``<base`` still match
   on absolute links only. All new settings stay at their defaults.
-  This project still does not route ``indieweb.urls``, so none of this is
-  reachable in production; the setting above only takes effect once it is.
+  When this was written the project did not route any django-indieweb URL.
+  The receiving endpoint is routed since; see `Receiving webmentions`_.
 * django-indieweb keeps the complete ``next`` URL, including the
   authorization parameters, when IndieAuth or token management redirects to
   the login page.
@@ -115,9 +115,9 @@ stored token.
   sending on a file-based cache; ``Retry-After`` is the time left to that
   deadline. Counting stays best-effort under simultaneous requests. The
   counters use a new cache key namespace, so every client starts with a
-  fresh allowance after the upgrade. No ``INDIEWEB_RATE_LIMITS`` are
-  configured here and ``indieweb.urls`` is not routed, so this has no effect
-  in production yet.
+  fresh allowance after the upgrade. When this was written no
+  ``INDIEWEB_RATE_LIMITS`` were configured and no django-indieweb URL was
+  routed; both changed with `Receiving webmentions`_.
 * django-cast leaves view-restricted pages, and pages below them, out of the
   navigation links of blog, post and feed pages, for signed-in visitors too.
   Feed descriptions are rendered with the default theme of the blog or site
@@ -151,9 +151,9 @@ updates has a migration, and no settings change is needed.
   space and 20 s of CPU time; the receiving process ends it after 30 s. Over a
   limit the Webmention is marked ``failed`` and nothing from the document is
   stored. The ``INDIEWEB_WEBMENTION_PARSE_*`` settings stay at these defaults.
-  This project installs ``indieweb`` but does not route ``indieweb.urls``, so
-  no Webmention endpoint is exposed and the child process is not started in
-  production. Should the endpoint be added later: the ``wagtail_deploy`` units
+  When this was written no Webmention endpoint was exposed. It is now (see
+  `Receiving webmentions`_), and the child process is started by the
+  ``cast_transcripts`` database worker, not by gunicorn. The ``wagtail_deploy`` units
   (``NoNewPrivileges``, ``PrivateTmp``, ``ProtectSystem=strict``) have no
   system call filter, memory limit or task limit that would stop the child or
   its ``setrlimit`` calls, and gunicorn runs from the same virtualenv.
@@ -424,3 +424,69 @@ Applying the django-cast version with these features runs one new migration
 (``cast.0071``) adding the private known-speaker suggestion field and the
 site-level known-speaker setting. Bump the pinned ``django-cast`` commit, run
 ``uv lock --upgrade-package django-cast``, apply migrations, and redeploy.
+
+Receiving webmentions
+---------------------
+
+Only two django-indieweb views are routed (pinned at develop ``9726be2``),
+both without authentication:
+
+* ``/indieweb/webmention/`` accepts ``POST`` (submit a mention), ``GET`` and
+  ``HEAD`` (a plain-text discovery response with the ``Link`` header) and
+  ``OPTIONS`` (CORS preflight). Other methods get ``405``.
+* ``/indieweb/webmention/<status_token>/`` accepts ``GET``, ``HEAD`` and
+  ``OPTIONS``. It is not rate limited; a status token is an unguessable
+  random value known only from the ``Location`` header of the submission.
+
+IndieAuth, authorization metadata, token issuance,
+introspection, token management/revocation, Micropub, media and WebSub callbacks
+remain unrouted (404). The status URL returns verification state and, when
+available, its timestamp; it does not disclose submitted URLs or content.
+
+Live, public cast blog, post and episode pages advertise the endpoint through
+an HTTP ``Link: <…/indieweb/webmention/>; rel="webmention"`` header, across all
+themes. Drafts, previews, restricted pages (including ancestor restrictions),
+account/admin pages and error responses do not advertise it. The receiver
+accepts HTTP(S) targets on the current Django Sites domain; discovery is limited
+to public cast content. No custom target resolver or comment adapter is enabled.
+
+A submission stores a ``pending`` Webmention, enqueues
+``python_podcast.core.webmention_tasks.process_webmention`` on the
+``cast_transcripts`` Django Tasks database backend and returns ``202 Accepted``
+with its status URL in ``Location``. The request does not fetch remote pages.
+The existing ``python-podcast-db-worker`` verifies the source backlink and
+stores parsed data. It shares the transcript queue: long transcript jobs can
+delay verification for hours. With no worker, mentions stay pending. Locally,
+run ``uv run python manage.py db_worker --backend cast_transcripts``; test
+settings use ImmediateBackend and intentionally execute tasks immediately.
+
+A missing backlink or failed fetch marks the mention ``failed``. A failed task
+appears under Tasks Database Backend in Django admin, can leave the mention
+``pending``, and is not retried automatically. Re-submitting the source/target
+pair queues it again.
+
+``INDIEWEB_RATE_LIMITS`` permits 60 receiving requests per client address and
+HTTP method in a fixed 300-second window; excess requests get ``429`` with
+``Retry-After`` and enqueue nothing. Production's existing
+``INDIEWEB_RATE_LIMIT_TRUSTED_PROXY_HOPS`` selects the address appended by
+Traefik. Counters use the shared default file cache: increments are not atomic
+and cache eviction can reset them early. A cache write failure rejects requests.
+
+Owner inspection and publication
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Received mentions are visible to authorized staff in Django admin under
+**Indieweb → Webmentions**, with source/target, author, content and status.
+The library stores ``pending``, ``verified``, ``failed`` and ``spam``: these
+are processing states, not owner approval. Homepage renders verified mentions
+using its template tags; it has no separate approval status. Python Podcast
+renders none of them on public pages, including verified mentions, and does
+not convert them into public comments. Owner inspection is required before
+any future publication workflow; changing status in admin does not publish.
+
+No project migration is needed: ``indieweb`` is already installed and its
+packaged migrations own these tables. Normal deployment must run ``uv run
+python manage.py migrate`` before starting web/worker processes; verify with
+``uv run python manage.py showmigrations indieweb``. CI additionally runs the
+Webmention tests with real migrations and checks their applied history and
+Webmention table, since the regular suite uses ``--no-migrations``.

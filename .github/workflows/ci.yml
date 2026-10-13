@@ -82,6 +82,9 @@ jobs:
       - name: Install Python dependencies
         run: uv sync --locked
 
+      - name: Verify Webmention integration with dependency migrations
+        run: uv run --locked pytest --create-db --migrations -p no:sugar tests/test_webmention_queue.py tests/test_webmention_discovery.py
+
       # pyproject addopts deselect the Playwright e2e tests (-m "not e2e");
       # they need built Vite assets, browsers and ffmpeg and run via `just test-e2e`.
       - name: Run test suite (excluding e2e)

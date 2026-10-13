@@ -81,6 +81,7 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#middleware
 MIDDLEWARE = [
+    "python_podcast.core.webmention_discovery.WebmentionDiscoveryMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -520,3 +521,9 @@ CAST_PODLOVE_PLAYER_THEMES = {
 }
 
 CAST_USE_POST_DATA = False
+
+# Receive and verify in the existing database worker; never publish mentions.
+INDIEWEB_WEBMENTION_ENQUEUE = "python_podcast.core.webmention_tasks.enqueue_webmention"
+INDIEWEB_RATE_LIMITS = {"webmention": {"limit": 60, "window": 300}}
+# Status-token holders see verification status only, without submitted URLs.
+INDIEWEB_WEBMENTION_STATUS_PUBLIC = True

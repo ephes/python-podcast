@@ -143,3 +143,14 @@ Docker
 See detailed `cookiecutter-django Docker documentation`_.
 
 .. _`cookiecutter-django Docker documentation`: http://cookiecutter-django.readthedocs.io/en/latest/deployment-with-docker.html
+
+Webmentions
+-----------
+
+Public cast pages advertise ``/indieweb/webmention/`` via an HTTP Link header.
+Received mentions are queued on the existing ``cast_transcripts`` database
+worker and verified in the background. They are available for owner inspection
+in Django admin under Indieweb → Webmentions; none are rendered publicly,
+including verified mentions. Verification status is not approval. IndieAuth,
+Micropub and token endpoints remain unavailable. See ``docs/deploy.rst``
+(Receiving webmentions) for rate limits, migrations and worker operations.

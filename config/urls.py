@@ -26,6 +26,7 @@ PagesAPIViewSet.schema = None
 
 
 urlpatterns = [
+    path("indieweb/", include("python_podcast.core.webmention_urls")),
     path("robots.txt", core_views.robots_txt, name="robots_txt"),
     # path("", TemplateView.as_view(template_name="pages/home.html"), name="home"),
     path("", RedirectView.as_view(url="/show/"), name="home"),
