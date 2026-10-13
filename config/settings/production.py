@@ -72,6 +72,12 @@ CACHES = {
     },
 }
 
+# django-indieweb rate-limit client keys. Traefik is the only reverse proxy and
+# appends the client address, so the last X-Forwarded-For entry is the client;
+# earlier entries are client-controlled. Same knob as REST_FRAMEWORK["NUM_PROXIES"].
+# Local and test settings keep the library default 0 (REMOTE_ADDR).
+INDIEWEB_RATE_LIMIT_TRUSTED_PROXY_HOPS = env.int("DJANGO_NUM_PROXIES", default=1)
+
 # SECURITY
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#secure-proxy-ssl-header

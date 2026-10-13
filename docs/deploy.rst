@@ -66,6 +66,65 @@ chromium`` and run ``just test-e2e``. Before deploying, also check the new froze
 environment with production settings and ``migrate --plan`` against PostgreSQL,
 and retain a fresh database backup and the previous commit/lock for rollback.
 
+2026-10-13 library refresh
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``uv.lock`` moves django-indieweb ``develop`` from ``c7b8da62`` to ``4022366f``,
+django-cast ``develop`` from ``8205bc48`` to ``5ac84fbd`` (0.2.68 development),
+cast-bootstrap5 ``main`` from ``d0ea6879`` to ``88134d96``.
+No other locked package changed. None of the updates has a migration.
+
+One setting is new: ``config.settings.production`` sets
+``INDIEWEB_RATE_LIMIT_TRUSTED_PROXY_HOPS`` from ``DJANGO_NUM_PROXIES`` (default
+``1``), so django-indieweb rate limits count the client address that Traefik
+appends to ``X-Forwarded-For`` and not Traefik's own address. Local and test
+settings keep the library default ``0`` (``REMOTE_ADDR``).
+
+**Check before deploying:** django-cast now takes the Voxhelm API base and
+token as a pair from one level: the Wagtail ``Voxhelm settings`` of the site
+if either field is filled, otherwise the Django settings, otherwise the
+environment. A site that has only one of the two Wagtail fields filled no
+longer inherits the other from the environment, and transcript generation is
+disabled for it. Before the deploy, open ``Settings -> Voxhelm settings`` for
+every site and make sure that either both fields are blank (deployment
+credentials are used) or both are filled. Changing the API base in Wagtail now
+requires re-entering the token; saving with both fields blank removes the
+stored token.
+
+* django-indieweb analyses at most two received Webmention documents at a
+  time per lock directory (``INDIEWEB_WEBMENTION_PARSE_MAX_CONCURRENT``). A
+  further one waits up to 1 s for a slot; after that a synchronous receive
+  answers ``503`` with ``Retry-After: 1``. An already verified mention keeps
+  its state; a new submission is left as a ``pending`` row. Fetching a
+  source or Vouch document has a total budget of 15 s
+  (``INDIEWEB_WEBMENTION_FETCH_TOTAL_TIMEOUT_SECONDS``); a source that sends
+  its body too slowly is marked ``failed``. Relative links in a source are
+  resolved against the fetched source URL, so posts on this site can mention
+  each other with relative links; documents containing ``<base`` still match
+  on absolute links only. All new settings stay at their defaults.
+  This project still does not route ``indieweb.urls``, so none of this is
+  reachable in production; the setting above only takes effect once it is.
+* django-indieweb keeps the complete ``next`` URL, including the
+  authorization parameters, when IndieAuth or token management redirects to
+  the login page.
+* django-cast leaves view-restricted pages, and pages below them, out of the
+  navigation links of blog, post and feed pages, for signed-in visitors too.
+  Feed descriptions are rendered with the default theme of the blog or site
+  and ignore a visitor's session, query or preview theme.
+* django-cast answers HTMX theme-selector requests with the plain fragment
+  when a theme has no ``select_theme.html``, and ``manage.py check`` reports
+  missing optional theme templates as ``cast.W002`` warnings.
+  ``Transcript.rewrite_speaker_labels`` also renames generic ``Speaker N:``
+  cue prefixes.
+* cast-bootstrap5 ships rebuilt bundles, so ``collectstatic`` picks up new
+  hashed assets. A Podlove player that fails to load shows a message and a
+  ``Retry loading player`` button instead of loading forever. The color mode
+  choice applies for the rest of the page session when the browser refuses to
+  store it. Search suggestions give up after 5 s and say so; submitting the
+  search still works. Consecutive plain blockquotes merge only when nothing
+  but whitespace separates them and they carry no attributes such as ``cite``
+  or ``id``.
+
 2026-10-12 security library refresh
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -317,9 +376,11 @@ workaround anymore.
 Voxhelm credentials should be supplied through deployment-managed environment
 variables rather than relying on the Wagtail database token field. Configure
 ``CAST_VOXHELM_API_BASE`` and ``CAST_VOXHELM_API_KEY`` in the shared
-environment used by both Gunicorn and the transcript worker; the Wagtail
-``Voxhelm settings`` token field may stay blank when the token comes from
-deployment secrets.
+environment used by both Gunicorn and the transcript worker, and leave both
+the API base and the token field of the Wagtail ``Voxhelm settings`` blank.
+django-cast takes the two values as a pair from one level: a site with only
+one of the two Wagtail fields filled does not inherit the other from the
+environment, and transcript generation is disabled for it.
 
 Known-speaker recognition
 -------------------------
