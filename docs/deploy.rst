@@ -424,3 +424,61 @@ Applying the django-cast version with these features runs one new migration
 (``cast.0071``) adding the private known-speaker suggestion field and the
 site-level known-speaker setting. Bump the pinned ``django-cast`` commit, run
 ``uv lock --upgrade-package django-cast``, apply migrations, and redeploy.
+
+Receiving webmentions
+---------------------
+
+Only ``POST /indieweb/webmention/`` and ``GET
+/indieweb/webmention/<status_token>/`` are routed from django-indieweb (pinned
+at develop ``9726be2``). IndieAuth, authorization metadata, token issuance,
+introspection, token management/revocation, Micropub, media and WebSub callbacks
+remain unrouted (404). The status URL returns verification state and, when
+available, its timestamp; it does not disclose submitted URLs or content.
+
+Live, public cast blog, post and episode pages advertise the endpoint through
+an HTTP ``Link: <…/indieweb/webmention/>; rel="webmention"`` header, across all
+themes. Drafts, previews, restricted pages (including ancestor restrictions),
+account/admin pages and error responses do not advertise it. The receiver
+accepts HTTP(S) targets on the current Django Sites domain; discovery is limited
+to public cast content. No custom target resolver or comment adapter is enabled.
+
+A submission stores a ``pending`` Webmention, enqueues
+``python_podcast.core.webmention_tasks.process_webmention`` on the
+``cast_transcripts`` Django Tasks database backend and returns ``202 Accepted``
+with its status URL in ``Location``. The request does not fetch remote pages.
+The existing ``python-podcast-db-worker`` verifies the source backlink and
+stores parsed data. It shares the transcript queue: long transcript jobs can
+delay verification for hours. With no worker, mentions stay pending. Locally,
+run ``uv run python manage.py db_worker --backend cast_transcripts``; test
+settings use ImmediateBackend and intentionally execute tasks immediately.
+
+A missing backlink or failed fetch marks the mention ``failed``. A failed task
+appears under Tasks Database Backend in Django admin, can leave the mention
+``pending``, and is not retried automatically. Re-submitting the source/target
+pair queues it again.
+
+``INDIEWEB_RATE_LIMITS`` permits 60 receiving requests per client address and
+HTTP method in a fixed 300-second window; excess requests get ``429`` with
+``Retry-After`` and enqueue nothing. Production's existing
+``INDIEWEB_RATE_LIMIT_TRUSTED_PROXY_HOPS`` selects the address appended by
+Traefik. Counters use the shared default file cache: increments are not atomic
+and cache eviction can reset them early. A cache write failure rejects requests.
+
+Owner inspection and publication
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Received mentions are visible to authorized staff in Django admin under
+**Indieweb → Webmentions**, with source/target, author, content and status.
+The library stores ``pending``, ``verified``, ``failed`` and ``spam``: these
+are processing states, not owner approval. Homepage renders verified mentions
+using its template tags; it has no separate approval status. Python Podcast
+renders none of them on public pages, including verified mentions, and does
+not convert them into public comments. Owner inspection is required before
+any future publication workflow; changing status in admin does not publish.
+
+No project migration is needed: ``indieweb`` is already installed and its
+packaged migrations own these tables. Normal deployment must run ``uv run
+python manage.py migrate`` before starting web/worker processes; verify with
+``uv run python manage.py showmigrations indieweb``. CI additionally runs the
+Webmention tests with real migrations and checks their applied history and
+Webmention table, since the regular suite uses ``--no-migrations``.
