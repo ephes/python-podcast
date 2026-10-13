@@ -61,15 +61,39 @@ def env_with_pythonpath():
     return env
 
 
+def _run_quality_tool(args, **kwargs):
+    """Run a quality step, reporting startup errors and preserving failure status."""
+    try:
+        returncode = subprocess.call(args, **kwargs)
+    except OSError as error:
+        typer.echo(f"could not start {args[0]}: {error}", err=True)
+        raise typer.Exit(1) from error
+    if returncode:
+        raise typer.Exit(returncode)
+
+
+def _open_coverage_report(args):
+    """Opening the generated report is best effort, including on headless systems."""
+    try:
+        returncode = subprocess.call(args)
+    except OSError as error:
+        typer.echo(f"could not start {args[0]}: {error}", err=True)
+    else:
+        if returncode:
+            typer.echo(
+                f"coverage viewer {args[0]} exited with status {returncode}; report: htmlcov/index.html", err=True
+            )
+
+
 @cli.command()
 def mypy():
     """Run Mypy (configured in pyproject.toml)"""
-    subprocess.call(["mypy", "."])
+    _run_quality_tool(["mypy", "."])
 
 
 @cli.command()
 def test():
-    subprocess.call(["python", "-m", "pytest"], env=env_with_pythonpath())
+    _run_quality_tool(["python", "-m", "pytest"], env=env_with_pythonpath())
 
 
 @cli.command()
@@ -77,12 +101,12 @@ def coverage():
     """
     Run and show coverage.
     """
-    subprocess.call(["coverage", "run", "-m", "pytest"], env=env_with_pythonpath())
-    subprocess.call(["coverage", "html"])
+    _run_quality_tool(["coverage", "run", "-m", "pytest"], env=env_with_pythonpath())
+    _run_quality_tool(["coverage", "html"])
     if platform.system() == "Darwin":
-        subprocess.call(["open", "htmlcov/index.html"])
+        _open_coverage_report(["open", "htmlcov/index.html"])
     elif platform.system() == "Linux" and "Microsoft" in platform.release():  # on WSL
-        subprocess.call(["explorer.exe", r"htmlcov\index.html"])
+        _open_coverage_report(["explorer.exe", r"htmlcov\index.html"])
 
 
 @cli.command()
