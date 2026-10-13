@@ -102,8 +102,8 @@ stored token.
   resolved against the fetched source URL, so posts on this site can mention
   each other with relative links; documents containing ``<base`` still match
   on absolute links only. All new settings stay at their defaults.
-  This project still does not route ``indieweb.urls``, so none of this is
-  reachable in production; the setting above only takes effect once it is.
+  When this was written the project did not route any django-indieweb URL.
+  The receiving endpoint is routed since; see `Receiving webmentions`_.
 * django-indieweb keeps the complete ``next`` URL, including the
   authorization parameters, when IndieAuth or token management redirects to
   the login page.
@@ -115,9 +115,9 @@ stored token.
   sending on a file-based cache; ``Retry-After`` is the time left to that
   deadline. Counting stays best-effort under simultaneous requests. The
   counters use a new cache key namespace, so every client starts with a
-  fresh allowance after the upgrade. No ``INDIEWEB_RATE_LIMITS`` are
-  configured here and ``indieweb.urls`` is not routed, so this has no effect
-  in production yet.
+  fresh allowance after the upgrade. When this was written no
+  ``INDIEWEB_RATE_LIMITS`` were configured and no django-indieweb URL was
+  routed; both changed with `Receiving webmentions`_.
 * django-cast leaves view-restricted pages, and pages below them, out of the
   navigation links of blog, post and feed pages, for signed-in visitors too.
   Feed descriptions are rendered with the default theme of the blog or site
@@ -151,9 +151,9 @@ updates has a migration, and no settings change is needed.
   space and 20 s of CPU time; the receiving process ends it after 30 s. Over a
   limit the Webmention is marked ``failed`` and nothing from the document is
   stored. The ``INDIEWEB_WEBMENTION_PARSE_*`` settings stay at these defaults.
-  This project installs ``indieweb`` but does not route ``indieweb.urls``, so
-  no Webmention endpoint is exposed and the child process is not started in
-  production. Should the endpoint be added later: the ``wagtail_deploy`` units
+  When this was written no Webmention endpoint was exposed. It is now (see
+  `Receiving webmentions`_), and the child process is started by the
+  ``cast_transcripts`` database worker, not by gunicorn. The ``wagtail_deploy`` units
   (``NoNewPrivileges``, ``PrivateTmp``, ``ProtectSystem=strict``) have no
   system call filter, memory limit or task limit that would stop the child or
   its ``setrlimit`` calls, and gunicorn runs from the same virtualenv.
@@ -428,9 +428,17 @@ site-level known-speaker setting. Bump the pinned ``django-cast`` commit, run
 Receiving webmentions
 ---------------------
 
-Only ``POST /indieweb/webmention/`` and ``GET
-/indieweb/webmention/<status_token>/`` are routed from django-indieweb (pinned
-at develop ``9726be2``). IndieAuth, authorization metadata, token issuance,
+Only two django-indieweb views are routed (pinned at develop ``9726be2``),
+both without authentication:
+
+* ``/indieweb/webmention/`` accepts ``POST`` (submit a mention), ``GET`` and
+  ``HEAD`` (a plain-text discovery response with the ``Link`` header) and
+  ``OPTIONS`` (CORS preflight). Other methods get ``405``.
+* ``/indieweb/webmention/<status_token>/`` accepts ``GET``, ``HEAD`` and
+  ``OPTIONS``. It is not rate limited; a status token is an unguessable
+  random value known only from the ``Location`` header of the submission.
+
+IndieAuth, authorization metadata, token issuance,
 introspection, token management/revocation, Micropub, media and WebSub callbacks
 remain unrouted (404). The status URL returns verification state and, when
 available, its timestamp; it does not disclose submitted URLs or content.
@@ -465,7 +473,7 @@ Traefik. Counters use the shared default file cache: increments are not atomic
 and cache eviction can reset them early. A cache write failure rejects requests.
 
 Owner inspection and publication
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Received mentions are visible to authorized staff in Django admin under
 **Indieweb → Webmentions**, with source/target, author, content and status.
