@@ -100,7 +100,10 @@ GitHub Actions (``.github/workflows/ci.yml``) runs on every push and pull reques
 * ``lint``: the pre-commit hooks via ``uv run prek run --all-files``
 * ``test``: ``pytest -m "not e2e"`` against a PostgreSQL 17 service container
   (Python 3.14, ``uv sync --locked``), with dummy AWS settings; test settings keep
-  uploads in memory. The Playwright e2e tests are not run in CI; use ``just test-e2e``.
+  uploads in memory.
+* ``dock-transitions``: isolated Playwright tests of deferred dock updates in
+  Chromium, for source and minified JS, without Django or a database. Other
+  Playwright e2e tests run locally with ``just test-e2e``.
 
 Live reloading and Sass CSS compilation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
