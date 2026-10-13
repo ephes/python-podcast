@@ -107,6 +107,17 @@ stored token.
 * django-indieweb keeps the complete ``next`` URL, including the
   authorization parameters, when IndieAuth or token management redirects to
   the login page.
+* A follow-up on the same day moves django-indieweb ``develop`` from
+  ``4022366f`` to ``9726be2d``; no other locked package changed and there is
+  no migration or settings change. Its endpoint rate limit now stores the
+  count and the window deadline together, so the configured window is fixed
+  from a client's first request and no longer extends while the client keeps
+  sending on a file-based cache; ``Retry-After`` is the time left to that
+  deadline. Counting stays best-effort under simultaneous requests. The
+  counters use a new cache key namespace, so every client starts with a
+  fresh allowance after the upgrade. No ``INDIEWEB_RATE_LIMITS`` are
+  configured here and ``indieweb.urls`` is not routed, so this has no effect
+  in production yet.
 * django-cast leaves view-restricted pages, and pages below them, out of the
   navigation links of blog, post and feed pages, for signed-in visitors too.
   Feed descriptions are rendered with the default theme of the blog or site
