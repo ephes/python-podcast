@@ -24,7 +24,14 @@ Basic Commands
 Setting Up Your Users
 ^^^^^^^^^^^^^^^^^^^^^
 
-* To create a **normal user account**, just go to Sign Up and fill out the form. Once you submit it, you'll see a "Verify Your E-mail Address" page. Go to your console to see a simulated email verification message. Copy the link into your browser. Now the user's email should be verified and ready to go.
+* Registration is closed by default. To enable Sign Up for local development,
+  set ``DJANGO_ACCOUNT_ALLOW_REGISTRATION=true`` in your environment or local
+  ``.env`` file, then restart Django. Leave it unset or set it to ``false`` to
+  keep registration closed.
+
+* When registration is enabled, go to Sign Up to create a **normal user account**.
+  After submitting the form, follow the verification link printed in the local
+  development console to verify the email address.
 
 * To create an **superuser account**, use this command::
 

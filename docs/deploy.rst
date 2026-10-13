@@ -3,6 +3,13 @@ Deploy
 
 Staging and production deployments run through ops-control (SOPS-backed).
 
+Registration
+------------
+
+Registration is closed by default in all environments. Set
+``DJANGO_ACCOUNT_ALLOW_REGISTRATION=true`` in the deployment environment only
+when public signup is intended. An unset value or ``false`` keeps signup closed.
+
 Deployment Commands
 -------------------
 
