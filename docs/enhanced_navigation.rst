@@ -55,6 +55,16 @@ entry, forward entries kept), so the address bar and relative links such as
 ``?page=2`` match the page shown. A redirect to an excluded route or another
 origin falls back to a full navigation, as above.
 
+Playback actions and deferred transitions
+-----------------------------------------
+
+The latest explicit episode activation or close owns the dock. A queued View
+Transition update from an older activation cannot rebuild or start its episode,
+even if it runs after the newer update. Closing invalidates queued updates so
+they cannot reopen the dock. Activating without a transition (including reduced
+motion) also supersedes pending updates. Transition cleanup and close animation
+completion retain their ownership guards.
+
 Payload identity
 ----------------
 
@@ -96,3 +106,8 @@ repository has no separate JavaScript test runner; these tests use the
 Playwright harness of the other browser tests, need no database content and run
 with ``just test-e2e``. After changing ``persistent-player.js`` run
 ``just minify-static``.
+
+``tests/e2e/test_dock_transitions.py`` exercises queued updates in both orders,
+close during a pending switch, and activation without a transition, for both
+source and minified assets. These isolated tests need no PostgreSQL or Vite:
+``uv run pytest -p no:django -o addopts='' -m e2e tests/e2e/test_dock_transitions.py``.
