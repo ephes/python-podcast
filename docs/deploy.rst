@@ -435,8 +435,9 @@ both without authentication:
   ``HEAD`` (a plain-text discovery response with the ``Link`` header) and
   ``OPTIONS`` (CORS preflight). Other methods get ``405``.
 * ``/indieweb/webmention/<status_token>/`` accepts ``GET``, ``HEAD`` and
-  ``OPTIONS``. It is not rate limited; a status token is an unguessable
-  random value known only from the ``Location`` header of the submission.
+  ``OPTIONS``. GET and HEAD use the status polling rate limit described below.
+  A status token is an unguessable random value known only from the
+  ``Location`` header of the submission.
 
 IndieAuth, authorization metadata, token issuance,
 introspection, token management/revocation, Micropub, media and WebSub callbacks
@@ -471,6 +472,12 @@ HTTP method in a fixed 300-second window; excess requests get ``429`` with
 ``INDIEWEB_RATE_LIMIT_TRUSTED_PROXY_HOPS`` selects the address appended by
 Traefik. Counters use the shared default file cache: increments are not atomic
 and cache eviction can reset them early. A cache write failure rejects requests.
+
+Status polling at ``/indieweb/webmention/<status_token>/`` uses the
+``webmention_status`` limit: 120 requests per client address and HTTP method
+(GET and HEAD separately) per 300 seconds; excess requests get ``429`` with
+``Retry-After``. The same shared file cache and counter caveats described
+above apply to status polling.
 
 Owner inspection and publication
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

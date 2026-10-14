@@ -524,6 +524,9 @@ CAST_USE_POST_DATA = False
 
 # Receive and verify in the existing database worker; never publish mentions.
 INDIEWEB_WEBMENTION_ENQUEUE = "python_podcast.core.webmention_tasks.enqueue_webmention"
-INDIEWEB_RATE_LIMITS = {"webmention": {"limit": 60, "window": 300}}
+INDIEWEB_RATE_LIMITS = {
+    "webmention": {"limit": 60, "window": 300},
+    "webmention_status": {"limit": 120, "window": 300},
+}
 # Status-token holders see verification status only, without submitted URLs.
 INDIEWEB_WEBMENTION_STATUS_PUBLIC = True

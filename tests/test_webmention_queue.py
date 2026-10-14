@@ -58,7 +58,10 @@ def post_webmention(client):
 
 def test_settings_queue_webmentions_and_limit_the_endpoint():
     assert settings.INDIEWEB_WEBMENTION_ENQUEUE == "python_podcast.core.webmention_tasks.enqueue_webmention"
-    assert settings.INDIEWEB_RATE_LIMITS == {"webmention": {"limit": 60, "window": 300}}
+    assert settings.INDIEWEB_RATE_LIMITS == {
+        "webmention": {"limit": 60, "window": 300},
+        "webmention_status": {"limit": 120, "window": 300},
+    }
     assert webmention_tasks.process_webmention.backend == "cast_transcripts"
 
 
@@ -183,3 +186,22 @@ def test_indieweb_migrations_are_applied(request):
     assert ("indieweb", "0008_webmention") in migrations
     assert migrations <= set(MigrationRecorder(connection).applied_migrations())
     assert Webmention._meta.db_table in connection.introspection.table_names()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("method", ["get", "head"])
+def test_status_requests_over_the_limit_are_rejected(client, no_remote_fetch, monkeypatch, method):
+    # Keep all requests in the same fixed window, even on a slow CI runner.
+    monkeypatch.setattr("indieweb.rate_limit.time.time", lambda: 1_800_000_000)
+    submitted = post_webmention(client)
+    assert submitted.status_code == 202
+    status_url = submitted["Location"]
+    request_status = getattr(client, method)
+
+    for _ in range(120):
+        assert request_status(status_url).status_code == 200
+
+    rejected = request_status(status_url)
+    assert rejected.status_code == 429
+    assert int(rejected["Retry-After"]) == 300
+    assert DBTaskResult.objects.count() == 1
