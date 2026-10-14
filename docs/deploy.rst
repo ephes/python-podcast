@@ -66,6 +66,32 @@ chromium`` and run ``just test-e2e``. Before deploying, also check the new froze
 environment with production settings and ``migrate --plan`` against PostgreSQL,
 and retain a fresh database backup and the previous commit/lock for rollback.
 
+2026-10-14 library refresh
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``uv.lock`` moves django-cast ``develop`` from ``5ac84fbd`` to ``704a60aa``,
+django-indieweb ``develop`` from ``9726be2d`` to ``dc6365af`` and
+cast-bootstrap5 ``main`` from ``88134d96`` to ``9fba4b2d``. No other locked
+package changed. None of the updates has a migration or needs a settings change.
+
+* django-cast writes internal page links in feed item descriptions as absolute
+  URLs, so they resolve in podcast apps and feed readers. Voxhelm status polls
+  retry lost connections until the job deadline instead of failing the job.
+  Applying speaker suggestions names a guest without a voice reference from the
+  leftover diarization label when the assignment is unambiguous.
+  ``media_stale`` now skips files younger than 7 days
+  (``CAST_MEDIA_STALE_MIN_AGE_DAYS``) or of unknown age and re-checks age and
+  references before each deletion. Nothing here runs it on a schedule.
+* django-indieweb falls back to ``GET`` when outbound Webmention discovery gets
+  an error answer to ``HEAD``. Its other behaviour changes (``create`` scope
+  for multipart Micropub, ``404`` for rejected WebSub callbacks, fail-closed
+  ``INDIEWEB_LOG_REDACTION``) concern views this site does not route and a
+  setting it does not set.
+* cast-bootstrap5 ships a compiled German catalog, so its theme strings appear
+  in German here (``LANGUAGE_CODE`` is ``de-DE``), and sets ``<html lang>`` from
+  the active language. This site's ``cast/bootstrap5/base.html`` extends the
+  theme's template, so its pages now declare German instead of ``en``.
+
 2026-10-13 library refresh
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -428,7 +454,7 @@ site-level known-speaker setting. Bump the pinned ``django-cast`` commit, run
 Receiving webmentions
 ---------------------
 
-Only two django-indieweb views are routed (pinned at develop ``9726be2``),
+Only two django-indieweb views are routed (pinned at develop ``dc6365a``),
 both without authentication:
 
 * ``/indieweb/webmention/`` accepts ``POST`` (submit a mention), ``GET`` and
