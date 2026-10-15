@@ -61,8 +61,8 @@ Install the locked development dependencies with ``uv sync --locked`` first.
 They include ``django-coverage-plugin``, which ``.coveragerc`` loads and which
 ``python commands.py coverage`` requires. Template coverage additionally needs
 template debugging enabled and a coverage core that supports plugin file tracers
-(such as ``COVERAGE_CORE=ctrace``). Python 3.14's default SysMonitor core does
-not support plugin file tracers, so installing the plugin alone does not enable
+(such as ``COVERAGE_CORE=ctrace``). The default SysMonitor core on Python 3.14 and
+later does not support plugin file tracers, so installing the plugin alone does not enable
 template coverage.
 
 To run the tests, check your test coverage, and generate an HTML coverage report::
@@ -97,9 +97,9 @@ Continuous Integration
 
 GitHub Actions (``.github/workflows/ci.yml``) runs on every push and pull request:
 
-* ``lint``: the pre-commit hooks via ``uv run prek run --all-files``
+* ``lint``: the pre-commit hooks via ``uv run prek run --all-files`` (Python 3.15)
 * ``test``: ``pytest -m "not e2e"`` against a PostgreSQL 17 service container
-  (Python 3.14, ``uv sync --locked``), with dummy AWS settings; test settings keep
+  (Python 3.14 and 3.15, uv 0.13, ``uv sync --locked``), with dummy AWS settings; test settings keep
   uploads in memory.
 * ``dock-transitions``: isolated Playwright tests of deferred dock updates in
   Chromium, for source and minified JS, without Django or a database. Other

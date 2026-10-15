@@ -66,6 +66,36 @@ chromium`` and run ``just test-e2e``. Before deploying, also check the new froze
 environment with production settings and ``migrate --plan`` against PostgreSQL,
 and retain a fresh database backup and the previous commit/lock for rollback.
 
+2026-10-15 Python 3.15
+~~~~~~~~~~~~~~~~~~~~~~
+
+Production moves from Python 3.14.8 to 3.15.0. The interpreter is set in
+ops-control (``wagtail_python_version`` in
+``playbooks/deploy-python-podcast.yml``); the ops-library ``wagtail_deploy``
+role installs it with uv, rebuilds the virtualenv when the version differs and
+runs ``uv sync --frozen``. Expect a short outage while the virtualenv is
+rebuilt.
+
+* ``uv.lock`` moves pydantic to 2.14.1, pydantic-core to 2.50.1, markupsafe to
+  3.0.4, rcssmin and rjsmin to 1.3.0, which ship Python 3.15 wheels, and
+  django-indieweb ``develop`` from ``dc6365af`` to ``c1918dc6``. No migration.
+* The django-indieweb update limits request bodies on the IndieAuth
+  authorization and token endpoints. This site routes only the Webmention
+  endpoint and its status URL, so nothing changes here.
+* PyYAML (a development dependency through Jupyter) has no 3.15 wheel yet and
+  is built from source during ``uv sync`` on the host; the host has a C
+  compiler.
+* CI tests on Python 3.14 and 3.15 with uv 0.13.1 (3.15.0 needs uv 0.13.0 or
+  later); lint and the dock transition browser tests run on 3.15.
+* Django 6.1 and Wagtail 8.0 do not list Python 3.15 as supported yet. The
+  tests pass on 3.14.8 and 3.15.0 against PostgreSQL 17 (38 with
+  ``--migrations``, then 355 passed and 1 skipped), as do the 12 dock
+  transition browser tests on 3.15.0.
+
+Rollback: set ``wagtail_python_version`` back to ``"3.14.8"`` in ops-control
+and deploy again; the role rebuilds the virtualenv on 3.14. The lock works on
+both versions.
+
 2026-10-14 library refresh
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
