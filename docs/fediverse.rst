@@ -2,10 +2,15 @@ Fediverse discovery
 ===================
 
 The ``python_podcast.fedi`` app lets the site's domain act as the fediverse identity
-domain while the actual server runs at ``https://fedi.python-podcast.de``.
+domain while the actual server runs at ``https://fedi.python-podcast.de``. Since
+2026-10-15 that server is GoToSocial (it replaced Takahē; the handle
+``@show@python-podcast.de`` stayed the same). The "Mastodon" follow link
+(``CAST_FOLLOW_LINKS["mastodon"]`` in ``config/settings/base.py``) points to
+``https://fedi.python-podcast.de/@show``.
 
-``/@jochen`` and ``/@show``
-   Redirect to the profile on the fedi host.
+``/@show``
+   Redirects to the profile on the fedi host. (``/@jochen`` was removed: there
+   is no such account on the fedi host.)
 
 ``/.well-known/webfinger``, ``/.well-known/host-meta``, ``/.well-known/nodeinfo``
    Fetched from the same path on the fedi host and returned to the client

@@ -256,9 +256,5 @@ def wellknown_nodeinfo(request):
     return _proxy_wellknown(request, "/.well-known/nodeinfo", forward_query=False, default_accept="application/json")
 
 
-def username_redirect_jochen(request):
-    return HttpResponseRedirect("https://fedi.python-podcast.de/@jochen")
-
-
 def username_redirect_show(request):
     return HttpResponseRedirect("https://fedi.python-podcast.de/@show")

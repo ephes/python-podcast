@@ -429,7 +429,7 @@ CAST_FEED_ITUNES_SUMMARY = False
 PYTHON_PODCAST_PERSISTENT_AUDIO_PLAYER = env.bool("PYTHON_PODCAST_PERSISTENT_AUDIO_PLAYER", default=False)
 
 CAST_FOLLOW_LINKS = {
-    "mastodon": "https://fedi.python-podcast.de/@show@python-podcast.de/",
+    "mastodon": "https://fedi.python-podcast.de/@show",
     "linkedin": "https://www.linkedin.com/company/105560994/",
     "apple_podcasts": "https://podcasts.apple.com/de/podcast/python-podcast/id1445331513",
     "spotify": "https://open.spotify.com/show/5AvPhPaP1ZNSjNUXY3Gf6M",
