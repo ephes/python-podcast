@@ -17,10 +17,11 @@ FEDI_BASE_URL = "https://fedi.python-podcast.de"
 # the TLS handshake), each socket read, and a hard overall deadline. When the
 # deadline passes the upstream socket is shut down, which aborts any blocked
 # read (headers, chunk framing or body), so a slowly dripping upstream cannot
-# hold a worker longer than this.
+# hold a worker longer than this. Mastodon gives up on a lookup after about
+# 10 s without response headers, so waiting longer would only hold a worker.
 CONNECT_TIMEOUT = 3
 READ_TIMEOUT = 10
-UPSTREAM_DEADLINE = 15
+UPSTREAM_DEADLINE = 10
 # .well-known documents are small; refuse anything larger than this.
 MAX_UPSTREAM_BYTES = 1024 * 1024
 # Besides Content-Type (and Location on redirects) only these upstream response
@@ -213,10 +214,10 @@ def _proxy_wellknown(request, path, *, forward_query=True, default_accept="*/*")
         status, headers, content = _fetch(url, accept)
     except UpstreamTimeout:
         logger.warning("Timeout fetching %s", path)
-        return HttpResponse("Upstream timeout", status=504, content_type="text/plain")
+        return _gateway_error(request, "Upstream timeout", 504)
     except UpstreamError as exc:
         logger.warning("Failed to fetch %s: %s", path, exc)
-        return HttpResponse("Bad gateway", status=502, content_type="text/plain")
+        return _gateway_error(request, "Bad gateway", 502)
 
     try:
         return _build_response(request, url, status, headers, content)
@@ -224,7 +225,17 @@ def _proxy_wellknown(request, path, *, forward_query=True, default_accept="*/*")
         # Invalid upstream status or header values (BadHeaderError is a ValueError),
         # or a malformed redirect location.
         logger.warning("Invalid upstream response for %s: %s", path, exc)
-        return HttpResponse("Bad gateway", status=502, content_type="text/plain")
+        return _gateway_error(request, "Bad gateway", 502)
+
+
+def _gateway_error(request, text, status):
+    """
+    Return a 502/504 for a failed upstream fetch and mark the request, so
+    ``SkipFediUpstreamFailures`` keeps Django's request logging from mailing
+    the admins about it. The warning logged above stays the record.
+    """
+    request.fedi_upstream_failure = True
+    return HttpResponse(text, status=status, content_type="text/plain")
 
 
 def _build_response(request, url, status, headers, content):

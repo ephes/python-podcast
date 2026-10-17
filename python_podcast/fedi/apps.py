@@ -6,8 +6,11 @@ class FediConfig(AppConfig):
     verbose_name = "Fediverse redirects etc."
 
     def ready(self):
-        """Override this to put in:
-        Users system checks
-        Users signal registration
-        """
-        pass
+        import logging
+
+        from .log_filters import SkipFediUpstreamFailures
+
+        # A logger-level filter runs before any handler, so neither mail_admins
+        # nor Sentry's logging integration sees the dropped records. Added here
+        # instead of in LOGGING so it applies with every settings module.
+        logging.getLogger("django.request").addFilter(SkipFediUpstreamFailures())

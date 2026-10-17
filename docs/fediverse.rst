@@ -32,12 +32,21 @@ domain while the actual server runs at ``https://fedi.python-podcast.de``. Since
    * Upstream redirects are not followed; a ``3xx`` is returned to the client
      with its ``Location`` made absolute against the fedi host.
    * Timeouts: 3 s per TCP connect attempt, 10 s per socket read and a hard
-     15 s overall deadline that also bounds DNS resolution (done in a helper
+     10 s overall deadline that also bounds DNS resolution (done in a helper
      thread), every connect attempt and the TLS handshake; when it passes, the
-     upstream socket is shut down. A timeout returns ``504``; any other
+     upstream socket is shut down. Mastodon gives up on a lookup after about
+     10 s without response headers, so a longer deadline would only hold a
+     gunicorn worker. A timeout returns ``504``; any other
      connection or protocol error, a truncated body, a body larger than
      1 MiB, or an invalid upstream status, header or redirect location returns
      ``502``.
+   * These ``502``/``504`` responses are expected when the fedi host is slow
+     or briefly unreachable. Each is logged as a warning
+     (``Timeout fetching ...`` / ``Failed to fetch ...``) but does not mail
+     the admins: ``python_podcast.fedi.log_filters.SkipFediUpstreamFailures``,
+     installed on the ``django.request`` logger in ``FediConfig.ready``, drops
+     the request log record for them. Any ``500`` (an exception in the view or
+     in a middleware) is still reported as usual.
    * The request is made with the standard library (``http.client``) and
      verified against the ``certifi`` CA bundle.
 

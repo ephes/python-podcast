@@ -12,6 +12,7 @@ import time
 from urllib.parse import urlsplit
 
 import pytest
+from django.core import mail
 
 from python_podcast.fedi import views
 
@@ -469,3 +470,66 @@ def test_stalled_tls_handshake_hits_deadline(client, tls_upstream, monkeypatch):
 
     assert response.status_code == 504
     assert elapsed < views.UPSTREAM_DEADLINE + 0.5
+
+
+def stall_headers(handler):
+    time.sleep(2)
+
+
+def test_upstream_failures_do_not_mail_admins(client, upstream, caplog):
+    upstream.routes["/.well-known/webfinger"] = stall_headers
+
+    timeout = client.get("/.well-known/webfinger?resource=acct:show@python-podcast.de")
+    upstream.shutdown()
+    upstream.server_close()
+    refused = client.get("/.well-known/host-meta")
+
+    assert (timeout.status_code, refused.status_code) == (504, 502)
+    assert mail.outbox == []
+    # The proxy's own warnings stay the record of the failures.
+    assert "Timeout fetching /.well-known/webfinger" in caplog.text
+    assert "Failed to fetch /.well-known/host-meta" in caplog.text
+
+
+def test_invalid_upstream_response_does_not_mail_admins(client, upstream):
+    upstream.routes["/.well-known/nodeinfo"] = lambda h: send_document(h, status=302, headers={"Location": "http://["})
+
+    response = client.get("/.well-known/nodeinfo")
+
+    assert response.status_code == 502
+    assert mail.outbox == []
+
+
+def test_error_in_fedi_view_still_mails_admins(client, upstream, monkeypatch):
+    def broken(*args, **kwargs):
+        raise RuntimeError("bug in the proxy view")
+
+    monkeypatch.setattr(views, "_build_response", broken)
+    client.raise_request_exception = False
+
+    response = client.get("/.well-known/nodeinfo")
+
+    assert response.status_code == 500
+    assert len(mail.outbox) == 1
+
+
+class RaiseAfterGatewayErrorMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        if response.status_code == 504:
+            raise RuntimeError("middleware failed after a proxy 504")
+        return response
+
+
+def test_middleware_error_after_upstream_failure_still_mails_admins(client, upstream, settings):
+    settings.MIDDLEWARE = [*settings.MIDDLEWARE, f"{__name__}.RaiseAfterGatewayErrorMiddleware"]
+    upstream.routes["/.well-known/webfinger"] = stall_headers
+    client.raise_request_exception = False
+
+    response = client.get("/.well-known/webfinger?resource=acct:show@python-podcast.de")
+
+    assert response.status_code == 500
+    assert len(mail.outbox) == 1
