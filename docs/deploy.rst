@@ -26,9 +26,9 @@ collection via ``uvx ansible-galaxy``. They also install ``community.postgresql`
 because current ops-control roles require it. The recipes support overriding the launcher
 commands when needed::
 
-    ANSIBLE_PLAYBOOK_CMD="uvx --from ansible-core ansible-playbook" just deploy-staging
+    ANSIBLE_PLAYBOOK_CMD="uvx --python 3.14 --from ansible-core ansible-playbook" just deploy-staging
 
-    ANSIBLE_GALAXY_CMD="uvx --from ansible-core ansible-galaxy" just deploy-staging
+    ANSIBLE_GALAXY_CMD="uvx --python 3.14 --from ansible-core ansible-galaxy" just deploy-staging
 
 Ops-control Prerequisites
 -------------------------
@@ -37,7 +37,8 @@ Ops-control Prerequisites
 * An ops-library clone (set ``OPS_LIBRARY_PATH`` if not located at ``$PROJECTS_ROOT/ops-library``)
 * SOPS age key configured (``SOPS_AGE_KEY_FILE`` defaults to ``~/.config/sops/age/keys.txt``)
 * ``PROJECTS_ROOT`` pointing at the parent directory that contains this repo
-* ``uv`` installed locally; the just recipes run ``uvx --from ansible-core ansible-playbook``
+* ``uv`` installed locally; the just recipes run ``uvx --python 3.14 --from ansible-core ansible-playbook``.
+  Ansible is pinned to Python 3.14 because ansible-core 2.21 does not start on Python 3.15.
 
 Dependency Updates
 ------------------

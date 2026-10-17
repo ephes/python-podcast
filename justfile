@@ -6,8 +6,8 @@ OPS_CONTROL := env_var_or_default("OPS_CONTROL", "/Users/jochen/projects/ops-con
 PROJECTS_ROOT := env_var_or_default("PROJECTS_ROOT", "/Users/jochen/projects")
 OPS_LIBRARY_PATH := env_var_or_default("OPS_LIBRARY_PATH", PROJECTS_ROOT + "/ops-library")
 SOPS_AGE_KEY_FILE := env_var_or_default("SOPS_AGE_KEY_FILE", "~/.config/sops/age/keys.txt")
-ANSIBLE_PLAYBOOK_CMD := env_var_or_default("ANSIBLE_PLAYBOOK_CMD", "uvx --from ansible-core ansible-playbook")
-ANSIBLE_GALAXY_CMD := env_var_or_default("ANSIBLE_GALAXY_CMD", "uvx --from ansible-core ansible-galaxy")
+ANSIBLE_PLAYBOOK_CMD := env_var_or_default("ANSIBLE_PLAYBOOK_CMD", "uvx --python 3.14 --from ansible-core ansible-playbook")
+ANSIBLE_GALAXY_CMD := env_var_or_default("ANSIBLE_GALAXY_CMD", "uvx --python 3.14 --from ansible-core ansible-galaxy")
 
 # Default recipe - show available commands
 default:
