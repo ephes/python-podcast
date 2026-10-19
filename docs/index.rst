@@ -13,7 +13,6 @@ Contents:
 
    install
    deploy
-   api_token_auth
    admin_login_throttle
    enhanced_navigation
    docker_ec2

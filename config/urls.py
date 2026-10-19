@@ -12,7 +12,7 @@ from wagtail.documents import urls as wagtaildocs_urls
 
 from python_podcast.core import views as core_views
 from python_podcast.pp import views as pp_views
-from python_podcast.users import api_auth, login_throttle
+from python_podcast.users import login_throttle
 
 handler404 = default_views_cast.page_not_found
 handler500 = default_views_cast.server_error
@@ -59,8 +59,6 @@ urlpatterns = [
     # Threadedcomments
     path("show/comments/", include("cast.comments.urls")),
     # rest
-    # Throttled: see docs/api_token_auth.rst
-    path("api/api-token-auth/", api_auth.obtain_auth_token, name="api-token-auth"),
     # path("docs/", include_docs_urls(title="API service", public=False)),
     # Cast
     path("", include("cast.urls", namespace="cast")),
