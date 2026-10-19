@@ -5,12 +5,10 @@ from django.core.cache import cache, caches
 from django.test import Client, override_settings
 from django.urls import resolve, reverse
 
-from python_podcast.users import api_auth, login_throttle
+from python_podcast.users import login_throttle
 from python_podcast.users.tests.factories import UserFactory
 
 RATES = {
-    "api_token_auth_client": "5/hour",
-    "api_token_auth_username": "3/hour",
     "admin_login_client": "5/hour",
     "admin_login_username": "3/hour",
 }
@@ -20,7 +18,7 @@ RATES = {
 def low_rates(monkeypatch):
     # DRF copies DEFAULT_THROTTLE_RATES onto the throttle classes at import
     # time, so patch the class attribute instead of overriding settings.
-    monkeypatch.setattr(login_throttle.TokenAuthThrottle, "THROTTLE_RATES", RATES)
+    monkeypatch.setattr(login_throttle.LoginFailureThrottle, "THROTTLE_RATES", RATES)
     cache.clear()
     yield
     cache.clear()
@@ -236,11 +234,23 @@ def test_counters_use_the_dedicated_throttle_cache_when_configured():
     locmem = "django.core.cache.backends.locmem.LocMemCache"
     caches_setting = {
         "default": {"BACKEND": locmem, "LOCATION": "default"},
-        api_auth.THROTTLE_CACHE_ALIAS: {"BACKEND": locmem, "LOCATION": "throttle"},
+        login_throttle.THROTTLE_CACHE_ALIAS: {"BACKEND": locmem, "LOCATION": "throttle"},
     }
 
     with override_settings(CACHES=caches_setting):
         post_login(admin_login_url(), "someone", "wrong")
-        assert caches[api_auth.THROTTLE_CACHE_ALIAS].get(username_key("someone"))
+        assert caches[login_throttle.THROTTLE_CACHE_ALIAS].get(username_key("someone"))
         assert caches["default"].get(username_key("someone")) is None
-        caches[api_auth.THROTTLE_CACHE_ALIAS].clear()
+        caches[login_throttle.THROTTLE_CACHE_ALIAS].clear()
+
+
+def test_throttle_cache_falls_back_to_default_and_keeps_the_legacy_alias():
+    locmem = "django.core.cache.backends.locmem.LocMemCache"
+    caches_setting = {
+        "default": {"BACKEND": locmem, "LOCATION": "default"},
+        "api_token_auth_throttle": {"BACKEND": locmem, "LOCATION": "throttle"},
+    }
+
+    with override_settings(CACHES=caches_setting):
+        assert login_throttle.AdminLoginUsernameThrottle("someone").cache is caches["api_token_auth_throttle"]
+    assert login_throttle.AdminLoginUsernameThrottle("someone").cache is caches["default"]

@@ -16,8 +16,7 @@ with no rate limit, so they accepted any number of password guesses.
 
 ``admin_login_client``
     Failed attempts per client address. The default is ``20/hour``. Override
-    it with ``DJANGO_ADMIN_LOGIN_CLIENT_RATE``. As for
-    ``api/api-token-auth/``, the client address is the last
+    it with ``DJANGO_ADMIN_LOGIN_CLIENT_RATE``. The client address is the last
     ``X-Forwarded-For`` entry, which Traefik appends; earlier entries are
     ignored. ``REST_FRAMEWORK["NUM_PROXIES"]`` (``DJANGO_NUM_PROXIES``,
     default ``1``) controls this.
@@ -42,11 +41,11 @@ against anything. Once either limit is reached, every POST is refused with
 ``429 Too Many Requests`` and a ``Retry-After`` header, even with the correct
 password, until the oldest counted failure is older than the window.
 
-The rates live in ``REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]`` next to the
-token login rates. The counters use the same cache as the token login
-throttle: the ``api_token_auth_throttle`` cache when it is configured
+The rates live in ``REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]``. The counters
+use the ``api_token_auth_throttle`` cache when it is configured
 (production: a shared file-based cache under ``DJANGO_CACHE_LOCATION``), and
-the ``default`` cache otherwise. See :doc:`api_token_auth`.
+the ``default`` cache otherwise. The legacy cache alias and directory are
+retained so existing admin lockouts survive removal of the token endpoint.
 
 Locked out?
 -----------
@@ -58,10 +57,27 @@ and lock the admin logins for that user for up to an hour. To get in anyway:
   admin and the Wagtail admin, or
 * clear the counters, for example with
   ``python manage.py shell -c "from django.core.cache import caches; caches['api_token_auth_throttle'].clear()"``
-  on the server (this also clears the token login counters).
+  on the server.
+
+Token authentication
+--------------------
+
+``/api/api-token-auth/`` was removed on 2026-10-19 and returns 404. The
+``improve_spamfilter`` and ``comments_api_endpoint_debug`` notebooks that
+needed token issuance are no longer used. The endpoint-specific rate
+settings ``DJANGO_API_TOKEN_AUTH_CLIENT_RATE`` and
+``DJANGO_API_TOKEN_AUTH_USERNAME_RATE`` no longer apply.
+
+Existing DRF tokens and ``TokenAuthentication`` remain available: django-cast
+API views, including the comments API, inherit the site's
+``REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"]``. The cast-vue comments
+UI uses session authentication and CSRF tokens and needs no token issuance
+endpoint.
 
 Change history
 --------------
 
 * 2026-10: the Django admin and Wagtail admin logins throttle failed attempts
   per client address and per username.
+* 2026-10-19: removed the unused token issuance endpoint; existing tokens
+  and admin login throttling remain supported.
