@@ -67,6 +67,35 @@ chromium`` and run ``just test-e2e``. Before deploying, also check the new froze
 environment with production settings and ``migrate --plan`` against PostgreSQL,
 and retain a fresh database backup and the previous commit/lock for rollback.
 
+2026-10-17 django-cast develop refresh
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``uv.lock`` advances only django-cast from ``704a60aa`` to ``ddcc44d9``
+(0.2.68 development). It adds transcript glossary snippets, private correction
+sidecars and editor review, preserves approved speaker mappings when transcript
+text changes, and omits the speaker-count hint for known-speaker Voxhelm jobs.
+
+Deploy with migrations ``cast.0084`` through ``0086``. Migration ``0084`` reads
+existing stored transcript files to backfill source fingerprints; retain a fresh
+database backup before deployment. The corrections sidecar uses the private
+voice-reference storage backend. Existing transcripts are not automatically
+glossary-corrected by the migrations; corrections run on future Voxhelm imports
+or through ``apply_transcript_glossary``. Rolling code back does not undo
+transcript edits or remove the added schema.
+
+Validation: 360 application tests passed on PostgreSQL 17 with ``--migrations``
+(49 browser tests deselected), all prek hooks passed, and
+``makemigrations --check --dry-run`` found no changes. An isolated Python 3.15
+production environment passed system checks with the existing allauth
+deprecation warnings and showed only the three expected pending Cast migrations.
+
+The refresh was deployed on 2026-10-17 from a working tree without committing
+the lock. The production deploy of ``8aaa4dd`` on 2026-10-19 therefore
+installed ``704a60aa`` again. The migrations stayed applied, the code did not
+match them, and transcript corrections and source fingerprints were missing.
+This commit records the lock and was deployed the same day. **Deploy only from
+a commit that contains the lock you mean to ship.**
+
 2026-10-15 Python 3.15
 ~~~~~~~~~~~~~~~~~~~~~~
 
