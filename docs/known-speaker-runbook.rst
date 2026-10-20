@@ -120,6 +120,57 @@ Commits, migrations applied, deploy commands + ops-control/job ids or URLs,
 ``just check`` output per repo, Voxhelm request/result metadata, and
 before/after quality metrics (anonymous ~77-87% vs known-speaker >90%).
 
+8. Parakeet re-run of all episodes (2026-10-19/20)
+---------------------------------------------------
+
+All 68 published episodes now have Voxhelm transcripts from Parakeet
+(``parakeet-tdt-0.6b-v3``), with names applied through
+``apply_known_speaker_suggestions(smooth=False)``. Only confident segments
+carry a name, and uncertain ones stay empty. The unpublished pp_16 was left
+out on purpose.
+
+How it ran:
+
+* No ``generate_transcripts``: it works serially and does not apply
+  ``smooth=False``. A batch script instead submitted all jobs of a batch at
+  once with ``VoxhelmTranscriptService.submit_for_audio`` (fresh task ref
+  ``cast-audio-<id>-parakeet-bulk-20261019``; an old ref would return the old
+  whisper.cpp job), then imported each episode separately with
+  ``complete_audio_job`` and applied the names right after.
+* Before every import there was a backup of all transcript files (podlove,
+  vtt, dote, speakers, corrections) with SHA-256, the row and the speaker
+  mappings. The import refused if the files had changed since the backup, if
+  the job was not ``parakeet``, or if the speakers artifact was missing.
+  ``complete_audio_job`` deletes the old files after commit.
+* Order: first 8 finished pilot jobs (no GPU), then a canary with the largest
+  MP3 (pp05, 160 MB) and pp04, then batches of 10. Stop rules: more than 15 %
+  unnamed, a name outside the episode's contributors, under 80 % right or
+  more than 3 % wrong passages against the stems. No stop was needed.
+* Staging is no help for this: it writes to the same S3 bucket, and a re-run
+  there deletes production's files.
+
+Results against per-speaker stems (28 episodes whose master is exactly as long
+as the stems; 100 ms frames):
+
+* right: median 88.0 % → **92.2 %**. 27 of 28 better. pp_50 is marginally
+  worse (92.8 → 91.9 %).
+* wrong passage (more than 1 s away from a speaker change): median 0.8 % →
+  0.0 %, at most 0.3 %.
+* unnamed: median 1.6 %, at most 11.4 % (in-room episodes with crosstalk on
+  Johannes's mic, such as pp_27).
+* Readability: lines without capitals or final punctuation are down from about
+  60 % to 3 %.
+
+New voice references: Dodo and Niklas (pp04, references 35–38). Who was who
+came from their self-introductions in the transcript. Unnamed share in pp04:
+71 % → 10.5 %.
+
+Things worth a listen: pp05 (Jochen at 91 %, the old version had the same
+split), pp_27 at 107:20 and pp_28 at 5:39 (crosstalk). The run record with
+per-episode numbers and backups is in Voxhelm under
+``var/handoff/2026-10-19_python_podcast_parakeet_bulk/`` (local, not in the
+repo).
+
 Remaining follow-up
 -------------------
 
@@ -131,8 +182,7 @@ shows speaker names. Generating suggestions still does *not* publish identities
 on its own — the apply step is the editorial gate, and the raw per-segment
 candidates stay in the private sidecar.
 
-Open follow-ups: apply labels to **WebVTT** too (currently Podlove/DOTe only,
-so caption-based players stay unlabeled); a per-segment review/approval UI
-(apply is currently whole-transcript); and deciding the smoothing policy
-(carry-forward, the current default, vs. conservative fill only where both
-neighbours agree).
+Open follow-ups: a per-segment review/approval UI (apply is currently
+whole-transcript). Done since: ``apply_known_speaker_suggestions()`` also labels
+WebVTT, and the public smoothing policy for python-podcast is ``smooth=False``
+(decided 2026-10-19, see step 8).
