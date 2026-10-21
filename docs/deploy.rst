@@ -67,6 +67,18 @@ chromium`` and run ``just test-e2e``. Before deploying, also check the new froze
 environment with production settings and ``migrate --plan`` against PostgreSQL,
 and retain a fresh database backup and the previous commit/lock for rollback.
 
+2026-10-21 certifi security update
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``uv.lock`` advances certifi from ``2026.7.22`` to ``2026.10.19`` and pip from
+``26.2.1`` to ``26.2.2`` for the eMudhra/emSign CA compromise
+(`GHSA-6q48-6c7w-9gw2
+<https://github.com/certifi/python-certifi/security/advisories/GHSA-6q48-6c7w-9gw2>`_).
+``pyproject.toml`` now requires ``certifi>=2026.10.19`` so a later relock cannot
+resolve an affected bundle. No other package changed. Deploying an earlier
+commit or lock reinstalls the affected certifi and pip versions; restart the
+application after syncing so running processes load the new bundle.
+
 2026-10-17 django-cast develop refresh
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

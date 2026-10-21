@@ -9,7 +9,7 @@ dependencies = [
     "boto3",
     "cast-bootstrap5",
     "cast-vue",
-    "certifi",
+    "certifi>=2026.10.19",
     "django-allauth",
     "django-anymail[mailgun]",
     "django-environ",
