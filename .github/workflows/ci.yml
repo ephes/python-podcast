@@ -12,11 +12,11 @@ permissions:
   contents: read
 
 env:
-  # Production runs Python 3.15 (ops-control wagtail_python_version). The test
-  # job also runs on 3.14 until 3.15 is the only supported version.
-  PYTHON_VERSION: "3.15"
-  # 3.15.0 final needs uv 0.13.0 or later.
-  UV_VERSION: "0.13.1"
+  # Qualify the exact Python maintenance release selected for deployment.
+  # Retain 3.14 coverage separately.
+  PYTHON_VERSION: "3.15.1"
+  # This uv catalog includes the requested Python 3.15.1 release.
+  UV_VERSION: "0.13.5"
 
 jobs:
   lint:
@@ -51,7 +51,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.14", "3.15"]
+        python-version: ["3.14", "3.15.1"]
     services:
       postgres:
         image: postgres:17
