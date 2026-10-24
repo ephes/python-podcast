@@ -21,24 +21,32 @@ Deploy to production via ops-control::
 
     just deploy-production
 
-The deploy recipes first install/update Ansible collections and the local ``ops-library``
-collection via ``uvx ansible-galaxy``. They also install ``community.postgresql`` explicitly
-because current ops-control roles require it. The recipes support overriding the launcher
-commands when needed::
+The recipes invoke ``just deploy-one python_podcast staging`` or
+``just deploy-one python_podcast production`` inside ``OPS_CONTROL``. Current
+ops-control metadata routes both hosts through pyinfra; do not bypass its guards
+with direct Ansible commands. Update the controller before deploying.
 
-    ANSIBLE_PLAYBOOK_CMD="uvx --python 3.14 --from ansible-core ansible-playbook" just deploy-staging
+``PROJECTS_ROOT`` defaults to this checkout's parent. The dispatcher selects
+``$PROJECTS_ROOT/python-podcast``: keep that checkout name or explicitly select
+the parent of the intended ``python-podcast`` source. Inspect the source status
+and diff first: uncommitted local changes are included in deployment.
+``OPS_LIBRARY_PATH`` and ``SOPS_AGE_KEY_FILE`` are forwarded, with spaces supported.
+The legacy Ansible dispatcher branch selects its default SOPS key internally;
+a custom forwarded key is effective on the pyinfra path.
 
-    ANSIBLE_GALAXY_CMD="uvx --python 3.14 --from ansible-core ansible-galaxy" just deploy-staging
+For a legacy Ansible target, run ``just deploy-bootstrap`` when collections need
+setup. Pyinfra does not require this bootstrap. The bootstrap launcher remains
+configurable with ``ANSIBLE_GALAXY_CMD``; its default uses Python 3.14 because
+ansible-core 2.21 does not start on Python 3.15.
 
 Ops-control Prerequisites
 -------------------------
 
-* An ops-control clone (set ``OPS_CONTROL`` if not located at ``../ops-control``)
-* An ops-library clone (set ``OPS_LIBRARY_PATH`` if not located at ``$PROJECTS_ROOT/ops-library``)
-* SOPS age key configured (``SOPS_AGE_KEY_FILE`` defaults to ``~/.config/sops/age/keys.txt``)
-* ``PROJECTS_ROOT`` pointing at the parent directory that contains this repo
-* ``uv`` installed locally; the just recipes run ``uvx --python 3.14 --from ansible-core ansible-playbook``.
-  Ansible is pinned to Python 3.14 because ansible-core 2.21 does not start on Python 3.15.
+* An updated ops-control clone (``OPS_CONTROL``, default ``~/projects/ops-control``)
+* An ops-library clone (``OPS_LIBRARY_PATH``, default ``$PROJECTS_ROOT/ops-library``)
+* SOPS age key configured (``SOPS_AGE_KEY_FILE``, default ``~/.config/sops/age/keys.txt``)
+* ``PROJECTS_ROOT`` selecting the parent of the intended ``python-podcast`` source
+* ``just`` and ``uv`` installed locally
 
 Dependency Updates
 ------------------
@@ -78,6 +86,22 @@ and retain a fresh database backup and the previous commit/lock for rollback.
 resolve an affected bundle. No other package changed. Deploying an earlier
 commit or lock reinstalls the affected certifi and pip versions; restart the
 application after syncing so running processes load the new bundle.
+
+2026-10-24 framework security patches
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The lock updates only Django 6.1.1 to 6.1.2 and Wagtail 8.0 to 8.0.1. All other
+locked packages and Git revisions remain unchanged, including django-cast
+``ddcc44d9`` (0.2.68), certifi 2026.10.19 and pip 26.2.2. Do not deploy an older
+lock that lowers those certificate trust fixes.
+
+Python 3.15.1 is configured separately by ops-control; this application lock
+alone does not upgrade a host interpreter. Testing this maintenance stack does
+not extend official runtime support: Django's Python 3.15 support is expected in
+6.1.3, and Wagtail's published support matrix currently stops at Python 3.14.
+Use the exact qualified source/controller and stage the rollout before production.
+Keep fresh database and host-local private-media recovery evidence before any
+migration; a code rollback does not reverse schema or stored transcript changes.
 
 2026-10-17 django-cast develop refresh
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

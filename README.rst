@@ -132,8 +132,10 @@ Deployment
 ----------
 
 Production deployments run via ops-control (SOPS-backed). Use ``just deploy-production``.
-The just deploy recipes bootstrap Ansible collections via ``uvx`` before running the
-ops-control playbook.
+The just deploy recipes call ops-control's ``deploy-one`` dispatcher, which
+selects the engine and safety guards per host. ``just deploy-bootstrap`` is a
+manual setup step only for legacy Ansible targets; pyinfra does not need it.
+See ``docs/deploy.rst`` for source selection and prerequisites.
 
 
 

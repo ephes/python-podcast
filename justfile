@@ -3,10 +3,9 @@
 # ========= Deploy Config (override via .envrc or environment) =========
 # Path to your local ops-control clone
 OPS_CONTROL := env_var_or_default("OPS_CONTROL", "/Users/jochen/projects/ops-control")
-PROJECTS_ROOT := env_var_or_default("PROJECTS_ROOT", "/Users/jochen/projects")
+PROJECTS_ROOT := env_var_or_default("PROJECTS_ROOT", parent_directory(justfile_directory()))
 OPS_LIBRARY_PATH := env_var_or_default("OPS_LIBRARY_PATH", PROJECTS_ROOT + "/ops-library")
-SOPS_AGE_KEY_FILE := env_var_or_default("SOPS_AGE_KEY_FILE", "~/.config/sops/age/keys.txt")
-ANSIBLE_PLAYBOOK_CMD := env_var_or_default("ANSIBLE_PLAYBOOK_CMD", "uvx --python 3.14 --from ansible-core ansible-playbook")
+SOPS_AGE_KEY_FILE := env_var_or_default("SOPS_AGE_KEY_FILE", env_var("HOME") + "/.config/sops/age/keys.txt")
 ANSIBLE_GALAXY_CMD := env_var_or_default("ANSIBLE_GALAXY_CMD", "uvx --python 3.14 --from ansible-core ansible-galaxy")
 
 # Default recipe - show available commands
@@ -177,24 +176,12 @@ deploy-bootstrap:
     fi
     {{ANSIBLE_GALAXY_CMD}} collection install "${tarballs[0]}" -p ./collections --force
 
-# Production deployment
-deploy-staging: deploy-bootstrap
-    @test -d "{{OPS_CONTROL}}" || (echo "ops-control not found at {{OPS_CONTROL}}"; exit 1)
-    @test -f "{{OPS_CONTROL}}/inventories/prod/hosts.yml" || (echo "Missing ops-control inventory at {{OPS_CONTROL}}/inventories/prod/hosts.yml"; exit 1)
-    @test -f "{{OPS_CONTROL}}/playbooks/deploy-python-podcast.yml" || (echo "Missing ops-control playbook at {{OPS_CONTROL}}/playbooks/deploy-python-podcast.yml"; exit 1)
-    cd "{{OPS_CONTROL}}" && \
-    PROJECTS_ROOT={{PROJECTS_ROOT}} \
-    SOPS_AGE_KEY_FILE={{SOPS_AGE_KEY_FILE}} \
-    {{ANSIBLE_PLAYBOOK_CMD}} -i inventories/prod/hosts.yml playbooks/deploy-python-podcast.yml -l staging -e target_host=staging -e service_secrets_env=staging
+# Dispatch through ops-control so metadata selects the engine and host guards.
+deploy-staging:
+    cd "{{OPS_CONTROL}}" && PROJECTS_ROOT="{{PROJECTS_ROOT}}" SOPS_AGE_KEY_FILE="{{SOPS_AGE_KEY_FILE}}" OPS_LIBRARY_PATH="{{OPS_LIBRARY_PATH}}" just deploy-one python_podcast staging
 
-deploy-production: deploy-bootstrap
-    @test -d "{{OPS_CONTROL}}" || (echo "ops-control not found at {{OPS_CONTROL}}"; exit 1)
-    @test -f "{{OPS_CONTROL}}/inventories/prod/hosts.yml" || (echo "Missing ops-control inventory at {{OPS_CONTROL}}/inventories/prod/hosts.yml"; exit 1)
-    @test -f "{{OPS_CONTROL}}/playbooks/deploy-python-podcast.yml" || (echo "Missing ops-control playbook at {{OPS_CONTROL}}/playbooks/deploy-python-podcast.yml"; exit 1)
-    cd "{{OPS_CONTROL}}" && \
-    PROJECTS_ROOT={{PROJECTS_ROOT}} \
-    SOPS_AGE_KEY_FILE={{SOPS_AGE_KEY_FILE}} \
-    {{ANSIBLE_PLAYBOOK_CMD}} -i inventories/prod/hosts.yml playbooks/deploy-python-podcast.yml
+deploy-production:
+    cd "{{OPS_CONTROL}}" && PROJECTS_ROOT="{{PROJECTS_ROOT}}" SOPS_AGE_KEY_FILE="{{SOPS_AGE_KEY_FILE}}" OPS_LIBRARY_PATH="{{OPS_LIBRARY_PATH}}" just deploy-one python_podcast production
 
 # Help for common issues
 troubleshoot:
