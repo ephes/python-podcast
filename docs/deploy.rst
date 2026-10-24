@@ -103,8 +103,34 @@ Use the exact qualified source/controller and stage the rollout before productio
 Keep fresh database and host-local private-media recovery evidence before any
 migration; a code rollback does not reverse schema or stored transcript changes.
 
+2026-10-24 image, API and notebook security follow-up
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+On top of the framework patch, the lock advances only Pillow 12.3.0 to 13.0.0,
+Django REST framework 3.18.1 to 3.18.3 and development-only nbconvert 7.17.1 to
+7.17.2. Cast's Git revision and the certifi/pip trust fixes remain unchanged.
+Pillow 13.0.0 addresses the image-decoder advisories affecting 12.3.0, including
+`FPX JPEG decoding <https://github.com/python-pillow/Pillow/security/advisories/GHSA-5x8w-8jj5-q52h>`_.
+DRF first fixes the `JSON charset issue
+<https://github.com/encode/django-rest-framework/security/advisories/GHSA-3547-9m27-7rxg>`_
+in 3.18.2; 3.18.3 also restores the compatibility of ``order_by_precedence``.
+nbconvert 7.17.2 fixes `export filename traversal
+<https://github.com/jupyter/nbconvert/security/advisories/GHSA-pjvx-prjx-h659>`_;
+it is a developer notebook tool, not installed in the production app venv.
+
+Black stays at locked 26.5.1: its reported GitHub Action advisory names only
+26.9.0 and 26.10.0, and this repository does not use that Action. Dependency
+alert counts and maintainer severity/ranges can differ; these updates are not
+a claim that every open alert describes an exposed production code path.
+
+Qualification must exercise actual Python 3.15.1, supported image round trips,
+EXIF orientation, Wagtail/Willow renditions, rejected compressed JSON charsets,
+valid JSON and malformed input, notebook export containment and the full app
+suite. Keep staging-before-production deployment and the recovery prerequisites
+above; tests do not broaden upstream Python support claims.
+
 2026-10-17 django-cast develop refresh
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ``uv.lock`` advances only django-cast from ``704a60aa`` to ``ddcc44d9``
 (0.2.68 development). It adds transcript glossary snippets, private correction
