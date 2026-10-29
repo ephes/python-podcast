@@ -14,9 +14,9 @@ permissions:
 env:
   # Qualify the exact Python maintenance release selected for deployment.
   # Retain 3.14 coverage separately.
-  PYTHON_VERSION: "3.15.1"
-  # This uv catalog includes the requested Python 3.15.1 release.
-  UV_VERSION: "0.13.5"
+  PYTHON_VERSION: "3.15.2"
+  # This uv catalog includes the requested Python 3.15.2 release.
+  UV_VERSION: "0.13.6"
 
 jobs:
   lint:
@@ -51,7 +51,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.14", "3.15.1"]
+        python-version: ["3.14", "3.15.2"]
     services:
       postgres:
         image: postgres:17
