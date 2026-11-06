@@ -43,6 +43,11 @@ def _page_html(marker: str, script: str, *, links: dict[str, str] | None = None)
   <p id="marker">{marker}</p>
   {anchors}
   <a id="relative-page-2" href="?page=2">page 2</a>
+  <div style="height: 1400px"></div>
+  <h2 id="comments">Comments</h2>
+  <h2 id="café">Encoded destination</h2>
+  <a name="legacy">Named destination</a>
+  <div style="height: 1400px"></div>
 </div>
 <script src="/js/{script}"></script>
 </body></html>""".encode()
@@ -79,6 +84,10 @@ class _Site:
 
 LINKS = {
     "to-b": "/page/b",
+    "to-fragment": "/page/b#comments",
+    "to-missing-fragment": "/page/b#absent",
+    "to-encoded-fragment": "/page/b#caf%C3%A9",
+    "to-named-fragment": "/page/b#legacy",
     "to-c": "/page/c",
     "to-old": "/old",
     "to-public-redirect": "/redirect/public",
@@ -415,3 +424,185 @@ def test_popstate_to_entry_now_redirecting_to_excluded_route_uses_full_load(nav,
 
     assert _path(nav) == "/accounts/login/"
     assert len(nav.parsed) == parsed_before, "the login page must not be imported"
+
+
+# ---- fragment destinations ----------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("link", "fragment", "selector"),
+    [
+        ("#to-fragment", "#comments", "#comments"),
+        ("#to-encoded-fragment", "#caf%C3%A9", "#café"),
+        ("#to-named-fragment", "#legacy", 'a[name="legacy"]'),
+    ],
+)
+def test_cross_page_fragment_scrolls_focuses_and_keeps_audio(nav, site, link, fragment, selector):
+    nav.locator(link).click()
+    nav.wait_for_function("() => location.pathname === '/page/b'")
+    assert nav.evaluate("() => location.hash") == fragment
+    assert _same_document(nav)
+    assert _audio_untouched(nav)
+    assert nav.locator(selector).evaluate("el => el === document.activeElement")
+    assert 0 <= nav.locator(selector).bounding_box()["y"] < nav.evaluate("() => innerHeight")
+    assert nav.evaluate("() => scrollY") > 0
+    assert site.seen("/page/b", enhanced=True) == 1
+
+
+def test_missing_fragment_keeps_url_and_uses_heading_top_fallback(nav, site):
+    nav.locator("#to-missing-fragment").click()
+    nav.wait_for_function("() => location.pathname === '/page/b'")
+    assert nav.evaluate("() => location.hash") == "#absent"
+    assert nav.evaluate("() => scrollY") == 0
+    assert nav.locator("h1").evaluate("el => el === document.activeElement")
+    assert _same_document(nav) and _audio_untouched(nav)
+
+
+def test_fragment_survives_back_and_forward(nav, site):
+    nav.locator("#to-fragment").click()
+    nav.wait_for_function("() => location.pathname === '/page/b'")
+    nav.locator("#to-c").click()
+    nav.wait_for_function("() => location.pathname === '/page/c'")
+    nav.evaluate("() => history.back()")
+    nav.wait_for_function("() => document.getElementById('marker').textContent === 'B PAGE'")
+    assert nav.evaluate("() => location.hash") == "#comments"
+    assert nav.locator("#comments").evaluate("el => el === document.activeElement")
+    nav.evaluate("() => history.forward()")
+    nav.wait_for_function("() => document.getElementById('marker').textContent === 'C PAGE'")
+    assert nav.evaluate("() => location.hash") == ""
+    assert _same_document(nav) and _audio_untouched(nav)
+
+
+@pytest.mark.parametrize("redirect_fragment", ["", "#café", "#"])
+def test_fragment_redirect_uses_native_inheritance_and_override(nav, site, redirect_fragment):
+    with site.lock:
+        # ASCII header; the browser decodes the destination's UTF-8 id.
+        site.redirects["/fragment-redirect"] = "/page/b" + redirect_fragment.replace("café", "caf%C3%A9")
+    nav.evaluate("""() => {
+        const link = document.createElement('a');
+        link.id = 'fragment-redirect'; link.href = '/fragment-redirect#comments';
+        link.textContent = 'redirect'; document.getElementById('paging-area').prepend(link);
+    }""")
+    nav.locator("#fragment-redirect").click()
+    nav.wait_for_function("() => location.pathname === '/page/b' && window.__TOKEN === undefined")
+    expected = {"": "#comments", "#café": "#caf%C3%A9", "#": ""}[redirect_fragment]
+    assert nav.evaluate("() => location.hash") == expected
+    assert nav.parsed == []
+    assert site.seen("/fragment-redirect", enhanced=True) == 1
+
+
+# ---- other navigation owners -------------------------------------------------
+
+
+@pytest.mark.parametrize("owner", ["popstate", "htmx:beforeRequest", "htmx:beforeSwap", "htmx:historyRestore"])
+@pytest.mark.parametrize("abort_supported", [True, False])
+def test_external_navigation_invalidates_late_response_and_deadline(nav, site, owner, abort_supported):
+    nav.evaluate(
+        """abortSupported => {
+        if (!abortSupported) window.AbortController = undefined;
+        const realFetch = window.fetch;
+        window.fetch = async (input, init) => {
+            const response = await realFetch(input, init);
+            const text = await response.text();
+            return new Promise(resolve => {
+                // Keep a usable response even if abort cannot stop delivery.
+                window.__releaseNavigation = () => resolve({
+                    url: response.url, redirected: response.redirected, ok: response.ok,
+                    headers: response.headers, text: () => Promise.resolve(text)
+                });
+            });
+        };
+    }""",
+        abort_supported,
+    )
+    nav.locator("#to-b").click()
+    nav.wait_for_function("() => typeof window.__releaseNavigation === 'function'")
+    nav.evaluate(
+        """owner => {
+        const target = document.getElementById('paging-area');
+        if (owner === 'popstate') {
+            history.replaceState({htmx: true}, '', '/restored');
+            dispatchEvent(new PopStateEvent('popstate', {state: history.state}));
+        } else {
+            document.body.dispatchEvent(new CustomEvent(owner, {bubbles: true, detail: {target, elt: target}}));
+            history.replaceState({htmx: true}, '', '/restored');
+        }
+        target.querySelector('#marker').textContent = 'RESTORED PAGE';
+        window.__releaseNavigation();
+    }""",
+        owner,
+    )
+    nav.wait_for_timeout(SETTLE_MS)
+    assert _marker(nav) == "RESTORED PAGE"
+    assert _path(nav) == "/restored"
+    assert _same_document(nav) and _audio_untouched(nav)
+    assert nav.parsed == []
+    if abort_supported:
+        assert nav.evaluate("() => window.__aborted") == [site.base + "/page/b"]
+    assert site.seen("/page/b", enhanced=False) == 0
+
+
+def test_unrelated_htmx_target_does_not_cancel_navigation(nav, site):
+    nav.evaluate("""() => {
+        const target = document.createElement('aside');
+        document.body.append(target);
+        const fetch = window.fetch;
+        window.fetch = async (input, init) => {
+            document.body.dispatchEvent(new CustomEvent('htmx:beforeRequest', {detail: {target}}));
+            return fetch(input, init);
+        };
+    }""")
+    nav.locator("#to-b").click()
+    nav.wait_for_function("() => location.pathname === '/page/b'")
+    assert _marker(nav) == "B PAGE"
+    assert _same_document(nav) and _audio_untouched(nav)
+
+
+@pytest.mark.parametrize("destination", ["/page/new#caf%C3%A9", "/accounts/login/#comments"])
+def test_popstate_fragment_redirect_forces_document_load(nav, site, destination):
+    nav.locator("#to-fragment").click()
+    nav.wait_for_function("() => location.pathname === '/page/b'")
+    nav.locator("#to-c").click()
+    nav.wait_for_function("() => location.pathname === '/page/c'")
+    with site.lock:
+        site.redirects["/page/b"] = destination
+    nav.evaluate("() => history.back()")
+    nav.wait_for_function("() => window.__TOKEN === undefined && !!window.__castPersistentAudioDebug")
+    assert nav.url == site.base + destination
+    assert site.seen("/page/b", enhanced=False) == 1
+
+
+def test_htmx_non_swap_does_not_cancel_navigation(nav, site):
+    nav.evaluate("""() => {
+        const target = document.getElementById('paging-area');
+        const fetch = window.fetch;
+        window.fetch = async (input, init) => {
+            document.body.dispatchEvent(new CustomEvent('htmx:beforeSwap', {detail: {target, shouldSwap: false}}));
+            return fetch(input, init);
+        };
+    }""")
+    nav.locator("#to-b").click()
+    nav.wait_for_function("() => location.pathname === '/page/b'")
+    assert _marker(nav) == "B PAGE"
+    assert _same_document(nav) and _audio_untouched(nav)
+
+
+def test_push_fallback_to_same_path_drops_old_fragment(nav, site):
+    nav.evaluate("""() => {
+        history.replaceState(history.state, '', '/page/a#comments');
+        const link = document.createElement('a');
+        link.id = 'no-fragment'; link.href = '/page/a'; link.textContent = 'top';
+        document.getElementById('paging-area').prepend(link);
+    }""")
+
+    def fail_enhanced(route):
+        if route.request.headers.get(NAV_HEADER.lower()) == "1":
+            route.fulfill(status=200, content_type="text/plain", body="synthetic non-HTML response")
+        else:
+            route.continue_()
+
+    nav.route("**/page/a", fail_enhanced)
+    nav.locator("#no-fragment").click()
+    nav.wait_for_function("() => window.__TOKEN === undefined && !!window.__castPersistentAudioDebug")
+    assert nav.url == site.base + "/page/a"
+    assert nav.evaluate("() => location.hash") == ""

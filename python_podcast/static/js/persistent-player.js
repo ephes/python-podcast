@@ -712,10 +712,8 @@
     } catch (err) {
       return false;
     }
-    if (url.hash) {
-      return false; // any fragment link (same- or cross-page) -> let the
-      // browser handle native fragment scrolling; enhanced nav would otherwise
-      // scroll to top and drop the #fragment.
+    if (url.hash && sameUrlIgnoringHash(url.href, window.location.href)) {
+      return false; // same-document fragment scrolling stays browser native
     }
     return isEnhanceableUrl(url);
   }
@@ -772,6 +770,38 @@
     }
   }
 
+  function focusDestination(container, url) {
+    var fragment = new URL(url, window.location.href).hash.slice(1);
+    var target = null;
+    if (fragment) {
+      try {
+        fragment = decodeURIComponent(fragment);
+      } catch (err) {
+        // A malformed escape is still a possible literal element id.
+      }
+      target = document.getElementById(fragment);
+      if (!target) {
+        var named = document.getElementsByName(fragment);
+        for (var i = 0; i < named.length; i++) {
+          if (named[i].tagName === "A") {
+            target = named[i];
+            break;
+          }
+        }
+      }
+    }
+    if (target) {
+      if (!target.hasAttribute("tabindex")) {
+        target.setAttribute("tabindex", "-1");
+      }
+      target.scrollIntoView();
+      target.focus({ preventScroll: true });
+    } else {
+      window.scrollTo(0, 0);
+      focusHeading(container);
+    }
+  }
+
   // After #paging-area content changes (initial load or enhanced nav), re-wire
   // the new page's play actions and re-process htmx-driven controls in it.
   function onContentReady() {
@@ -799,6 +829,22 @@
       var controller = navController;
       navController = null;
       controller.abort();
+    }
+  }
+
+  function invalidateNavigation() {
+    ++navToken;
+    cancelPendingNavigation();
+  }
+
+  function onExternalSwap(event) {
+    if (event.defaultPrevented || (event.detail && event.detail.shouldSwap === false)) {
+      return;
+    }
+    var target = event.detail && (event.detail.target || event.detail.elt);
+    var paging = document.getElementById(PAGING_ID);
+    if (target && paging && (target === paging || target.contains(paging) || paging.contains(target))) {
+      invalidateNavigation();
     }
   }
 
@@ -854,7 +900,13 @@
       if (controller) {
         controller.abort(); // stop downloading a response we will not use
       }
-      window.location.assign(finalUrl);
+      if (finalUrl === window.location.href) {
+        // Assigning the active history URL with a fragment only scrolls; force
+        // a document load so a failed popstate cannot leave stale content.
+        window.location.reload();
+      } else {
+        window.location.assign(finalUrl);
+      }
     }
 
     // Whole-navigation deadline (headers AND body): a stalled response must not
@@ -870,8 +922,17 @@
         if (!isCurrent()) {
           return null; // superseded by a newer navigation, or already handed back
         }
+        var requested = new URL(url, window.location.href);
+        if (requested.hash && response.redirected) {
+          // Fetch hides fragments in response.url, including an explicit
+          // fragment on Location. Let native navigation inherit/override it.
+          fullLoad();
+          return null;
+        }
         if (response.url) {
-          finalUrl = response.url;
+          var responseUrl = new URL(response.url, window.location.href);
+          responseUrl.hash = requested.hash;
+          finalUrl = responseUrl.href;
         }
         // Revalidate where the request ENDED UP before reading its body: a
         // redirect may have left this origin or landed on an excluded route
@@ -914,15 +975,14 @@
         }
         if (push) {
           window.history.pushState({ castNav: true }, "", finalUrl);
-        } else if (!sameUrlIgnoringHash(finalUrl, window.location.href)) {
+        } else if (finalUrl !== window.location.href) {
           // Back/forward to an entry whose URL now redirects: correct THIS
           // entry's URL in place (same state, no new entry) so the address bar
           // and relative links match the displayed page.
           window.history.replaceState(window.history.state, "", finalUrl);
         }
-        window.scrollTo(0, 0);
         onContentReady();
-        focusHeading(adopted);
+        focusDestination(adopted, finalUrl);
         settle();
       })
       .catch(function () {
@@ -949,6 +1009,7 @@
     // own handler, so we never compete with htmx's history restoration. The
     // persistent player region is never touched, so audio keeps advancing.
     if (!event.state || event.state.castNav !== true) {
+      invalidateNavigation();
       return;
     }
     navigateTo(window.location.href, { push: false });
@@ -1019,6 +1080,11 @@
     // bring new [data-cast-play] buttons into #paging-area. Enhanced navigation
     // calls onContentReady() itself; this covers htmx-driven swaps too.
     document.body.addEventListener("htmx:afterSettle", wirePlayButtons);
+    // Only htmx owns these lifecycle events; our synchronous replaceWith /
+    // process calls do not emit swap events and cannot cancel themselves.
+    document.body.addEventListener("htmx:beforeRequest", onExternalSwap);
+    document.body.addEventListener("htmx:beforeSwap", onExternalSwap);
+    document.body.addEventListener("htmx:historyRestore", invalidateNavigation);
     // Seed the initial history entry so the first back lands here cleanly.
     if (window.history.state == null) {
       window.history.replaceState({ castNav: true }, "", window.location.href);
