@@ -14,19 +14,25 @@ including one with the correct password.
 
 import hashlib
 import math
+import threading
 import unicodedata
 from functools import wraps
 
 from django.conf import settings
 from django.contrib.auth.signals import user_logged_in
 from django.core.cache import caches
+from django.core.cache.backends.locmem import LocMemCache
+from django.core.exceptions import ImproperlyConfigured
 from django.dispatch import receiver
 from django.http import HttpResponse
+from filelock import FileLock, Timeout
 from rest_framework.throttling import SimpleRateThrottle
 
 # Keep the existing alias and directory so active admin lockouts survive
 # removal of the token issuance endpoint.
 THROTTLE_CACHE_ALIAS = "api_token_auth_throttle"
+
+_local_counter_lock = threading.RLock()
 
 LOGGED_IN_ATTR = "_login_throttle_logged_in"
 
@@ -54,6 +60,16 @@ class LoginFailureThrottle(SimpleRateThrottle):
         super().__init__()
         self.key = self.cache_format % {"scope": self.scope, "ident": ident}
 
+    def counter_lock(self, timeout=5):
+        path = getattr(settings, "ADMIN_LOGIN_THROTTLE_LOCK_PATH", None)
+        if path:
+            # One stable lock for this cache, shared by all web workers. Never
+            # unlink it: replacing its inode would split the locking authority.
+            return FileLock(path, timeout=timeout)
+        if isinstance(self.cache, LocMemCache):
+            return _local_counter_lock
+        raise ImproperlyConfigured("Shared login throttle caches require ADMIN_LOGIN_THROTTLE_LOCK_PATH")
+
     def _load(self):
         self.now = self.timer()
         self.history = [t for t in self.cache.get(self.key, []) if t > self.now - self.duration]
@@ -61,20 +77,21 @@ class LoginFailureThrottle(SimpleRateThrottle):
     def is_blocked(self):
         if self.rate is None:
             return False
-        self._load()
-        return len(self.history) >= self.num_requests
+        with self.counter_lock():
+            self._load()
+            return len(self.history) >= self.num_requests
 
     def record_failure(self):
         if self.rate is None:
             return
-        # Reload so that failures recorded by other workers in the meantime
-        # are kept.
-        self._load()
-        self.history.insert(0, self.now)
-        # Keep only what is needed to decide, so junk cannot grow an entry.
-        while len(self.history) > self.num_requests:
-            self.history.pop()
-        self.cache.set(self.key, self.history, self.duration)
+        # Authentication already ran: wait for ownership rather than dropping
+        # an admitted failure on contention. Only pre-auth checks may time out.
+        with self.counter_lock(timeout=-1):
+            self._load()
+            self.history.insert(0, self.now)
+            # Keep only what is needed to decide, so junk cannot grow an entry.
+            self.history = self.history[: self.num_requests]
+            self.cache.set(self.key, self.history, self.duration)
 
     def wait(self):
         # Seconds until the oldest failure that still counts expires.
@@ -139,6 +156,14 @@ def throttle_failed_logins(view):
 
     @wraps(view)
     def throttled_view(request, *args, **kwargs):
+        try:
+            return check_and_record(request, *args, **kwargs)
+        except Timeout:
+            response = HttpResponse("Login temporarily unavailable. Try again later.", status=503)
+            response["Retry-After"] = "5"
+            return response
+
+    def check_and_record(request, *args, **kwargs):
         if request.method != "POST":
             return view(request, *args, **kwargs)
         # Check the client limit first: a refused client neither reaches the

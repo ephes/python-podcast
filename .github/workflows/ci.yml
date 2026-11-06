@@ -115,5 +115,5 @@ jobs:
         run: uv run --locked playwright install --with-deps chromium
 
       # Isolated fixtures use no Django, PostgreSQL, ffmpeg or Vite assets.
-      - name: Run dock transition browser regressions
-        run: uv run --locked pytest -p no:django -p no:sugar -o addopts='' -m e2e tests/e2e/test_dock_transitions.py
+      - name: Run isolated player browser regressions
+        run: uv run --locked pytest -p no:django -p no:sugar -o addopts='' -m e2e tests/e2e/test_dock_transitions.py tests/e2e/test_enhanced_navigation.py

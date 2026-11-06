@@ -102,7 +102,8 @@ GitHub Actions (``.github/workflows/ci.yml``) runs on every push and pull reques
   (Python 3.14 and 3.15, uv 0.13, ``uv sync --locked``), with dummy AWS settings; test settings keep
   uploads in memory.
 * ``dock-transitions``: isolated Playwright tests of deferred dock updates in
-  Chromium, for source and minified JS, without Django or a database. Other
+  Chromium, plus enhanced-navigation redirects and deadlines, for source and
+  minified JS, without Django or a database. Other
   Playwright e2e tests run locally with ``just test-e2e``.
 
 Live reloading and Sass CSS compilation
