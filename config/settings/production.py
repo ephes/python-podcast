@@ -73,6 +73,10 @@ CACHES = {
     },
 }
 
+# Stable sibling of the cache directory; cache.clear() must not unlink the lock.
+# All workers must share this local filesystem and path.
+ADMIN_LOGIN_THROTTLE_LOCK_PATH = os.path.join(env("DJANGO_CACHE_LOCATION"), "admin-login-throttle.lock")
+
 # django-indieweb rate-limit client keys. Traefik is the only reverse proxy and
 # appends the client address, so the last X-Forwarded-For entry is the client;
 # earlier entries are client-controlled. Same knob as REST_FRAMEWORK["NUM_PROXIES"].

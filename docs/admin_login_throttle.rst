@@ -47,6 +47,19 @@ use the ``api_token_auth_throttle`` cache when it is configured
 the ``default`` cache otherwise. The legacy cache alias and directory are
 retained so existing admin lockouts survive removal of the token endpoint.
 
+Failure history reads and updates hold one ``filelock.FileLock`` on
+``ADMIN_LOGIN_THROTTLE_LOCK_PATH`` in production. All workers must share the
+same local filesystem, cache directory and lock path; independent hosts or
+network filesystems are not supported by this strategy. Failure recording after authentication waits for the lock without a deadline,
+so contention cannot discard an already checked guess. The lock is outside
+the cache directory so clearing counters cannot replace the locking authority.
+The existing sliding window, cache keys and failure cap are unchanged. Concurrent
+requests already admitted before reaching the cap may still authenticate, but
+their completed failures cannot overwrite each other's increments. A pre-authentication lock wait
+longer than five seconds returns 503 with ``Retry-After: 5``; no login is admitted
+without a counter check. Local/test ``LocMemCache`` uses a process-local thread
+lock; other shared backends require an explicit shared lock path.
+
 Locked out?
 -----------
 
@@ -81,3 +94,5 @@ Change history
   per client address and per username.
 * 2026-10-19: removed the unused token issuance endpoint; existing tokens
   and admin login throttling remain supported.
+
+* 2026-11-06: serialize shared failure histories across web workers.

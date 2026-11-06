@@ -254,3 +254,134 @@ def test_throttle_cache_falls_back_to_default_and_keeps_the_legacy_alias():
     with override_settings(CACHES=caches_setting):
         assert login_throttle.AdminLoginUsernameThrottle("someone").cache is caches["api_token_auth_throttle"]
     assert login_throttle.AdminLoginUsernameThrottle("someone").cache is caches["default"]
+
+
+@pytest.mark.parametrize("kind", ["client", "username"])
+def test_shared_failure_updates_wait_for_one_authority_and_retain_the_cap(tmp_path, kind):
+    import multiprocessing
+    import queue
+
+    from django.test import RequestFactory
+    from filelock import FileLock
+
+    from python_podcast.users.tests.throttle_worker import record_failures
+
+    cache_settings = {
+        login_throttle.THROTTLE_CACHE_ALIAS: {
+            "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+            "LOCATION": str(tmp_path / "counters"),
+            "OPTIONS": {"MAX_ENTRIES": 100000},
+        }
+    }
+    lock_path = str(tmp_path / "counters.lock")
+    context = multiprocessing.get_context("spawn")
+    barrier = context.Barrier(5)
+    reads = context.Queue()
+    processes = [
+        context.Process(target=record_failures, args=(cache_settings, lock_path, barrier, reads, kind))
+        for _ in range(4)
+    ]
+    try:
+        with FileLock(lock_path):
+            for process in processes:
+                process.start()
+            barrier.wait(timeout=30)
+            # A completed admission does not permit an unlocked history read.
+            # The old implementation reads/writes immediately despite this lock.
+            with pytest.raises(queue.Empty):
+                reads.get(timeout=0.5)
+        for process in processes:
+            process.join(timeout=30)
+            assert process.exitcode == 0
+        assert [reads.get(timeout=5) for _ in processes] == ["read"] * 4
+        with override_settings(CACHES=cache_settings, ADMIN_LOGIN_THROTTLE_LOCK_PATH=lock_path):
+            if kind == "username":
+                throttle = login_throttle.AdminLoginUsernameThrottle("synthetic-user")
+            else:
+                throttle = login_throttle.AdminLoginClientThrottle(RequestFactory().post("/", REMOTE_ADDR="192.0.2.1"))
+            throttle.num_requests = 3
+            assert throttle.is_blocked()
+            assert len(throttle.history) == 3
+            assert 0 < throttle.wait() <= 3600
+    finally:
+        for process in processes:
+            if process.pid and process.is_alive():
+                process.terminate()
+            if process.pid:
+                process.join(timeout=5)
+        reads.close()
+        reads.join_thread()
+
+
+def test_shared_counter_keeps_sliding_window_and_releases_lock_on_error(tmp_path, monkeypatch):
+    cache_settings = {
+        login_throttle.THROTTLE_CACHE_ALIAS: {
+            "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+            "LOCATION": str(tmp_path / "counters"),
+        }
+    }
+    with override_settings(CACHES=cache_settings, ADMIN_LOGIN_THROTTLE_LOCK_PATH=str(tmp_path / "counter.lock")):
+        throttle = login_throttle.AdminLoginUsernameThrottle("synthetic-user")
+        monkeypatch.setattr(throttle, "timer", lambda: 10000)
+        throttle.cache.set(throttle.key, [9990, 9990, 6400])
+        assert not throttle.is_blocked()  # exact window boundary has expired
+        throttle.record_failure()
+        assert throttle.is_blocked()
+        assert throttle.wait() == 3590
+        with monkeypatch.context() as patch:
+            patch.setattr(throttle.cache, "set", lambda *args: (_ for _ in ()).throw(OSError("synthetic failure")))
+            with pytest.raises(OSError):
+                throttle.record_failure()
+        throttle.record_failure()  # error released the same lock
+        assert len(throttle.cache.get(throttle.key)) == 3
+
+
+def test_lock_timeout_refuses_login_before_authentication(monkeypatch):
+    from django.http import HttpResponse
+    from django.test import RequestFactory
+    from filelock import Timeout
+
+    def unavailable(self):
+        raise Timeout("synthetic.lock")
+
+    monkeypatch.setattr(login_throttle.LoginFailureThrottle, "counter_lock", unavailable)
+    calls = []
+    view = login_throttle.throttle_failed_logins(lambda request: calls.append(request) or HttpResponse())
+    response = view(RequestFactory().post("/", {"username": "synthetic-user"}))
+    assert response.status_code == 503
+    assert response["Retry-After"] == "5"
+    assert calls == []
+
+
+def test_recording_admitted_failures_cannot_time_out(monkeypatch, tmp_path):
+    from contextlib import contextmanager
+
+    from django.http import HttpResponse
+    from django.test import RequestFactory
+    from filelock import Timeout
+
+    authenticated = []
+    waits = []
+
+    @contextmanager
+    def contended_lock(path, timeout):
+        waits.append(timeout)
+        if authenticated and timeout != -1:
+            raise Timeout(path)
+        yield
+
+    def failed_login(request):
+        authenticated.append(True)
+        return HttpResponse("invalid credentials")
+
+    monkeypatch.setattr(login_throttle, "FileLock", contended_lock)
+    with override_settings(ADMIN_LOGIN_THROTTLE_LOCK_PATH=str(tmp_path / "synthetic.lock")):
+        request = RequestFactory().post("/", {"username": "synthetic-user"}, REMOTE_ADDR="192.0.2.1")
+        response = login_throttle.throttle_failed_logins(failed_login)(request)
+        assert response.status_code == 200
+        assert waits == [5, 5, -1, -1]
+        for throttle in [
+            login_throttle.AdminLoginClientThrottle(request),
+            login_throttle.AdminLoginUsernameThrottle("synthetic-user"),
+        ]:
+            assert len(throttle.cache.get(throttle.key)) == 1

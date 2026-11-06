@@ -27,6 +27,7 @@ dependencies = [
     "sentry-sdk",
     "wagtail>=8.0,<8.1",
     "whitenoise",
+    "filelock>=4.2.9",
 ]
 
 [dependency-groups]
