@@ -104,7 +104,11 @@ Tests
 committed minified build in a real browser against a small fixture server. The
 repository has no separate JavaScript test runner; these tests use the
 Playwright harness of the other browser tests, need no database content and run
-with ``just test-e2e``. After changing ``persistent-player.js`` run
+in CI in the ``dock-transitions`` job. The exact isolated local command is::
+
+    uv run --locked pytest -p no:django -p no:sugar -o addopts='' -m e2e tests/e2e/test_dock_transitions.py tests/e2e/test_enhanced_navigation.py
+
+After changing ``persistent-player.js`` run
 ``just minify-static``.
 
 ``tests/e2e/test_dock_transitions.py`` exercises queued updates in both orders,
