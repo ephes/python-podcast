@@ -12,10 +12,22 @@ Which links are enhanced
 ------------------------
 
 A link is enhanced only when it is a plain same-origin ``http(s)`` link without
-a ``#fragment``, ``download`` or foreign ``target``, is not driven by htmx and
+``download`` or foreign ``target``, is not driven by htmx and
 is not inside a form, and its path is not one of the excluded routes: admin,
 CMS, account/login/logout, media, static, API, comments, feeds and
 download/media file suffixes.
+
+Cross-page fragments
+--------------------
+
+Cross-page links retain their requested fragment in history. After a swap,
+the matching decoded id (or legacy named anchor) is scrolled into view and
+focused; missing targets use the heading/top fallback. Same-page fragment
+links stay browser native. A request with a fragment that redirects uses a
+full document navigation to the original URL: Fetch hides redirect fragments,
+so the browser must apply Location's fragment override or inheritance rules.
+This fallback restarts playback like other full document loads. Direct enhanced
+fragment navigation and back/forward swaps preserve the audio element.
 
 The final URL is checked again
 ------------------------------
@@ -45,15 +57,28 @@ superseded navigation never triggers the full-load fallback; only the current
 navigation can hand over to the browser. Browsers without ``AbortController``
 keep the deadline and the fallback but cannot cancel the download.
 
+Other navigation owners
+-----------------------
+
+An htmx request or swap targeting the content region (including an ancestor or
+child) invalidates and aborts pending enhanced navigation. htmx history restores
+and non-cast popstate entries also invalidate it. Late responses and old
+deadlines cannot overwrite that owner's DOM or address bar. Unrelated htmx
+targets, already-cancelled events and explicit non-swaps (``shouldSwap=false``)
+do not cancel enhanced navigation; our synchronous swaps do not emit
+htmx swap events, so they do not cancel themselves. Audio is left intact.
+
 Back and forward
 ----------------
 
 Back/forward to an entry created by enhanced navigation fetches that entry's
-URL again. If it now redirects to another allowed page, the URL of the
+URL again. If the entry's URL now redirects to another allowed page, the URL of the
 **current** history entry is replaced with the final one (same state, no new
 entry, forward entries kept), so the address bar and relative links such as
 ``?page=2`` match the page shown. A redirect to an excluded route or another
-origin falls back to a full navigation, as above.
+origin falls back to a full navigation, as above. A full-load fallback to the
+exact active history URL forces a document reload, including when that URL
+contains a fragment.
 
 Playback actions and deferred transitions
 -----------------------------------------
