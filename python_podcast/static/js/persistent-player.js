@@ -62,6 +62,7 @@
   var state = {
     activePayloadId: null,
     activeAudioId: null,
+    activeOpener: null,
     switchCount: 0,
     pageDisposers: [],
     // Guards the async close animation against a re-activation racing it: each
@@ -488,6 +489,7 @@
 
     // Set manager state HERE (not in activate()), so in the deferred View
     // Transition path it is written together with the dock that actually exists.
+    state.activeOpener = opts && opts.opener;
     state.activePayloadId = payloadId;
     state.activeAudioId = typeof data.audioId === "number" ? data.audioId : null;
 
@@ -530,7 +532,7 @@
     if (!document.startViewTransition || prefersReducedMotion()) {
       // No View Transition: the dock gets a plain CSS rise on first open (the
       // media query suppresses it under reduced motion anyway).
-      buildActiveDock(payloadId, payload, { rise: !prefersReducedMotion() });
+      buildActiveDock(payloadId, payload, { rise: !prefersReducedMotion(), opener: sourceButton });
       return;
     }
 
@@ -552,12 +554,14 @@
     }
     region.classList.add("cast-vt-active");
 
-    var transition = document.startViewTransition(function () {
+    var updateRan = false;
+    var update = function () {
       // The latest activation or close owns every dock mutation, including
       // source morph names: callbacks may run after a newer explicit action.
-      if (myVt !== state.vtSeq) {
+      if (myVt !== state.vtSeq || updateRan) {
         return;
       }
+      updateRan = true;
       if (sourcePoster) {
         sourcePoster.style.viewTransitionName = "";
       }
@@ -571,7 +575,7 @@
         state.vtSourceCard = null;
       }
       // The VT animates the entrance; never also run the CSS rise.
-      var wasActive = buildActiveDock(payloadId, payload, { rise: false });
+      var wasActive = buildActiveDock(payloadId, payload, { rise: false, opener: sourceButton });
       var dockPoster = region.querySelector(".cast-dock__poster");
       if (dockPoster) {
         dockPoster.style.viewTransitionName = "cast-vt-poster";
@@ -585,7 +589,7 @@
           inner.style.viewTransitionName = sourceCard ? "cast-vt-card" : "cast-vt-dock";
         }
       }
-    });
+    };
 
     var cleanup = function () {
       // A newer transition (or its clearMorphNames) now owns the dock; do not
@@ -596,7 +600,50 @@
       region.classList.remove("cast-vt-active");
       clearMorphNames();
     };
-    transition.finished.then(cleanup).catch(cleanup);
+    var fallback = function () {
+      if (myVt !== state.vtSeq) {
+        return;
+      }
+      cleanup();
+      if (!updateRan) {
+        updateRan = true;
+        buildActiveDock(payloadId, payload, { rise: !prefersReducedMotion(), opener: sourceButton });
+      }
+    };
+    try {
+      var transition = document.startViewTransition(update);
+      // ready can reject even when the update succeeds (e.g. skipped animation).
+      if (transition.ready) {
+        transition.ready.catch(function () {});
+      }
+      if (transition.updateCallbackDone) {
+        transition.updateCallbackDone.catch(fallback);
+      }
+      transition.finished.then(cleanup, fallback);
+    } catch (err) {
+      fallback();
+    }
+  }
+
+  function restoreDockFocus(payloadId, opener) {
+    if (opener && opener.isConnected && !opener.disabled && isVisible(opener)) {
+      opener.focus({ preventScroll: true });
+      return;
+    }
+    // Enhanced navigation may have replaced the original card. Match the
+    // current episode action by value, without interpolating a CSS selector.
+    var buttons = document.querySelectorAll("[data-cast-play]");
+    for (var i = 0; i < buttons.length; i++) {
+      var button = buttons[i];
+      if (button.getAttribute("data-cast-play") === payloadId && !button.disabled && isVisible(button)) {
+        button.focus({ preventScroll: true });
+        return;
+      }
+    }
+    var content = document.getElementById(PAGING_ID) || document.querySelector("main");
+    if (content) {
+      focusHeading(content);
+    }
   }
 
   // Dismiss the dock entirely: stop + unmount the single live player (zero live
@@ -620,6 +667,10 @@
         window.clearTimeout(state.closeTimer);
         state.closeTimer = null;
       }
+      // Decide before unmounting, and respect focus moved away during close.
+      var restoreFocus = region.contains(document.activeElement);
+      var payloadId = state.activePayloadId;
+      var opener = state.activeOpener;
       teardownActive();
       region.hidden = true;
       region.removeAttribute("data-cast-active");
@@ -628,8 +679,12 @@
       document.body.classList.remove("cast-dock-open");
       state.activePayloadId = null;
       state.activeAudioId = null;
+      state.activeOpener = null;
       releaseDockSpace();
       updateCards();
+      if (restoreFocus) {
+        restoreDockFocus(payloadId, opener);
+      }
     };
     var inner = region.querySelector(".cast-dock__inner");
     if (prefersReducedMotion() || !inner) {
