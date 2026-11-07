@@ -6,6 +6,7 @@ standing in for the fedi host.
 import datetime
 import http.server
 import ipaddress
+import socket
 import ssl
 import threading
 import time
@@ -533,3 +534,50 @@ def test_middleware_error_after_upstream_failure_still_mails_admins(client, upst
 
     assert response.status_code == 500
     assert len(mail.outbox) == 1
+
+
+def test_resolver_capacity_survives_timeout_and_recovers(client, monkeypatch):
+    slots = threading.BoundedSemaphore(2)
+    monkeypatch.setattr(views, "_resolver_slots", slots, raising=False)
+    monkeypatch.setattr(views, "UPSTREAM_DEADLINE", 0.02)
+    release = threading.Event()
+    completed = threading.Event()
+    calls = []
+
+    def stalled(*args, **kwargs):
+        calls.append(args)
+        try:
+            assert release.wait(5)
+            raise socket.gaierror("synthetic DNS failure")
+        finally:
+            if len(calls) == 2:
+                completed.set()
+
+    monkeypatch.setattr(views.socket, "getaddrinfo", stalled)
+    try:
+        assert client.get("/.well-known/nodeinfo").status_code == 504
+        assert client.get("/.well-known/nodeinfo").status_code == 504
+        for _ in range(8):
+            assert client.get("/.well-known/nodeinfo").status_code == 502
+        assert len(calls) == 2
+    finally:
+        release.set()
+    assert completed.wait(5)
+    # Acquiring both slots waits for the helpers' finally blocks, without sleeps.
+    assert slots.acquire(timeout=5)
+    assert slots.acquire(timeout=5)
+    slots.release()
+    slots.release()
+    assert client.get("/.well-known/nodeinfo").status_code == 502
+    assert len(calls) == 3
+
+
+def test_resolver_start_failure_returns_capacity(monkeypatch):
+    slots = threading.BoundedSemaphore(1)
+    monkeypatch.setattr(views, "_resolver_slots", slots, raising=False)
+    with monkeypatch.context() as patch:
+        patch.setattr(threading.Thread, "start", lambda self: (_ for _ in ()).throw(RuntimeError("no threads")))
+        with pytest.raises(views.UpstreamError):
+            views._resolve("synthetic.invalid", 443, 1)
+    assert slots.acquire(blocking=False)
+    slots.release()

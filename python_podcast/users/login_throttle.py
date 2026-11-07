@@ -16,6 +16,7 @@ import hashlib
 import math
 import threading
 import unicodedata
+import uuid
 from functools import wraps
 
 from django.conf import settings
@@ -33,6 +34,10 @@ from rest_framework.throttling import SimpleRateThrottle
 THROTTLE_CACHE_ALIAS = "api_token_auth_throttle"
 
 _local_counter_lock = threading.RLock()
+
+# Recover capacity if a worker dies mid-authentication. An authentication still
+# running beyond this lease may overlap a later attempt.
+RESERVATION_SECONDS = 300
 
 LOGGED_IN_ATTR = "_login_throttle_logged_in"
 
@@ -73,13 +78,19 @@ class LoginFailureThrottle(SimpleRateThrottle):
     def _load(self):
         self.now = self.timer()
         self.history = [t for t in self.cache.get(self.key, []) if t > self.now - self.duration]
+        self.reservations = {
+            ident: expiry for ident, expiry in self.cache.get(self.key + "_inflight", {}).items() if expiry > self.now
+        }
+
+    def save_reservations(self):
+        self.cache.set(self.key + "_inflight", self.reservations, RESERVATION_SECONDS)
 
     def is_blocked(self):
         if self.rate is None:
             return False
         with self.counter_lock():
             self._load()
-            return len(self.history) >= self.num_requests
+            return len(self.history) + len(self.reservations) >= self.num_requests
 
     def record_failure(self):
         if self.rate is None:
@@ -88,15 +99,16 @@ class LoginFailureThrottle(SimpleRateThrottle):
         # an admitted failure on contention. Only pre-auth checks may time out.
         with self.counter_lock(timeout=-1):
             self._load()
-            self.history.insert(0, self.now)
-            # Keep only what is needed to decide, so junk cannot grow an entry.
-            self.history = self.history[: self.num_requests]
-            self.cache.set(self.key, self.history, self.duration)
+            self._record_failure()
+
+    def _record_failure(self):
+        self.history.insert(0, self.now)
+        self.history = self.history[: self.num_requests]
+        self.cache.set(self.key, self.history, self.duration)
 
     def wait(self):
-        # Seconds until the oldest failure that still counts expires.
-        oldest = self.history[self.num_requests - 1]
-        return max(oldest + self.duration - self.now, 1)
+        expiries = [t + self.duration for t in self.history] + list(self.reservations.values())
+        return max(min(expiries) - self.now, 1)
 
 
 class AdminLoginClientThrottle(LoginFailureThrottle):
@@ -151,6 +163,35 @@ def too_many_attempts(throttle):
     return response
 
 
+def reserve_attempt(throttles, reservation_id):
+    """Check both budgets and reserve capacity under the same cache authority."""
+    with throttles[0].counter_lock():
+        for throttle in throttles:
+            if throttle.rate is None:
+                continue
+            throttle._load()
+            if len(throttle.history) + len(throttle.reservations) >= throttle.num_requests:
+                return throttle
+        for throttle in throttles:
+            if throttle.rate is not None:
+                throttle.reservations[reservation_id] = throttle.now + RESERVATION_SECONDS
+                throttle.save_reservations()
+    return None
+
+
+def finish_attempt(throttles, reservation_id, *, failed):
+    # Never drop an admitted failure or leave a live reservation on contention.
+    with throttles[0].counter_lock(timeout=-1):
+        for throttle in throttles:
+            if throttle.rate is None:
+                continue
+            throttle._load()
+            throttle.reservations.pop(reservation_id, None)
+            if failed:
+                throttle._record_failure()
+            throttle.save_reservations()
+
+
 def throttle_failed_logins(view):
     """Limit failed POSTs to a password login view per client and per username."""
 
@@ -172,14 +213,17 @@ def throttle_failed_logins(view):
         username = submitted_username(request)
         if username is not None:
             throttles.append(AdminLoginUsernameThrottle(username))
-        for throttle in throttles:
-            if throttle.is_blocked():
-                return too_many_attempts(throttle)
-        response = view(request, *args, **kwargs)
-        if not getattr(request, LOGGED_IN_ATTR, False):
-            for throttle in throttles:
-                throttle.record_failure()
-        return response
+        reservation_id = uuid.uuid4().hex
+        blocked = reserve_attempt(throttles, reservation_id)
+        if blocked is not None:
+            return too_many_attempts(blocked)
+        failed = False
+        try:
+            response = view(request, *args, **kwargs)
+            failed = not getattr(request, LOGGED_IN_ATTR, False)
+            return response
+        finally:
+            finish_attempt(throttles, reservation_id, failed=failed)
 
     throttled_view.login_throttled = True
     return throttled_view
