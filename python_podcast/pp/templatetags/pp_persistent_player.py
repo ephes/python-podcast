@@ -8,19 +8,67 @@ builds the sanitized payload + ids so a theme's audio block can PUBLISH them
 """
 
 import math
+from types import SimpleNamespace
 from typing import Any
 
+from cast.models.pages import PODLOVE_POSTER_RENDITION_SPEC
 from cast.player import build_player_payload
 from django import template
 from django.conf import settings
+from django.db.models import Prefetch, prefetch_related_objects
 from django.utils.html import json_script
 from django.utils.safestring import mark_safe
 from django_vite.core.asset_loader import DjangoViteAssetLoader
+from wagtail.images import get_image_model
 from wagtail.images.models import SourceImageIOError
+from wagtail.models import Page
 
 register = template.Library()
 
 CARD_POSTER_RENDITION_SPEC = "max-128x128|format-webp"
+
+
+def _cover_prefetch() -> Prefetch:
+    images = get_image_model().objects.prefetch_renditions(PODLOVE_POSTER_RENDITION_SPEC, CARD_POSTER_RENDITION_SPEC)
+    return Prefetch("cover_image", queryset=images)
+
+
+def _payload_post(context: Any, post: Any) -> Any:
+    """Resolve only the displayed cached cards, sharing pages within this request."""
+    if post is None or not getattr(post, "pk", None):
+        return post
+    if getattr(post, "content_type_id", None) is None:
+        request = context.get("request")
+        if request is not None:
+            if not hasattr(request, "_pp_player_pages"):
+                request._pp_player_pages = {}
+            pages = request._pp_player_pages
+        else:
+            pages = context.setdefault("_pp_player_pages", {})
+        if post.pk not in pages:
+            ids = {card.pk for card in context.get("posts", ()) if getattr(card, "pk", None)}
+            ids.add(post.pk)
+            queryset = (
+                Page.objects.filter(pk__in=ids - pages.keys())
+                .specific()
+                .prefetch_related(_cover_prefetch(), for_specific_subqueries=True)
+            )
+            pages.update((page.pk, page) for page in queryset)
+        if post.pk not in pages:
+            raise Page.DoesNotExist(f"Player post {post.pk} no longer exists")
+        post = pages[post.pk]
+
+    episode = getattr(post, "specific", post)
+    blog = None
+    # The pinned cast payload builder eagerly reads post.blog, even with an
+    # explicit episode cover. Supply its public duck-typed context separately
+    # from the concrete episode, avoiding ancestor reads and private cast caches.
+    if getattr(episode, "cover_image", None) is None:
+        blog = context.get("blog") or getattr(post, "blog", None)
+        blog = getattr(blog, "specific", blog)
+        if blog is not None and hasattr(blog, "_meta"):
+            prefetch_related_objects([blog], _cover_prefetch())
+    return SimpleNamespace(pk=post.pk, specific=episode, blog=blog)
 
 
 def _card_poster_url(post: Any, request: Any, fallback: str) -> str:
@@ -32,10 +80,10 @@ def _card_poster_url(post: Any, request: Any, fallback: str) -> str:
     artwork before anyone starts playback.
     """
     episode = getattr(post, "specific", post)
-    blog_page = getattr(post, "blog", None)
-    blog = getattr(blog_page, "specific", blog_page)
     cover_image = getattr(episode, "cover_image", None)
-    if cover_image is None and blog is not None:
+    if cover_image is None:
+        blog_page = getattr(post, "blog", None)
+        blog = getattr(blog_page, "specific", blog_page)
         cover_image = getattr(blog, "cover_image", None)
     if cover_image is None:
         return fallback
@@ -122,14 +170,7 @@ def cast_player_payload(context: dict[str, Any], audio: Any, post: Any) -> dict[
     ``cast-player-data-<audio pk>`` is kept.
     """
     request = context.get("request")
-    # Overview/list cards come from the cached repository and can supply a
-    # lightweight post without a content_type, which build_player_payload's
-    # `post.specific` would choke on. Re-fetch the concrete page by pk in that
-    # case (detail pages pass a served, content-typed page -> no extra query).
-    if post is not None and getattr(post, "content_type_id", None) is None and getattr(post, "pk", None):
-        from wagtail.models import Page
-
-        post = Page.objects.get(pk=post.pk).specific
+    post = _payload_post(context, post)
     payload = build_player_payload(audio, post=post, request=request)
     identity = _payload_identity(audio, post)
     payload_id = f"cast-player-data-{identity}"
