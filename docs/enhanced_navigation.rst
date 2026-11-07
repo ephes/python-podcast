@@ -90,6 +90,18 @@ they cannot reopen the dock. Activating without a transition (including reduced
 motion) also supersedes pending updates. Transition cleanup and close animation
 completion retain their ownership guards.
 
+Closing with focus inside the dock returns focus to its activation button, or
+the matching current episode action if navigation replaced that button. When
+that episode is absent, focus returns to the current content heading (or the
+content region if it has no visible heading). A superseded close does not move
+focus, and moving focus outside the dock during the close animation is respected.
+
+View Transition startup is best effort: a synchronous startup exception or
+rejected transition falls back to plain activation when the update has not run.
+An update that already built the dock is not repeated. All transition promises
+are handled, and cleanup or fallback from an older activation cannot change a
+newer dock.
+
 Payload identity
 ----------------
 
@@ -140,3 +152,11 @@ After changing ``persistent-player.js`` run
 close during a pending switch, and activation without a transition, for both
 source and minified assets. These isolated tests need no PostgreSQL or Vite:
 ``uv run pytest -p no:django -o addopts='' -m e2e tests/e2e/test_dock_transitions.py``.
+
+Unreleased
+----------
+
+* Return keyboard focus to the current episode action or current content when
+  closing the player, including after enhanced navigation and with reduced motion.
+* Recover plain playback when View Transition startup throws or rejects, while
+  preserving current-generation ownership and preventing duplicate activation.
