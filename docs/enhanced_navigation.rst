@@ -186,7 +186,23 @@ PostgreSQL ``DATABASE_URL`` and dummy AWS settings (see README), and have
 ffmpeg/ffprobe on PATH. It explicitly selects the custom-player test and the
 persistent playback and delayed transcript tests across both server-rendered
 themes; explicit node IDs override marker filtering, and the JUnit report must
-contain seven passing cases with no skips. Synthesized MP3/M4A
+contain exactly the seven required passing identities with no duplicates or skips.
+The identity includes the JUnit classname, browser, theme and response ordering.
+For intentional test selection or parameter changes, update ``TESTS`` and
+``EXPECTED_CASES`` in ``scripts/check_core_media.py`` and the independently written
+``EXPECTED`` fixture in ``tests/test_core_media_gate.py``. Check the collected
+node IDs and a real gate report rather than loosening the identity check.
+Run the synthetic report/process-boundary tests with
+``uv run --locked pytest tests/test_core_media_gate.py``; these tests simulate
+POSIX and unsupported platforms without requiring a browser or database.
+Synthetic subprocess regressions additionally exercise descendant cleanup on
+supported systems and verify refusal elsewhere.
+On supported POSIX systems (Linux/macOS), pytest starts a new session. Timeout
+or interruption sends TERM to that process group, waits at most two seconds,
+then sends KILL to any remaining members even if pytest already exited and
+reaps pytest with a further two-second bound. Unsupported systems refuse before
+launch. Children which deliberately detach into another session are not covered.
+Temporary reports are removed on success, failure and interruption. Synthesized MP3/M4A
 clips, transcript artifacts and temporary local storage exercise real media
 routing, advancing clocks, seeking, cue/chapter highlights and playback across
 navigation. A local WhiteNoise fixture serves media byte ranges (the Django
@@ -204,6 +220,11 @@ or permissive baseline count can hide redundant initial requests.
 
 Unreleased
 ----------
+
+* Verify exact core-media report identities, including every theme and response
+  ordering; terminate the owned POSIX process group on timeout or interruption.
+* Protect closed/open local and social signup and existing-account login with
+  synthetic allauth route tests; registration behavior is unchanged.
 
 * Add a bounded local Chromium gate for actual custom/persistent media playback
   using only generated audio and local transcript storage.
