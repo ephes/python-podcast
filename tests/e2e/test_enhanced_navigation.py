@@ -609,3 +609,34 @@ def test_push_fallback_to_same_path_drops_old_fragment(nav, site):
     nav.wait_for_function("() => window.__TOKEN === undefined && !!window.__castPersistentAudioDebug")
     assert nav.url == site.base + "/page/a"
     assert nav.evaluate("() => location.hash") == ""
+
+
+@pytest.mark.parametrize("motion", ["reduce", "no-preference"])
+def test_dock_close_after_navigation_focuses_current_content(nav, site, motion):
+    from playwright.sync_api import expect
+
+    nav.emulate_media(reduced_motion="reduce")
+    nav.evaluate("""() => {
+        customElements.define('cast-audio-player', class extends HTMLElement {
+            connectedCallback() { this.controller = {play() {}}; }
+        });
+        const content = document.getElementById('paging-area');
+        const payload = document.createElement('script');
+        payload.type = 'application/json'; payload.id = 'episode';
+        payload.textContent = JSON.stringify({audioId: 1, title: 'Synthetic episode'});
+        content.appendChild(payload);
+        const button = document.createElement('button');
+        button.id = 'episode-play'; button.setAttribute('data-cast-play', 'episode');
+        button.textContent = 'Play episode'; content.appendChild(button);
+        document.body.dispatchEvent(new Event('htmx:afterSettle'));
+    }""")
+    nav.locator("#episode-play").click()
+    nav.locator("#to-b").click()
+    expect(nav.locator("#marker")).to_have_text("b")
+    assert _same_document(nav)
+    nav.emulate_media(reduced_motion=motion)
+    close = nav.locator(".cast-dock__close")
+    close.focus()
+    close.press("Enter")
+    expect(nav.locator("#cast-persistent-player")).to_be_hidden()
+    expect(nav.locator("#paging-area h1")).to_be_focused()

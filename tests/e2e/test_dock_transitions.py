@@ -133,3 +133,112 @@ def test_close_invalidates_pending_switch_and_allows_reactivation(dock, reduced_
     dock.emulate_media(reduced_motion="reduce")
     dock.locator("#play-b").click()
     _assert_active(dock, 2, [1, 2])
+
+
+@pytest.mark.parametrize("motion", ["reduce", "no-preference"])
+@pytest.mark.parametrize("replacement", [False, True])
+def test_keyboard_close_returns_focus_to_current_episode(dock, motion, replacement):
+    from playwright.sync_api import expect
+
+    dock.locator("#play-a").click()
+    _complete(dock, 0)
+    dock.emulate_media(reduced_motion=motion)
+    if replacement:
+        dock.locator("#play-a").evaluate(
+            "button => button.outerHTML = '<button id=updated-play data-cast-play=a>A</button>'"
+        )
+    close = dock.locator(".cast-dock__close")
+    close.focus()
+    close.press("Enter")
+    expect(dock.locator("#cast-persistent-player")).to_be_hidden()
+    expect(dock.locator("#updated-play" if replacement else "#play-a")).to_be_focused()
+
+
+def test_superseded_close_does_not_steal_focus(dock):
+    dock.locator("#play-a").click()
+    _complete(dock, 0)
+    dock.evaluate("""() => {
+        const realSetTimeout = window.setTimeout.bind(window);
+        window.closeCompletion = null;
+        window.setTimeout = (callback, delay) => {
+            if (delay === 400) { window.closeCompletion = callback; return 1; }
+            return realSetTimeout(callback, delay);
+        };
+    }""")
+    dock.locator(".cast-dock__close").click()
+    dock.locator("#play-b").click()
+    _complete(dock, 1)
+    dock.locator(".cast-dock__close").focus()
+    dock.evaluate("window.closeCompletion()")
+    _assert_active(dock, 2, [1, 2])
+    from playwright.sync_api import expect
+
+    expect(dock.locator(".cast-dock__close")).to_be_focused()
+
+
+def test_close_keeps_focus_moved_outside_during_animation(dock):
+    from playwright.sync_api import expect
+
+    dock.locator("#play-a").click()
+    _complete(dock, 0)
+    dock.evaluate("""() => {
+        document.querySelector('.cast-dock__close').click();
+        document.querySelector('#play-b').focus();
+        document.querySelector('.cast-dock__inner').dispatchEvent(new Event('animationend'));
+    }""")
+    expect(dock.locator("#play-b")).to_be_focused()
+
+
+@pytest.mark.parametrize("fault", ["throw-before", "throw-after", "reject-before", "reject-after", "success"])
+def test_transition_start_failure_activates_once_and_cleans_owned_state(dock, fault):
+    errors = []
+    dock.on("pageerror", lambda error: errors.append(str(error)))
+    dock.evaluate(
+        """fault => {
+        window.injectedFault = false;
+        document.startViewTransition = update => {
+            window.injectedFault = true;
+            window.delayedUpdate = update;
+            if (fault === 'throw-before') throw new Error('synthetic startup failure');
+            if (fault !== 'reject-before') update();
+            if (fault === 'throw-after') throw new Error('synthetic failure after update');
+            const failed = fault.startsWith('reject');
+            return {
+                ready: failed ? Promise.reject(new Error('synthetic ready rejection')) : Promise.resolve(),
+                updateCallbackDone: failed ? Promise.reject(new Error('update rejection')) : Promise.resolve(),
+                finished: failed ? Promise.reject(new Error('synthetic finished rejection')) : Promise.resolve()
+            };
+        };
+    }""",
+        fault,
+    )
+    dock.locator("#play-a").click()
+    dock.wait_for_function("window.__castPersistentAudioDebug.activeAudioId === 1")
+    assert dock.evaluate("window.injectedFault")
+    # A callback delivered after fallback must not activate twice.
+    if fault == "reject-before":
+        dock.evaluate("window.delayedUpdate()")
+    _assert_active(dock, 1, [1])
+    assert not dock.locator("#cast-persistent-player").evaluate("el => el.classList.contains('cast-vt-active')")
+    assert dock.evaluate("""() => [...document.querySelectorAll('*')].every(el => !el.style.viewTransitionName)""")
+    # Flush the browser's unhandled rejection reporting, not just microtasks.
+    dock.evaluate("() => new Promise(resolve => setTimeout(resolve, 0))")
+    assert errors == []
+
+
+def test_rejected_old_transition_cannot_activate_or_clean_new_owner(dock):
+    dock.evaluate("""() => {
+        document.startViewTransition = update => {
+            let reject;
+            const finished = new Promise((_, fail) => { reject = fail; });
+            window.transitions.push({update, reject});
+            return {finished};
+        };
+    }""")
+    dock.locator("#play-a").click()
+    dock.locator("#play-b").click()
+    dock.evaluate("window.transitions[0].reject(new Error('superseded'))")
+    assert dock.locator("cast-audio-player").count() == 0
+    assert dock.locator("#cast-persistent-player").evaluate("el => el.classList.contains('cast-vt-active')")
+    dock.evaluate("window.transitions[1].update()")
+    _assert_active(dock, 2, [2])
