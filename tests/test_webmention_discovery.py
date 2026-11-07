@@ -4,6 +4,7 @@ from unittest.mock import Mock
 
 import pytest
 from cast.models import Blog, Episode, Post
+from django.contrib.auth.models import Group
 from django.template.response import TemplateResponse
 from django.test import RequestFactory
 from indieweb.models import Webmention
@@ -17,7 +18,7 @@ from python_podcast.users.tests.factories import UserFactory
 @pytest.mark.parametrize("page_type", [Blog, Post, Episode])
 @pytest.mark.parametrize("excluded", [None, "draft", "restricted", "preview", "error"])
 def test_discovery_only_for_live_public_cast_pages(page_type, excluded):
-    page = page_type(title="Content", live=excluded != "draft", content_type_id=1, locale_id=1)
+    page = page_type(title="Synthetic private post 746", live=excluded != "draft", content_type_id=1, locale_id=1)
     page.get_view_restrictions = Mock()
     page.get_view_restrictions.return_value.exists.return_value = excluded == "restricted"
     request = RequestFactory().get("/show/content/")
@@ -46,7 +47,10 @@ def test_discovery_omitted_from_non_content_and_preview_responses(context):
 
 
 @pytest.mark.django_db
-def test_public_cast_response_advertises_endpoint_without_rendering_mentions(client, settings, monkeypatch):
+@pytest.mark.parametrize("restriction_type", ["login", "groups"])
+def test_public_cast_response_advertises_endpoint_without_rendering_mentions(
+    client, settings, monkeypatch, restriction_type
+):
     from django_vite.core.asset_loader import DjangoViteAssetLoader
 
     # Asset compilation is covered separately; render the real content templates.
@@ -57,8 +61,10 @@ def test_public_cast_response_advertises_endpoint_without_rendering_mentions(cli
         Collection.add_root(name="Root")
     root = Page.get_first_root_node() or Page.add_root(title="Root")
     owner = UserFactory()
-    blog = root.add_child(instance=Blog(title="Webmention show", slug="webmention-show", owner=owner))
-    post = blog.add_child(instance=Post(title="Content", slug="content", comments_enabled=False, owner=owner))
+    blog = root.add_child(instance=Blog(title="Synthetic Webmention show 746", slug="webmention-show", owner=owner))
+    post = blog.add_child(
+        instance=Post(title="Synthetic private post 746", slug="content", comments_enabled=False, owner=owner)
+    )
     Site.objects.all().delete()
     Site.objects.create(hostname="testserver", port=80, root_page=root, is_default_site=True)
     settings.CAST_AUDIO_PLAYER = "podlove"
@@ -76,6 +82,25 @@ def test_public_cast_response_advertises_endpoint_without_rendering_mentions(cli
         assert response.status_code == 200
         assert '<http://testserver/indieweb/webmention/>; rel="webmention"' in response["Link"]
         assert marker.encode() not in response.content
-    PageViewRestriction.objects.create(page=blog, restriction_type="login")
-    assert "Link" not in client.get(post.url)
-    assert "Link" not in client.get("/accounts/login/")
+    restriction = PageViewRestriction.objects.create(page=blog, restriction_type=restriction_type)
+    reader = UserFactory()
+    if restriction_type == "groups":
+        group = Group.objects.create(name="Private show readers")
+        restriction.groups.add(group)
+        reader.groups.add(group)
+    assert not post.view_restrictions.exists(), "the restriction belongs to the ancestor"
+    anonymous = client.get(post.url)
+    assert anonymous.status_code != 200
+    assert "Link" not in anonymous
+    login = client.get("/accounts/login/")
+    assert login.status_code == 200
+    assert "Link" not in login
+    client.force_login(reader)
+    for url in (blog.url, post.url):
+        response = client.get(url)
+        assert response.status_code == 200
+        assert (
+            b"Synthetic private post 746" if url == post.url else b"Synthetic Webmention show 746"
+        ) in response.content
+        assert 'rel="webmention"' not in response.get("Link", "")
+        assert marker.encode() not in response.content

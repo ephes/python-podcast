@@ -621,6 +621,16 @@ delay verification for hours. With no worker, mentions stay pending. Locally,
 run ``uv run python manage.py db_worker --backend cast_transcripts``; test
 settings use ImmediateBackend and intentionally execute tasks immediately.
 
+The synthetic integration tests run the public bounded ``db_worker`` command
+(``--batch --max-tasks 10 --no-startup-delay --no-reload``). They verify backend
+and queue selection, the claim and terminal task states, failed-source and
+failed-task isolation, and execution exactly once. Discovery tests render real
+inherited login/group restrictions as an authorized reader: even a successful
+private response has no discovery header or mention content. Run both with the
+dependency migrations against a disposable PostgreSQL database::
+
+    uv run --locked pytest --create-db --migrations -p no:sugar tests/test_webmention_queue.py tests/test_webmention_discovery.py
+
 A missing backlink or failed fetch marks the mention ``failed``. A failed task
 appears under Tasks Database Backend in Django admin, can leave the mention
 ``pending``, and is not retried automatically. Re-submitting the source/target
