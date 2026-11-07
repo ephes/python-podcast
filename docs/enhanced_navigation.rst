@@ -176,8 +176,39 @@ close during a pending switch, and activation without a transition, for both
 source and minified assets. These isolated tests need no PostgreSQL or Vite:
 ``uv run pytest -p no:django -o addopts='' -m e2e tests/e2e/test_dock_transitions.py``.
 
+Core media gate
+~~~~~~~~~~~~~~~
+
+Run ``just test-core-media`` before pushing playback changes. The command uses
+Chromium, ``config.settings.e2e`` and real migrations with an overall 300-second
+deadline. Install the locked dependencies and Chromium, provide a disposable
+PostgreSQL ``DATABASE_URL`` and dummy AWS settings (see README), and have
+ffmpeg/ffprobe on PATH. It explicitly selects the custom-player test and the
+persistent playback and delayed transcript tests across both server-rendered
+themes; explicit node IDs override marker filtering, and the JUnit report must
+contain seven passing cases with no skips. Synthesized MP3/M4A
+clips, transcript artifacts and temporary local storage exercise real media
+routing, advancing clocks, seeking, cue/chapter highlights and playback across
+navigation. A local WhiteNoise fixture serves media byte ranges (the Django
+live-server file handler cannot support real Chromium seeking). External
+analytics requests are suppressed. No staging or production
+site is involved, and no additional Actions job is used.
+
+Transcript requests are counted by the exact active episode URL. A browser
+response gate lets the real HTTP request finish, then holds the response before
+the player can consume it. The test requires exactly one initial fetch, keeps
+that count through reopening and navigation, and checks one fetch for the next
+episode too. Separate cases release old/current episode responses in both
+orders and require the current episode's cues after both settle. No fixed sleep
+or permissive baseline count can hide redundant initial requests.
+
 Unreleased
 ----------
+
+* Add a bounded local Chromium gate for actual custom/persistent media playback
+  using only generated audio and local transcript storage.
+* Require one transcript fetch per active episode through navigation/reopening,
+  including explicitly delayed responses in either episode order.
 
 * Batch concrete page resolution for persistent-player overview cards while
   preserving per-post payload and transcript identities.

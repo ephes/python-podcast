@@ -14,6 +14,7 @@ re-checked against the real staging site separately (see the backlog note).
 import json
 import subprocess
 import tempfile
+from collections import Counter
 from pathlib import Path
 
 import pytest
@@ -43,6 +44,7 @@ def _synth_audio(ext: str, codec: str, seconds: int = CLIP_SECONDS) -> bytes:
                 str(out),
             ],
             check=True,
+            timeout=30,
         )
         return out.read_bytes()
 
@@ -91,7 +93,7 @@ THEME_SWAP_TARGET = {"pp": "paging-area", "bootstrap5": "main-content"}
 
 
 @pytest.fixture(params=["pp", "bootstrap5"])
-def staging_site(request, live_server, settings, tmp_path):
+def staging_site(request, live_server, settings, tmp_path, local_media_network, local_media_storage):
     settings.MEDIA_ROOT = str(tmp_path)
     settings.PYTHON_PODCAST_PERSISTENT_AUDIO_PLAYER = True
     theme = request.param
@@ -203,14 +205,84 @@ def _assert_advancing(page, label):
     assert _is_paused(page) is False, f"{label}: expected playing"
 
 
+def _hold_transcript_responses(page):
+    """Let real HTTP finish, but release responses to the player explicitly."""
+    page.add_init_script("""(() => {
+        const fetch = window.fetch.bind(window);
+        const waiting = {};
+        const settled = {};
+        const started = {};
+        window.__transcriptGate = {
+            waiting, settled, started,
+            release(url) {
+                const callbacks = waiting[url];
+                if (!callbacks || !callbacks.length) throw new Error('No held transcript: ' + url);
+                delete waiting[url];
+                callbacks.forEach(resolve => resolve());
+            }
+        };
+        window.fetch = async (...args) => {
+            const url = new URL(typeof args[0] === 'string' ? args[0] : args[0].url, location.href);
+            if (url.pathname.includes('player-transcript')) {
+                started[url.href] = (started[url.href] || 0) + 1;
+            }
+            const response = await fetch(...args);
+            if (new URL(response.url).pathname.includes('player-transcript')) {
+                await new Promise(resolve => (waiting[response.url] ||= []).push(resolve));
+                const json = response.json.bind(response);
+                response.json = async () => {
+                    const data = await json();
+                    // Signal the next task, after the player's JSON continuation.
+                    setTimeout(() => { settled[response.url] = true; }, 0);
+                    return data;
+                };
+            }
+            return response;
+        };
+    })();""")
+    requests = Counter()
+
+    def record(request):
+        if "player-transcript" in request.url:
+            requests[request.url] += 1
+
+    page.on("request", record)
+    return requests
+
+
+def _transcript_url(page):
+    return page.locator("[data-cast-play]").first.evaluate("""button => {
+        const payload = JSON.parse(document.getElementById(button.dataset.castPlay).textContent);
+        return new URL(payload.transcript.url, location.href).href;
+    }""")
+
+
+def _open_held_transcript(page, url):
+    with page.expect_response(lambda response: response.url == url and response.status == 200):
+        page.locator("#cast-persistent-player cast-transcript .cast-panel__toggle").click()
+    page.wait_for_function("url => window.__transcriptGate.waiting[url]?.length > 0", arg=url)
+
+
+def _release_transcript(page, url):
+    page.evaluate("url => window.__transcriptGate.release(url)", url)
+    page.wait_for_function("url => window.__transcriptGate.settled[url] === true", arg=url)
+
+
+def _assert_settled_transcript_fetches(page, requests, expected):
+    # A browser round trip observes synchronous fetch initiation even before
+    # Playwright delivers its request event; no late response may remain held.
+    assert page.evaluate("() => window.__transcriptGate.started") == expected
+    assert page.evaluate("() => Object.keys(window.__transcriptGate.waiting)") == []
+    assert requests == expected
+
+
 @pytest.mark.e2e
 def test_persistent_player_survives_navigation(page, staging_site):
     errors = []
     page.on("console", lambda m: errors.append(f"{m.type}: {m.text}") if m.type == "error" else None)
     page.on("console", lambda m: errors.append(f"warn: {m.text}") if "duplicate id" in m.text else None)
     page.on("pageerror", lambda e: errors.append(f"pageerror: {e}"))
-    transcript_requests = []
-    page.on("request", lambda r: transcript_requests.append(r.url) if "player-transcript" in r.url else None)
+    transcript_requests = _hold_transcript_responses(page)
 
     base = staging_site["base"]
     content = staging_site["content_sel"]
@@ -229,6 +301,9 @@ def test_persistent_player_survives_navigation(page, staging_site):
     # Token proves same-document navigation later.
     page.evaluate("() => { window.__E2E_TOKEN = 'tok-persistent'; }")
 
+    transcript_a = _transcript_url(page)
+    assert transcript_requests == {}
+
     # --- Start Episode A through the visible play action -------------------
     play_action.first.click()
     page.wait_for_function("() => window.__castPersistentAudioDebug.hostCount() === 1")
@@ -241,12 +316,18 @@ def test_persistent_player_survives_navigation(page, staging_site):
     assert page.evaluate("() => window.__castPersistentAudioDebug.audioCount()") == 1
 
     # --- Transcript + chapter panels work for the active persistent player -
-    page.locator("#cast-persistent-player cast-transcript .cast-panel__toggle").click()
-    expect(page.locator("#cast-persistent-player .cast-transcript__cue").first).to_be_visible()
-    assert page.locator("#cast-persistent-player .cast-transcript__cue").count() == NUM_CUES
-    page.wait_for_timeout(300)  # let the lazy transcript fetch settle
-    fetches_after_open = len(transcript_requests)
-    assert fetches_after_open >= 1, "opening the transcript should fetch cues once"
+    _open_held_transcript(page, transcript_a)
+    assert transcript_requests == {transcript_a: 1}
+    toggle = page.locator("#cast-persistent-player cast-transcript .cast-panel__toggle")
+    toggle.click()  # close and reopen while the response is still held
+    toggle.click()
+    assert transcript_requests == {transcript_a: 1}
+    _release_transcript(page, transcript_a)
+    expect(page.locator("#cast-persistent-player .cast-transcript__cue")).to_have_count(NUM_CUES)
+    expect(page.locator("#cast-persistent-player .cast-transcript__text").first).to_have_text(
+        "Episode Alpha transcript cue 0."
+    )
+    assert transcript_requests == {transcript_a: 1}
     page.locator("#cast-persistent-player cast-chapters .cast-panel__toggle").click()
     assert page.locator("#cast-persistent-player .cast-chapters__button").count() == 2
 
@@ -263,7 +344,11 @@ def test_persistent_player_survives_navigation(page, staging_site):
     # The persistent player is never re-rendered by navigation: its transcript
     # stays loaded (cues still present) and is not refetched/rebuilt.
     assert page.locator("#cast-persistent-player .cast-transcript__cue").count() == NUM_CUES
-    assert len(transcript_requests) == fetches_after_open, "navigation must not refetch the transcript"
+    assert transcript_requests == {transcript_a: 1}, "navigation must not refetch the transcript"
+    toggle.click()
+    toggle.click()
+    expect(page.locator("#cast-persistent-player .cast-transcript__cue")).to_have_count(NUM_CUES)
+    assert transcript_requests == {transcript_a: 1}, "reopening must not refetch"
 
     # --- Enhanced nav to Episode B page: still Episode A, still playing ----
     page.click(f"a[href='{staging_site['episode_b_url']}']")
@@ -275,6 +360,9 @@ def test_persistent_player_survives_navigation(page, staging_site):
     assert page.locator(f"{content} cast-audio-player").count() == 0  # B is publish-only
     _assert_advancing(page, "after nav to episode B page")
     switches_before = page.evaluate("() => window.__castPersistentAudioDebug.switchCount")
+
+    transcript_b = _transcript_url(page)
+    assert transcript_b != transcript_a
 
     # --- Explicitly start Episode B: clean replacement ---------------------
     page.locator("[data-cast-play]").first.click()
@@ -292,6 +380,13 @@ def test_persistent_player_survives_navigation(page, staging_site):
         page.evaluate("() => window.__castPersistentAudioDebug.audioCount()") == 1
     ), "exactly one audio element after switch"
     audio_b = page.evaluate_handle("() => window.__castPersistentAudioDebug.getActiveAudio()")
+    _open_held_transcript(page, transcript_b)
+    assert transcript_requests == {transcript_a: 1, transcript_b: 1}
+    _release_transcript(page, transcript_b)
+    expect(page.locator("#cast-persistent-player .cast-transcript__cue")).to_have_count(NUM_CUES)
+    expect(page.locator("#cast-persistent-player .cast-transcript__text").first).to_have_text(
+        "Episode Beta transcript cue 0."
+    )
 
     # --- Enhanced nav to /about/ (a flat TemplateView page brought into the
     # active theme's shell via the session-aware base): Episode B keeps playing -
@@ -331,7 +426,44 @@ def test_persistent_player_survives_navigation(page, staging_site):
     # One play action published per (episode) page -> stable disposer count.
     assert page.evaluate("() => window.__castPersistentAudioDebug.listenerDisposerCount") <= 1
 
+    _assert_settled_transcript_fetches(page, transcript_requests, {transcript_a: 1, transcript_b: 1})
     assert errors == [], f"console errors / duplicate-id warnings: {errors}"
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize("response_order", ["old-first", "current-first"])
+def test_delayed_transcripts_stay_with_the_active_episode(page, staging_site, response_order):
+    requests = _hold_transcript_responses(page)
+    page.goto(staging_site["base"] + staging_site["episode_a_url"])
+    page.wait_for_function("() => !!window.__castPersistentAudioDebug")
+    transcript_a = _transcript_url(page)
+    page.locator("[data-cast-play]").first.click()
+    page.wait_for_function("() => window.__castPersistentAudioDebug.hostCount() === 1")
+    _open_held_transcript(page, transcript_a)
+    assert requests == {transcript_a: 1}
+
+    page.click(f"a[href='{staging_site['podcast_url']}']")
+    page.wait_for_url(staging_site["base"] + staging_site["podcast_url"])
+    page.click(f"a[href='{staging_site['episode_b_url']}']")
+    page.wait_for_url(staging_site["base"] + staging_site["episode_b_url"])
+    transcript_b = _transcript_url(page)
+    page.locator("[data-cast-play]").first.click()
+    page.wait_for_function("() => window.__castPersistentAudioDebug.switchCount === 2")
+    _open_held_transcript(page, transcript_b)
+    assert transcript_a != transcript_b
+    assert requests == {transcript_a: 1, transcript_b: 1}
+
+    order = (transcript_a, transcript_b) if response_order == "old-first" else (transcript_b, transcript_a)
+    for url in order:
+        _release_transcript(page, url)
+    cues = page.locator("#cast-persistent-player .cast-transcript__cue")
+    expect(cues).to_have_count(NUM_CUES)
+    expect(cues.first.locator(".cast-transcript__text")).to_have_text("Episode Beta transcript cue 0.")
+    toggle = page.locator("#cast-persistent-player cast-transcript .cast-panel__toggle")
+    toggle.click()
+    toggle.click()
+    expect(cues.first).to_be_visible()
+    _assert_settled_transcript_fetches(page, requests, {transcript_a: 1, transcript_b: 1})
 
 
 @pytest.mark.e2e
