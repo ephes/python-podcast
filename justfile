@@ -123,6 +123,10 @@ test-e2e *ARGS:
     DJANGO_ALLOW_ASYNC_UNSAFE=1 DJANGO_SETTINGS_MODULE=config.settings.e2e \
         uv run pytest tests/e2e -m e2e --migrations {{ARGS}}
 
+# Bounded synthetic media gate (Chromium, ffmpeg/ffprobe, PostgreSQL).
+test-core-media:
+    uv run --locked python scripts/check_core_media.py
+
 # Run coverage
 coverage:
     uv run python commands.py coverage

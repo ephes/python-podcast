@@ -106,6 +106,21 @@ GitHub Actions (``.github/workflows/ci.yml``) runs on every push and pull reques
   minified JS, without Django or a database. Other
   Playwright e2e tests run locally with ``just test-e2e``.
 
+Before pushing playback changes, run ``just test-core-media`` locally. This
+five-minute gate explicitly selects the real custom-player and persistent
+playback/transcript cases in Chromium with ``config.settings.e2e`` and dependency
+migrations. It requires PostgreSQL, ffmpeg/ffprobe and installed Chromium
+(``uv run --locked playwright install chromium``), plus the Vite manifests shipped
+in the locked packages. Set ``DATABASE_URL`` to a disposable local database and
+the dummy AWS settings listed in ``.github/workflows/ci.yml``; no real accounts
+or media are used. All audio/transcript storage is local to fixture temporary
+directories; the existing WhiteNoise dependency serves byte ranges from those
+directories so Chromium can seek. External browser requests (analytics) receive
+empty responses.
+Missing assets, broken media routing, failed playback or a deadline overrun fail
+the command. This gate runs locally; no additional Actions job is configured.
+See ``docs/enhanced_navigation.rst`` for the strict transcript-fetch oracle.
+
 Live reloading and Sass CSS compilation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

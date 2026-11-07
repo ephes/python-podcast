@@ -39,12 +39,13 @@ def _synth_audio(ext: str, codec: str) -> bytes:
                 str(out),
             ],
             check=True,
+            timeout=30,
         )
         return out.read_bytes()
 
 
 @pytest.fixture
-def episode_path(live_server, settings, tmp_path):
+def episode_path(live_server, settings, tmp_path, local_media_network, local_media_storage):
     settings.MEDIA_ROOT = str(tmp_path)
     from _helpers import ensure_site
     from cast.devdata import create_episode, create_podcast
