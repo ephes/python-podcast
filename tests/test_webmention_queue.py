@@ -3,6 +3,8 @@ Received Webmentions are queued on the ``cast_transcripts`` worker and the
 endpoint is rate limited.
 """
 
+import signal
+from collections import Counter
 from functools import partial
 
 import httpx
@@ -10,7 +12,9 @@ import pytest
 from django.conf import settings
 from django.contrib.sites.models import Site
 from django.core.cache import cache
+from django.core.management import call_command
 from django.urls import reverse
+from django_tasks.base import TaskResultStatus
 from django_tasks_db.models import DBTaskResult
 from indieweb.models import Webmention
 from indieweb.processors import process_queued_webmention
@@ -80,30 +84,106 @@ def test_post_queues_the_webmention_without_fetching_the_source(client, no_remot
     assert queued.args_kwargs["args"] == [webmention.pk]
 
 
-@pytest.mark.django_db
-def test_running_the_queued_task_processes_the_webmention(client, monkeypatch):
+@pytest.fixture
+def run_worker():
+    def run(*, backend="cast_transcripts", queue="default"):
+        # The public command installs process handlers; leave pytest's intact.
+        handlers = {
+            sig: signal.getsignal(sig) for sig in signal.Signals if sig.name in {"SIGINT", "SIGTERM", "SIGQUIT"}
+        }
+        try:
+            call_command(
+                "db_worker",
+                backend_name=backend,
+                queue_name=queue,
+                batch=True,
+                max_tasks=10,
+                interval=0,
+                startup_delay=False,
+                reload=False,
+                worker_id="webmention-test",
+                verbosity=0,
+            )
+        finally:
+            for sig, handler in handlers.items():
+                signal.signal(sig, handler)
+
+    return run
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize("failure", ["source", "task"])
+def test_worker_claims_and_finishes_independent_mentions(client, monkeypatch, settings, run_worker, failure):
+    settings.TASKS = {**settings.TASKS, "default": {"BACKEND": "django_tasks_db.DatabaseBackend"}}
+    bad_source = "https://remote.example/failing-source"
+    calls = Counter()
+
+    def assert_claimed(mention_id):
+        queued = DBTaskResult.objects.get(args_kwargs__args=[mention_id])
+        assert queued.status == TaskResultStatus.RUNNING
+        assert queued.worker_ids == ["webmention-test"]
+        assert queued.started_at is not None
+        assert queued.finished_at is None
+
     def remote_site(request):
-        assert str(request.url) == SOURCE
+        source = str(request.url)
+        assert source in {SOURCE, bad_source}
+        calls[source] += 1
+        assert_claimed(Webmention.objects.get(source_url=source).pk)
+        if source == bad_source:
+            raise httpx.ConnectError("synthetic unavailable source", request=request)
         return httpx.Response(
             200,
             headers={"content-type": "text/html; charset=utf-8"},
             text=f'<html><body><a href="{TARGET}">a mention</a></body></html>',
         )
 
-    monkeypatch.setattr(
-        webmention_tasks,
-        "process_queued_webmention",
-        partial(process_queued_webmention, client=httpx.Client(transport=httpx.MockTransport(remote_site))),
-    )
-    assert post_webmention(client).status_code == 202
-    assert Webmention.objects.get(source_url=SOURCE).status == "pending"
+    with httpx.Client(transport=httpx.MockTransport(remote_site)) as transport:
+        process = partial(process_queued_webmention, client=transport)
 
-    # What the worker does with the stored row: import the task by its path
-    # and call it with the stored arguments.
-    queued = DBTaskResult.objects.get().task_result
-    queued.task.call(*queued.args, **queued.kwargs)
+        def process_with_failure(mention_id):
+            mention = Webmention.objects.get(pk=mention_id)
+            if failure == "task" and mention.source_url == bad_source:
+                assert_claimed(mention_id)
+                calls[bad_source] += 1
+                raise RuntimeError("synthetic task failure")
+            return process(mention_id)
 
-    assert Webmention.objects.get(source_url=SOURCE).status == "verified"
+        monkeypatch.setattr(webmention_tasks, "process_queued_webmention", process_with_failure)
+        assert (
+            client.post(reverse("indieweb:webmention"), data={"source": bad_source, "target": TARGET}).status_code
+            == 202
+        )
+        bad = Webmention.objects.get(source_url=bad_source)
+        DBTaskResult.objects.filter(args_kwargs__args=[bad.pk]).update(priority=10)
+        assert post_webmention(client).status_code == 202
+        assert set(Webmention.objects.values_list("status", flat=True)) == {"pending"}
+
+        for backend, queue in (("cast_transcripts", "other"), ("default", "default")):
+            run_worker(backend=backend, queue=queue)
+            assert calls == {}
+            assert set(DBTaskResult.objects.values_list("status", flat=True)) == {TaskResultStatus.READY}
+            assert not DBTaskResult.objects.exclude(worker_ids=[]).exists()
+
+        run_worker()
+        good = Webmention.objects.get(source_url=SOURCE)
+        bad.refresh_from_db()
+        assert good.status == "verified"
+        assert bad.status == ("failed" if failure == "source" else "pending")
+        for mention, expected in (
+            (good, TaskResultStatus.SUCCESSFUL),
+            (bad, TaskResultStatus.FAILED if failure == "task" else TaskResultStatus.SUCCESSFUL),
+        ):
+            queued = DBTaskResult.objects.get(args_kwargs__args=[mention.pk])
+            assert queued.status == expected
+            assert queued.worker_ids == ["webmention-test"]
+            assert queued.enqueued_at <= queued.started_at <= queued.finished_at
+            assert queued.exception_class_path == (
+                "builtins.RuntimeError" if expected == TaskResultStatus.FAILED else ""
+            )
+        assert calls == {bad_source: 1, SOURCE: 1}
+        run_worker()
+        assert calls == {bad_source: 1, SOURCE: 1}, "terminal tasks must not execute again"
 
 
 @pytest.mark.django_db
