@@ -29,6 +29,12 @@ Setting Up Your Users
   ``.env`` file, then restart Django. Leave it unset or set it to ``false`` to
   keep registration closed.
 
+* Both local and social-account signup obey this setting; closing registration
+  still permits existing accounts to log in. Run the synthetic admission tests
+  with ``uv run --locked pytest python_podcast/users/tests/test_signup_admission.py``.
+  They exercise real allauth routes with a local dummy provider, without OAuth
+  network calls, and verify that refused requests create no account/email rows.
+
 * When registration is enabled, go to Sign Up to create a **normal user account**.
   After submitting the form, follow the verification link printed in the local
   development console to verify the email address.
@@ -117,6 +123,13 @@ or media are used. All audio/transcript storage is local to fixture temporary
 directories; the existing WhiteNoise dependency serves byte ranges from those
 directories so Chromium can seek. External browser requests (analytics) receive
 empty responses.
+The gate checks the exact seven JUnit testcase identities (browser, theme and
+response-order parameters), rejecting duplicates, substitutions and skips.
+It supports POSIX process groups on Linux/macOS; timeout or Ctrl-C terminates the
+owned pytest/browser/server group with bounded TERM/KILL escalation. Descendants
+that deliberately detach into another session are outside that guarantee.
+See ``docs/enhanced_navigation.rst`` for maintaining the case contract and running
+the platform-independent harness tests.
 Missing assets, broken media routing, failed playback or a deadline overrun fail
 the command. This gate runs locally; no additional Actions job is configured.
 See ``docs/enhanced_navigation.rst`` for the strict transcript-fetch oracle.
