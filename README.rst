@@ -134,6 +134,19 @@ Missing assets, broken media routing, failed playback or a deadline overrun fail
 the command. This gate runs locally; no additional Actions job is configured.
 See ``docs/enhanced_navigation.rst`` for the strict transcript-fetch oracle.
 
+Dependency security updates (Unreleased)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The lockfile updates Tornado from 6.5.10 to 6.6 for folded-header and chunked-body
+denial of service (GHSA-pcg2-g6cj-q92c, GHSA-r4j5-9xpp-3985) and unsafe
+capture-based redirects (GHSA-pw9p-v7r6-gx4p). Tornado is pulled in by the
+development notebook stack. Synthetic regressions cover folded-header rejection
+and redirect host protection without timing assertions or external services.
+
+Black is updated from 26.5.1 to 26.10.1 in the lockfile; its pre-commit hook is
+aligned to 26.10.1. GHSA-cg8m-r9f2-5wm2 affects Black's GitHub Action with
+``use_pyproject: true``, which this repository does not use.
+
 Live reloading and Sass CSS compilation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
