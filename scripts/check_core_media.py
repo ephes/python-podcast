@@ -22,13 +22,13 @@ TESTS = [
 EXPECTED_CASES = {
     ("tests.e2e.test_custom_player", "test_custom_player_in_browser[chromium]"),
     *{
-        ("tests.e2e.test_persistent_player", f"test_persistent_player_survives_navigation[chromium-{theme}]")
+        ("tests.e2e.test_persistent_player", f"test_persistent_player_survives_navigation[{theme}-chromium]")
         for theme in ("pp", "bootstrap5")
     },
     *{
         (
             "tests.e2e.test_persistent_player",
-            f"test_delayed_transcripts_stay_with_the_active_episode[chromium-{theme}-{order}]",
+            f"test_delayed_transcripts_stay_with_the_active_episode[{theme}-chromium-{order}]",
         )
         for theme in ("pp", "bootstrap5")
         for order in ("old-first", "current-first")

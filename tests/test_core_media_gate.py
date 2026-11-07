@@ -17,23 +17,23 @@ SPEC.loader.exec_module(gate)
 # Handwritten independently of the production allowlist; collection contract.
 EXPECTED = [
     ("tests.e2e.test_custom_player", "test_custom_player_in_browser[chromium]"),
-    ("tests.e2e.test_persistent_player", "test_persistent_player_survives_navigation[chromium-pp]"),
-    ("tests.e2e.test_persistent_player", "test_persistent_player_survives_navigation[chromium-bootstrap5]"),
+    ("tests.e2e.test_persistent_player", "test_persistent_player_survives_navigation[pp-chromium]"),
+    ("tests.e2e.test_persistent_player", "test_persistent_player_survives_navigation[bootstrap5-chromium]"),
     (
         "tests.e2e.test_persistent_player",
-        "test_delayed_transcripts_stay_with_the_active_episode[chromium-pp-old-first]",
+        "test_delayed_transcripts_stay_with_the_active_episode[pp-chromium-old-first]",
     ),
     (
         "tests.e2e.test_persistent_player",
-        "test_delayed_transcripts_stay_with_the_active_episode[chromium-pp-current-first]",
+        "test_delayed_transcripts_stay_with_the_active_episode[pp-chromium-current-first]",
     ),
     (
         "tests.e2e.test_persistent_player",
-        "test_delayed_transcripts_stay_with_the_active_episode[chromium-bootstrap5-old-first]",
+        "test_delayed_transcripts_stay_with_the_active_episode[bootstrap5-chromium-old-first]",
     ),
     (
         "tests.e2e.test_persistent_player",
-        "test_delayed_transcripts_stay_with_the_active_episode[chromium-bootstrap5-current-first]",
+        "test_delayed_transcripts_stay_with_the_active_episode[bootstrap5-chromium-current-first]",
     ),
 ]
 
