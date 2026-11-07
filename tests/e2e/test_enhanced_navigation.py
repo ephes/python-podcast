@@ -632,7 +632,7 @@ def test_dock_close_after_navigation_focuses_current_content(nav, site, motion):
     }""")
     nav.locator("#episode-play").click()
     nav.locator("#to-b").click()
-    expect(nav.locator("#marker")).to_have_text("b")
+    expect(nav.locator("#marker")).to_have_text("B PAGE")
     assert _same_document(nav)
     nav.emulate_media(reduced_motion=motion)
     close = nav.locator(".cast-dock__close")
