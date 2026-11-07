@@ -29,6 +29,8 @@ MAX_UPSTREAM_BYTES = 1024 * 1024
 # is dropped.
 PASSED_RESPONSE_HEADERS = ("Cache-Control", "Access-Control-Allow-Origin", "Content-Encoding")
 
+# Per-process bound; a timed-out request must not free a still-running lookup.
+_resolver_slots = threading.BoundedSemaphore(4)
 _ssl_context = None
 
 
@@ -71,6 +73,11 @@ def _resolve(host, port, remaining):
     Resolve ``host`` in a helper thread so that a stalled resolver cannot hold
     the request past the deadline (``getaddrinfo`` itself cannot be interrupted).
     """
+    if remaining <= 0:
+        raise UpstreamTimeout
+    if not _resolver_slots.acquire(blocking=False):
+        raise UpstreamError("resolver capacity exhausted")
+    slots = _resolver_slots
     result = {}
 
     def resolve():
@@ -78,9 +85,15 @@ def _resolve(host, port, remaining):
             result["addresses"] = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
         except OSError as exc:
             result["error"] = exc
+        finally:
+            slots.release()
 
-    resolver = threading.Thread(target=resolve, daemon=True)
-    resolver.start()
+    try:
+        resolver = threading.Thread(target=resolve, daemon=True)
+        resolver.start()
+    except RuntimeError as exc:
+        slots.release()
+        raise UpstreamError("cannot start resolver") from exc
     resolver.join(max(remaining, 0))
     if resolver.is_alive():
         raise UpstreamTimeout

@@ -53,9 +53,15 @@ same local filesystem, cache directory and lock path; independent hosts or
 network filesystems are not supported by this strategy. Failure recording after authentication waits for the lock without a deadline,
 so contention cannot discard an already checked guess. The lock is outside
 the cache directory so clearing counters cannot replace the locking authority.
-The existing sliding window, cache keys and failure cap are unchanged. Concurrent
-requests already admitted before reaching the cap may still authenticate, but
-their completed failures cannot overwrite each other's increments. A pre-authentication lock wait
+Admission checks both budgets and reserves an in-flight slot in each under
+that same lock, before password verification. Failures plus active reservations
+cannot exceed either budget at admission. Successful logins and exceptions
+release their slots without adding failures; a failed response converts the
+reservation to failure history. Reservations expire after five minutes so a
+terminated worker cannot block capacity forever. Authentication still running
+after that lease may overlap a newer attempt; a late completion only releases
+its own reservation and still records its failure. Existing failure cache keys
+and sliding windows are unchanged. A pre-authentication lock wait
 longer than five seconds returns 503 with ``Retry-After: 5``; no login is admitted
 without a counter check. Local/test ``LocMemCache`` uses a process-local thread
 lock; other shared backends require an explicit shared lock path.
@@ -96,3 +102,9 @@ Change history
   and admin login throttling remain supported.
 
 * 2026-11-06: serialize shared failure histories across web workers.
+
+Unreleased
+----------
+
+* Reserve shared client and username capacity before authentication to bound
+  simultaneous guesses; release on completion, with five-minute crash recovery.

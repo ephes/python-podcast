@@ -40,6 +40,11 @@ domain while the actual server runs at ``https://fedi.python-podcast.de``. Since
      connection or protocol error, a truncated body, a body larger than
      1 MiB, or an invalid upstream status, header or redirect location returns
      ``502``.
+   * DNS admission allows at most four outstanding lookups per web process.
+     Capacity stays occupied until the resolver actually finishes, even after
+     the request times out. Saturation returns ``502`` immediately without
+     creating or queuing another lookup. Capacity recovers automatically on
+     completion; lookups stuck forever require a web process restart.
    * These ``502``/``504`` responses are expected when the fedi host is slow
      or briefly unreachable. Each is logged as a warning
      (``Timeout fetching ...`` / ``Failed to fetch ...``) but does not mail
@@ -52,3 +57,9 @@ domain while the actual server runs at ``https://fedi.python-podcast.de``. Since
 
 After deploying changes to this app, check that WebFinger still resolves, for
 example ``curl 'https://python-podcast.de/.well-known/webfinger?resource=acct:show@python-podcast.de'``.
+
+Unreleased
+----------
+
+* Bound outstanding DNS helper threads, retaining their slots after request
+  timeout until the underlying lookup completes.

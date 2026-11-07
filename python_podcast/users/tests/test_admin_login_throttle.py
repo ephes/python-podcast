@@ -379,9 +379,145 @@ def test_recording_admitted_failures_cannot_time_out(monkeypatch, tmp_path):
         request = RequestFactory().post("/", {"username": "synthetic-user"}, REMOTE_ADDR="192.0.2.1")
         response = login_throttle.throttle_failed_logins(failed_login)(request)
         assert response.status_code == 200
-        assert waits == [5, 5, -1, -1]
+        assert waits == [5, -1]
         for throttle in [
             login_throttle.AdminLoginClientThrottle(request),
             login_throttle.AdminLoginUsernameThrottle("synthetic-user"),
         ]:
             assert len(throttle.cache.get(throttle.key)) == 1
+
+
+@pytest.mark.parametrize("authority", ["local", "shared"])
+@pytest.mark.parametrize("kind", ["client", "username"])
+def test_inflight_attempts_reserve_capacity(monkeypatch, tmp_path, authority, kind):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event
+
+    from django.http import HttpResponse
+    from django.test import RequestFactory
+
+    monkeypatch.setattr(
+        login_throttle.LoginFailureThrottle,
+        "THROTTLE_RATES",
+        {
+            "admin_login_client": "1/hour" if kind == "client" else "20/hour",
+            "admin_login_username": "1/hour" if kind == "username" else "20/hour",
+        },
+    )
+    cache_settings = (
+        {
+            "default": {
+                "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+                "LOCATION": str(tmp_path / "counters"),
+            }
+        }
+        if authority == "shared"
+        else {
+            "default": {
+                "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+                "LOCATION": "inflight",
+            }
+        }
+    )
+    entered, release = Event(), Event()
+    calls = []
+
+    def authenticate(request):
+        calls.append(request)
+        entered.set()
+        assert release.wait(5)
+        return HttpResponse("bad password")
+
+    view = login_throttle.throttle_failed_logins(authenticate)
+
+    def attempt(n):
+        request = RequestFactory().post(
+            "/",
+            {"username": "synthetic-user" if kind == "username" else f"user-{n}"},
+            REMOTE_ADDR=f"192.0.2.{n}" if kind == "username" else "192.0.2.1",
+        )
+        # Settings are process-global; workers share the same cache authority.
+        return view(request).status_code
+
+    with (
+        override_settings(
+            CACHES=cache_settings,
+            ADMIN_LOGIN_THROTTLE_LOCK_PATH=(str(tmp_path / "counter.lock") if authority == "shared" else None),
+        ),
+        ThreadPoolExecutor(max_workers=8) as pool,
+    ):
+        try:
+            first = pool.submit(attempt, 1)
+            assert entered.wait(5)
+            others = [pool.submit(attempt, n) for n in range(2, 9)]
+            assert [future.result(timeout=5) for future in others] == [429] * 7
+            assert len(calls) == 1
+        finally:
+            release.set()
+        assert first.result(timeout=5) == 200
+        assert attempt(9) == 429  # reservation became a failed-only history entry
+        caches["default"].clear()
+
+
+@pytest.mark.parametrize("outcome", ["success", "exception"])
+def test_reservation_released_on_every_view_exit(monkeypatch, outcome):
+    from django.http import HttpResponse
+    from django.test import RequestFactory
+
+    monkeypatch.setattr(
+        login_throttle.LoginFailureThrottle,
+        "THROTTLE_RATES",
+        {
+            "admin_login_client": "1/hour",
+            "admin_login_username": "1/hour",
+        },
+    )
+    calls = []
+
+    def authenticate(request):
+        calls.append(request)
+        if outcome == "exception":
+            raise ValueError("synthetic authentication failure")
+        login_throttle._mark_logged_in(None, request, None)
+        return HttpResponse()
+
+    view = login_throttle.throttle_failed_logins(authenticate)
+    for _ in range(2):
+        request = RequestFactory().post("/", {"username": "synthetic-user"})
+        if outcome == "exception":
+            with pytest.raises(ValueError):
+                view(request)
+        else:
+            assert view(request).status_code == 200
+    assert len(calls) == 2
+    assert cache.get(username_key("synthetic-user")) is None
+
+
+def test_abandoned_reservations_expire_without_releasing_a_new_owner(monkeypatch):
+    from django.http import HttpResponse
+    from django.test import RequestFactory
+
+    monkeypatch.setattr(
+        login_throttle.LoginFailureThrottle,
+        "THROTTLE_RATES",
+        {
+            "admin_login_client": "1/hour",
+            "admin_login_username": "1/hour",
+        },
+    )
+    now = [10000]
+    monkeypatch.setattr(login_throttle.LoginFailureThrottle, "timer", lambda self: now[0])
+    request = RequestFactory().post("/", {"username": "synthetic-user"})
+    throttles = [
+        login_throttle.AdminLoginClientThrottle(request),
+        login_throttle.AdminLoginUsernameThrottle("synthetic-user"),
+    ]
+    assert login_throttle.reserve_attempt(throttles, "abandoned") is None
+    view = login_throttle.throttle_failed_logins(lambda request: HttpResponse())
+    assert view(request).status_code == 429
+    now[0] += login_throttle.RESERVATION_SECONDS
+    assert login_throttle.reserve_attempt(throttles, "new-owner") is None
+    login_throttle.finish_attempt(throttles, "abandoned", failed=False)
+    assert view(request).status_code == 429
+    login_throttle.finish_attempt(throttles, "new-owner", failed=False)
+    assert view(request).status_code == 200
