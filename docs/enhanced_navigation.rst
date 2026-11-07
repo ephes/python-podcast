@@ -124,10 +124,24 @@ The ids are built in ``cast_player_payload``
 (``python_podcast/pp/templatetags/pp_persistent_player.py``); templates must
 take all three attributes from that payload and not build ids themselves.
 
+Overview query budgets
+----------------------
+
+``cast_player_payload`` resolves the displayed ``posts`` IDs together using
+Wagtail's specific-page queryset and keeps that mapping on the current request.
+The mapping is reused across audio-block includes; it never loads other result
+pages and does not change the cached repository or django-cast's public API.
+Detail pages keep their already concrete page. Payload identity and transcript
+context still belong to each post, including when posts share an audio.
+
 Card artwork
 ------------
 
-Play cards request a small 128 px WebP rendition of the episode or blog cover.
+Play cards prefer an episode's explicit cover before looking up any fallback
+blog data. For cached overview cards, cover images and existing renditions for
+both sizes are prefetched together. The current context's blog cover supplies
+fallback artwork, with its renditions reused across cards. The player payload
+retains its 512 px poster; compact cards request a separate 128 px WebP rendition.
 If its original file is unavailable (``FileNotFoundError`` or Wagtail's
 ``SourceImageIOError``), the card uses the player poster already present in the
 payload, which may be a cached rendition. This keeps the card renderable when
@@ -136,6 +150,15 @@ this fallback does not repair or delete media files.
 
 Tests
 -----
+
+``tests/test_player_card_queries.py`` renders the actual audio-block templates
+and payload builder with synthetic ORM pages, covers and existing renditions.
+It freezes a five-query cold-cache budget for one and twenty cards with shared
+or distinct covers (content type, base pages, concrete episodes, images,
+renditions). The shared blog fallback uses six queries, including its cold
+content type. Audio metadata is preloaded to
+isolate this page/cover budget from upstream audio chapter queries. New
+rendition generation may require additional reads and writes.
 
 ``tests/e2e/test_enhanced_navigation.py`` runs the source file and the
 committed minified build in a real browser against a small fixture server. The
@@ -155,6 +178,11 @@ source and minified assets. These isolated tests need no PostgreSQL or Vite:
 
 Unreleased
 ----------
+
+* Batch concrete page resolution for persistent-player overview cards while
+  preserving per-post payload and transcript identities.
+* Batch existing cover renditions and skip blog/ancestor reads for explicit
+  episode covers; retain compact-card missing-original fallback.
 
 * Return keyboard focus to the current episode action or current content when
   closing the player, including after enhanced navigation and with reduced motion.

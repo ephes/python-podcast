@@ -201,10 +201,12 @@ def test_same_post_keeps_one_payload_id_on_detail_page_and_list_card():
         detail = cast_player_payload({}, audio, _post(11, title="Episode Alpha"))
         with patch("wagtail.models.Page.objects") as page_objects:
             # Cached overview repositories hand out a lightweight post without a content type.
-            page_objects.get.return_value.specific = _post(11, title="Episode Alpha")
+            page_objects.filter.return_value.specific.return_value.prefetch_related.return_value = [
+                _post(11, title="Episode Alpha")
+            ]
             card = cast_player_payload({}, audio, SimpleNamespace(pk=11, content_type_id=None))
 
-    page_objects.get.assert_called_once_with(pk=11)
+    page_objects.filter.assert_called_once_with(pk__in={11})
     assert detail["payload_id"] == card["payload_id"] == "cast-player-data-7-post-11"
     assert detail["player_id"] == card["player_id"] == "cast-player-7-post-11"
     assert card["poster"] == detail["poster"] == "https://media.example/post-11.webp"
