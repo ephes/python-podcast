@@ -359,3 +359,6 @@ tests/e2e/*.png
 # Runtime private media artifacts
 private_media/
 python_podcast/cast-private-media/
+
+# Stable source-switch operation lock (never remove while switches run)
+.source-switch.lock

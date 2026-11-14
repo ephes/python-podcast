@@ -640,3 +640,61 @@ def test_dock_close_after_navigation_focuses_current_content(nav, site, motion):
     close.press("Enter")
     expect(nav.locator("#cast-persistent-player")).to_be_hidden()
     expect(nav.locator("#paging-area h1")).to_be_focused()
+
+
+@pytest.mark.parametrize("declared", [None, "1", "3145728"])
+def test_oversized_html_is_cancelled_before_parsing(nav, site, declared):
+    cancelled = []
+    nav.expose_function("recordCancel", lambda: cancelled.append(True))
+    nav.evaluate(
+        """declared => {
+        const realFetch = window.fetch;
+        window.fetch = (url, opts) => {
+            if (!String(url).endsWith('/page/b')) return realFetch(url, opts);
+            const headers = {'content-type': 'text/html'};
+            if (declared !== null) headers['content-length'] = declared;
+            let chunks = 0;
+            const body = new ReadableStream({
+                pull(controller) {
+                    if (chunks++ === 4) controller.close();
+                    else controller.enqueue(new Uint8Array(1024 * 1024).fill(32));
+                },
+                cancel() { window.recordCancel(); }
+            });
+            return Promise.resolve(new Response(body, {headers}));
+        };
+    }""",
+        declared,
+    )
+    nav.locator("#to-b").click()
+    nav.wait_for_function("() => window.__TOKEN === undefined && !!window.__castPersistentAudioDebug")
+    assert nav.parsed == []
+    assert cancelled == [True]
+    assert site.seen("/page/b", enhanced=False) == 1
+
+
+@pytest.mark.parametrize("href", ["#comments", "/page/a#comments"])
+def test_native_fragment_retires_pending_page_without_late_swap(nav, site, href):
+    nav.evaluate("""() => {
+        const realFetch = window.fetch;
+        window.fetch = (url, opts) => {
+            if (!String(url).endsWith('/page/b')) return realFetch(url, opts);
+            // Deliberately ignore abort: the generation fence must also hold.
+            return new Promise(resolve => { window.releasePage = () => resolve(new Response(
+                '<title>B</title><div id="paging-area"><p id="marker">B PAGE</p></div>',
+                {headers: {'content-type': 'text/html'}})); });
+        };
+    }""")
+    nav.locator("#to-b").click()
+    nav.wait_for_function("!!window.releasePage")
+    nav.locator("#to-c").evaluate("(a, href) => a.href = href", href)
+    nav.locator("#to-c").click()
+    nav.wait_for_function("location.hash === '#comments'")
+    native_focus = nav.evaluate("document.activeElement.id")
+    nav.evaluate("window.releasePage()")
+    nav.wait_for_timeout(SETTLE_MS)
+    assert _marker(nav) == "A PAGE"
+    assert _same_document(nav) and _audio_untouched(nav)
+    assert nav.parsed == []
+    assert site.seen("/page/b", enhanced=False) == 0
+    assert nav.evaluate("document.activeElement.id") == native_focus
