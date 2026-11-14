@@ -748,6 +748,28 @@ def test_navigation_uses_htmx_removal_before_processing_replacement(nav, site):
     assert _audio_untouched(nav)
 
 
+def test_navigation_runs_real_htmx_cleanup_on_retired_content(nav, site):
+    # The shipped htmx bundle, not a mock: its public remove() only detaches.
+    import cast
+
+    bundle = Path(cast.__file__).parent / "static" / "cast" / "js" / "htmx.min.js"
+    nav.add_script_tag(content=bundle.read_text(encoding="utf-8"))
+    nav.wait_for_function("() => !!window.htmx && typeof window.htmx.swap === 'function'")
+    nav.evaluate("""() => {
+        window.cleaned = [];
+        document.addEventListener('htmx:beforeCleanupElement', event => {
+            if (event.target.id === 'paging-area') {
+                window.cleaned.push([event.target.querySelector('#marker').textContent, event.target.isConnected]);
+            }
+        });
+    }""")
+    nav.locator("#to-b").click()
+    nav.wait_for_function("location.pathname === '/page/b'")
+    assert nav.evaluate("window.cleaned") == [["A PAGE", True]]
+    assert nav.evaluate("document.querySelector('#paging-area #marker').textContent") == "B PAGE"
+    assert _audio_untouched(nav)
+
+
 @pytest.mark.parametrize("marker", [None, "different-module-css-v2"])
 def test_incompatible_asset_set_uses_native_load(nav, site, marker):
     nav.evaluate(

@@ -31,7 +31,14 @@ async function main() {
   let signal;
   let responseBody;
   const mode = process.argv[3];
-  if (mode === 'cleanup') window.htmx = {process() {}, remove(node) { assert.equal(node, paging); cancelled++; }};
+  if (mode === 'cleanup') window.htmx = {process() {}, remove() { assert.fail('remove() skips htmx cleanup'); },
+    swap(node, content, spec) {
+      assert.equal(node, paging);
+      assert.equal(content, '');
+      // spec comes from the vm realm; compare its fields, not its prototype.
+      assert.equal(JSON.stringify(spec), JSON.stringify({swapStyle: 'delete', swapDelay: 0, transition: false}));
+      cancelled++;
+    }};
   if (mode === 'base') paging.replaceWith = () => { assert.equal(window.location.href, 'https://podcast.invalid/page/b'); swapped++; };
   const deferred = mode !== 'oversize';
   const retired = mode === 'fragment';

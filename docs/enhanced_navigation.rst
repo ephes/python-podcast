@@ -85,7 +85,9 @@ Required asset compatibility
 Both documents must advertise the same nonempty ``cast-navigation-assets`` meta
 value. The pp and bootstrap5 base templates declare separate asset sets. A page
 that needs extra CSS or modules must override ``navigation_assets`` with a new
-value; pages sharing those requirements use the same value. Bump the value when
+value; pages sharing those requirements use the same value. pp posts with
+comments enabled load the comments stylesheet and therefore advertise
+``pp-v1+comments``. Bump the value when
 changing required assets. Missing or different markers cause a native load
 before any partial swap or history update. Enhanced navigation does not import
 head assets. Full loads restart playback.
@@ -96,8 +98,12 @@ Adopting destination content
 History is moved to the fetched final URL before connecting incoming nodes.
 Relative media URLs and synchronous custom-element callbacks therefore use the
 destination base. A history or swap error hands over to a full document load.
-When htmx is present, its public ``remove`` API retires the old content before
-connecting and processing the replacement, releasing polling and extension work.
+When htmx is present, a synchronous public ``htmx.swap(old, "", {swapStyle:
+"delete"})`` retires the old content before connecting and processing the
+replacement: htmx runs its element cleanup (``htmx:beforeCleanupElement``,
+polling, listeners and extension hooks) and then detaches it. ``htmx.remove()``
+alone only detaches, so it is used only as a fallback for builds without
+``swap``.
 The persistent dock stays outside this boundary.
 
 Back and forward

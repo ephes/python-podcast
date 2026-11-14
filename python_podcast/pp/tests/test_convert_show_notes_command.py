@@ -886,12 +886,15 @@ def test_force_uses_stable_revision_identity_and_content_receipt():
     episode = _make_episode(slug="stable-source", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
     first = episode.save_revision()
     raw = list(episode.body.raw_data)
-    raw[1]["value"][0]["value"] = SHOWNOTE_HTML.replace("Article A", "Newest synthetic article")
+    # Non-ASCII content: the documented canonical form is UTF-8 JSON, not \u escapes.
+    raw[1]["value"][0]["value"] = SHOWNOTE_HTML.replace("Article A", "Neuester synthetischer Ärtikel – ü")
     episode.body = episode.body.stream_block.to_python(raw)
     second = episode.save_revision()
     episode.revisions.filter(pk=second.pk).update(created_at=first.created_at)
     _run("--slug", episode.slug, "--publish")
-    expected_digest = hashlib.sha256(json.dumps(raw, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    canonical = json.dumps(raw, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    assert "Ärtikel" in canonical
+    expected_digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
     for flags in [(), (), ("--apply",), ()]:
         output = _run("--slug", episode.slug, "--force", *flags)
         assert f"source: revision {second.pk}, sha256={expected_digest}" in output
@@ -937,3 +940,14 @@ def test_failure_emits_committed_progress_and_continues_independent_episodes(mon
     monkeypatch.setattr(Command, "_process_episode", original)
     monkeypatch.setattr(Episode, "save_revision", original_save)
     assert "1 changed, 2 skipped" in _run("--apply")
+
+
+@pytest.mark.django_db
+def test_dry_run_report_keeps_block_counts_and_order():
+    episode = _make_episode(
+        slug="block-order",
+        detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}, {"type": "paragraph", "value": SHOWNOTE_HTML}],
+    )
+    episode.save_revision()
+    output = _run("--slug", episode.slug)
+    assert "  before: paragraph, paragraph" in output

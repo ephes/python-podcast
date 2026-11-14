@@ -204,9 +204,11 @@ Implementation
 Archive memory
 --------------
 
-Episodes are read with uncached iteration in chunks of 20. Only compact result
-records (identities, unique block types, warnings and revision IDs) survive each
-episode; full page and revision bodies are not retained by the archive queryset.
+Episodes are read with uncached iteration in chunks of 20. Each episode's report
+prints its full ordered before/after block lists; afterwards only compact result
+records (identities, the first warning and revision IDs, no block types) survive
+each episode; full page and revision bodies are not retained by the archive
+queryset.
 Per-episode locking and editor conflict checks still apply.
 
 Forced source and progress receipts

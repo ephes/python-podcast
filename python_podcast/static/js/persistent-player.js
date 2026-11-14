@@ -1206,10 +1206,15 @@
           window.history.replaceState(window.history.state, "", finalUrl);
         }
         // Set the destination base before any connectedCallback or media load.
-        // Retire htmx-owned polling/extensions through its public removal API.
-        if (window.htmx && typeof window.htmx.remove === "function") {
-          var parent = current.parentNode;
-          var next = current.nextSibling;
+        // Retire htmx-owned polling/extensions/listeners: a synchronous "delete"
+        // swap runs htmx's element cleanup (htmx:beforeCleanupElement) before
+        // detaching; htmx.remove() alone only detaches the node.
+        var parent = current.parentNode;
+        var next = current.nextSibling;
+        if (window.htmx && typeof window.htmx.swap === "function") {
+          window.htmx.swap(current, "", { swapStyle: "delete", swapDelay: 0, transition: false });
+          parent.insertBefore(adopted, next);
+        } else if (window.htmx && typeof window.htmx.remove === "function") {
           window.htmx.remove(current);
           parent.insertBefore(adopted, next);
         } else {

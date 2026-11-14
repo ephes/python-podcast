@@ -241,7 +241,7 @@ class Command(BaseCommand):
                 return EpisodeResult(episode.slug, episode.pk, "skipped", reason="no legacy body to re-convert")
             raw_top, source_revision_pk = source
             source_sha256 = hashlib.sha256(
-                json.dumps(list(raw_top), sort_keys=True, separators=(",", ":")).encode()
+                json.dumps(list(raw_top), sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
             ).hexdigest()
         else:
             raw_top = episode.get_latest_revision_as_object().body.raw_data
@@ -284,7 +284,9 @@ class Command(BaseCommand):
                 )
             return EpisodeResult(episode.slug, episode.pk, "skipped", reason="already converted")
 
-        before_types = sorted({child["type"] for block in detail_blocks for child in block["value"]})
+        # Full ordered lists for the per-episode review; handle() drops them
+        # from the retained summary record right after reporting.
+        before_types = [child["type"] for block in detail_blocks for child in block["value"]]
 
         new_top, after_types, warnings, changed = self._convert_top(raw_top)
         if not changed:
@@ -295,7 +297,7 @@ class Command(BaseCommand):
             episode.pk,
             "changed",
             before_types=before_types,
-            after_types=sorted(set(after_types)),
+            after_types=after_types,
             warnings=warnings,
             source_revision_pk=source_revision_pk,
             source_sha256=source_sha256,
