@@ -207,39 +207,7 @@ def _assert_advancing(page, label):
 
 def _hold_transcript_responses(page):
     """Let real HTTP finish, but release responses to the player explicitly."""
-    page.add_init_script("""(() => {
-        const fetch = window.fetch.bind(window);
-        const waiting = {};
-        const settled = {};
-        const started = {};
-        window.__transcriptGate = {
-            waiting, settled, started,
-            release(url) {
-                const callbacks = waiting[url];
-                if (!callbacks || !callbacks.length) throw new Error('No held transcript: ' + url);
-                delete waiting[url];
-                callbacks.forEach(resolve => resolve());
-            }
-        };
-        window.fetch = async (...args) => {
-            const url = new URL(typeof args[0] === 'string' ? args[0] : args[0].url, location.href);
-            if (url.pathname.includes('player-transcript')) {
-                started[url.href] = (started[url.href] || 0) + 1;
-            }
-            const response = await fetch(...args);
-            if (new URL(response.url).pathname.includes('player-transcript')) {
-                await new Promise(resolve => (waiting[response.url] ||= []).push(resolve));
-                const json = response.json.bind(response);
-                response.json = async () => {
-                    const data = await json();
-                    // Signal the next task, after the player's JSON continuation.
-                    setTimeout(() => { settled[response.url] = true; }, 0);
-                    return data;
-                };
-            }
-            return response;
-        };
-    })();""")
+    page.add_init_script(path=Path(__file__).with_name("transcript-gate.js"))
     requests = Counter()
 
     def record(request):

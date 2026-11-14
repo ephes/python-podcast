@@ -294,9 +294,23 @@ episode too. Separate cases release old/current episode responses in both
 orders and require the current episode's cues after both settle. No fixed sleep
 or permissive baseline count can hide redundant initial requests.
 
+The gate in ``tests/e2e/transcript-gate.js`` marks a JSON read settled in
+``finally``, on the next task after the consumer's continuation. Disconnecting
+the old player cancels its transcript hydration and aborts the response body;
+the resulting ``AbortError`` is a valid terminal outcome for the retired
+episode. Waiting only for successful JSON reads would deadlock the test when
+releasing that response. The current episode must still render its expected
+cues after both releases, so a failed current request cannot pass the test.
+Run ``uv run --locked pytest tests/test_transcript_gate.py`` for a Node-based,
+browser-free regression using native Response streams with successful, aborted
+and malformed JSON bodies. Node is required for this regression. It supplements
+the seven-case real Chromium gate; it does not replace playback verification.
+
 Unreleased
 ----------
 
+* Correct delayed-transcript test settlement for cancelled response bodies,
+  preserving both response orders and all cue/fetch-count assertions.
 * Recover a coherent, closed and retryable dock after synchronous player, panel
   or initial play failures, retaining the original error.
 * Limit enhanced HTML to 2 MiB before parsing and retire pending page navigation
