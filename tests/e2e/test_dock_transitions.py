@@ -363,3 +363,81 @@ def test_previous_dock_teardown_error_does_not_fail_the_new_dock(page, asset_nam
     assert page.evaluate("window.__castPersistentAudioDebug.lastDockError") is None
     assert page.locator("cast-audio-player audio").count() == 1
     assert page.evaluate("[liveControllers.size, livePanels.size, panelListeners]") == [1, 2, 2]
+
+
+def _deferred_player(page, asset_name):
+    page.emulate_media(reduced_motion="reduce")
+    page.set_content("""
+        <div id="cast-persistent-player" hidden></div><div id="paging-area">
+        <button id="play-a" data-cast-play="a">A</button>
+        <button id="play-b" data-cast-play="b">B</button></div>
+        <script type="application/json" id="a">{"audioId":1,"title":"A"}</script>
+        <script type="application/json" id="b">{"audioId":2,"title":"B"}</script>
+    """)
+    page.evaluate("""() => {
+        window.waiters = new Map(); window.allWaiters = []; window.readyListeners = new Set();
+        window.plays = []; window.players = [];
+        const set = window.setTimeout.bind(window), clear = window.clearTimeout.bind(window);
+        window.setTimeout = (fn, ms) => {
+            if (ms !== 15000) return set(fn, ms);
+            const id = set(() => {}, 100000);
+            window.waiters.set(id, fn); window.allWaiters.push(fn); return id;
+        };
+        window.clearTimeout = id => { window.waiters.delete(id); clear(id); };
+        const add = document.addEventListener.bind(document), remove = document.removeEventListener.bind(document);
+        document.addEventListener = (name, fn, opts) => {
+            if (name === 'cast:player-ready') window.readyListeners.add(fn);
+            add(name, fn, opts);
+        };
+        document.removeEventListener = (name, fn, opts) => {
+            if (name === 'cast:player-ready') window.readyListeners.delete(fn);
+            remove(name, fn, opts);
+        };
+        customElements.define('cast-audio-player', class extends HTMLElement {
+            connectedCallback() { window.players.push(this); }
+        });
+        window.deliverReady = player => {
+            player.append(document.createElement('audio'));
+            player.controller = {play: () => window.plays.push(player.dataset.payload)};
+            document.dispatchEvent(new CustomEvent('cast:player-ready', {detail: {playerId: player.id}}));
+        };
+    }""")
+    page.add_script_tag(path=str(STATIC_JS / asset_name))
+
+
+def test_readiness_expiry_clears_owner_and_retry_recovers(page, asset_name):
+    from playwright.sync_api import expect
+
+    _deferred_player(page, asset_name)
+    page.locator("#play-a").click()
+    assert page.evaluate("[waiters.size, readyListeners.size]") == [1, 1]
+    page.evaluate("[...waiters.values()][0]()")
+    expect(page.get_by_role("alert")).to_contain_text("could not become ready")
+    assert page.evaluate("[waiters.size, readyListeners.size]") == [0, 0]
+    assert page.evaluate("window.__castPersistentAudioDebug.activeAudioId") is None
+    assert page.locator("cast-audio-player").count() == 0
+    page.get_by_role("button", name="Retry playback").click()
+    page.evaluate("deliverReady(players[1])")
+    assert page.evaluate("window.__castPersistentAudioDebug.activeAudioId") == 1
+    assert page.evaluate("[waiters.size, readyListeners.size]") == [0, 0]
+    assert len(page.evaluate("window.plays")) == 1
+    expect(page.get_by_role("alert")).to_have_count(0)
+
+
+def test_switch_close_and_late_readiness_do_not_steal_current_owner(page, asset_name):
+    _deferred_player(page, asset_name)
+    page.locator("#play-a").click()
+    page.locator("#play-b").click()
+    page.evaluate("deliverReady(players[0]); allWaiters[0]()")
+    assert page.evaluate("window.__castPersistentAudioDebug.activeAudioId") == 2
+    assert page.evaluate("[waiters.size, readyListeners.size]") == [1, 1]
+    assert page.evaluate("window.plays") == []
+    page.evaluate("deliverReady(players[1])")
+    assert page.evaluate("[waiters.size, readyListeners.size]") == [0, 0]
+    assert len(page.evaluate("window.plays")) == 1
+    page.locator("#play-a").click()
+    page.locator(".cast-dock__close").click()
+    assert page.evaluate("[waiters.size, readyListeners.size]") == [0, 0]
+    page.evaluate("deliverReady(players[2]); allWaiters[2]()")
+    assert page.locator("cast-audio-player").count() == 0
+    assert page.evaluate("window.__castPersistentAudioDebug.activeAudioId") is None

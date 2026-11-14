@@ -1,5 +1,7 @@
 """Generate the committed minified persistent-player assets."""
 
+import os
+import tempfile
 from pathlib import Path
 
 from rcssmin import cssmin
@@ -31,8 +33,57 @@ def minified_assets() -> dict[Path, str]:
 
 
 def main() -> None:
-    for target, content in minified_assets().items():
-        target.write_text(content)
+    assets = minified_assets()
+    temporary: set[Path] = set()
+    staged: dict[Path, Path] = {}
+    backups: dict[Path, Path | None] = {}
+    attempted: list[Path] = []
+
+    def sibling(target: Path) -> Path:
+        descriptor, name = tempfile.mkstemp(prefix=f".{target.name}.", dir=target.parent)
+        os.close(descriptor)
+        path = Path(name)
+        temporary.add(path)
+        return path
+
+    try:
+        # Generate the entire candidate and recovery set before touching any
+        # published asset. Siblings keep each replace on the same filesystem.
+        for target, content in assets.items():
+            backup = None
+            mode = 0o644
+            if target.exists():
+                mode = target.stat().st_mode & 0o777
+                backup = sibling(target)
+                backup.write_bytes(target.read_bytes())
+                backup.chmod(mode)
+            backups[target] = backup
+            candidate = sibling(target)
+            candidate.write_text(content, encoding="utf-8")
+            candidate.chmod(mode)
+            staged[target] = candidate
+        for target, candidate in staged.items():
+            attempted.append(target)
+            os.replace(candidate, target)
+    except Exception as error:
+        for target in reversed(attempted):
+            backup = backups[target]
+            try:
+                if backup is None:
+                    target.unlink(missing_ok=True)
+                else:
+                    os.replace(backup, target)
+            except OSError as recovery_error:
+                if backup is not None:
+                    temporary.discard(backup)
+                    error.add_note(f"Restore {target} from retained recovery copy {backup}: {recovery_error}")
+                else:
+                    error.add_note(f"Could not remove newly published {target}: {recovery_error}")
+        raise
+    finally:
+        for path in temporary:
+            path.unlink(missing_ok=True)
+    for target in assets:
         print(f"wrote {target.relative_to(ROOT)}")
 
 

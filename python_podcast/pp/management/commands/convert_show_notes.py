@@ -82,7 +82,7 @@ REVISION_BOOKKEEPING_FIELDS = frozenset(
 class EpisodeResult:
     slug: str
     pk: int
-    status: str  # "changed" | "skipped"
+    status: str  # "changed" | "skipped" | "failed"
     reason: str = ""
     before_types: list[str] = field(default_factory=list)
     after_types: list[str] = field(default_factory=list)
@@ -165,12 +165,18 @@ class Command(BaseCommand):
                 # potentially sensitive exception text.
                 result = EpisodeResult(episode.slug, episode.pk, "failed", reason=type(exc).__name__)
             self._report(result)
+            self.stdout.flush()
             # Only summary flags/identities survive this episode, not its body
             # or potentially numerous conversion warnings.
-            results.append(replace(
-                result, before_types=[], after_types=[],
-                warnings=result.warnings[:1], publish_conflict=result.publish_conflict[:1],
-            ))
+            results.append(
+                replace(
+                    result,
+                    before_types=[],
+                    after_types=[],
+                    warnings=result.warnings[:1],
+                    publish_conflict=result.publish_conflict[:1],
+                )
+            )
 
         self._report_summary(results, apply=apply, publish=publish)
 
@@ -203,8 +209,8 @@ class Command(BaseCommand):
     def _process_episode(self, episode: Episode, *, apply: bool, publish: bool, force: bool) -> EpisodeResult:
         """Convert one episode; an episode that disappears meanwhile is an edit conflict.
 
-        ``episode`` was loaded by uncached archive iteration. It, or the revision it points
-        to, can be deleted before or while it is processed, and then one of the
+        ``episode`` was loaded by uncached archive iteration. It, or its current
+        revision, can be deleted before or while it is processed, and then one of the
         reads below fails. That is the same situation as any other edit made
         during the run, so it is reported the same way and the batch goes on.
         """

@@ -149,6 +149,18 @@ available as ``window.__castPersistentAudioDebug.lastDockError`` until the next
 successful build. Asynchronous media playback failures retain the player's
 existing handling.
 
+Player readiness deadline
+--------------------------
+
+If the custom player has no audio yet, its activation owns a 15-second deadline
+and a single ready listener. Themes/tests can set
+``data-cast-player-ready-timeout-ms`` on the region. Readiness for the current
+player retires the wait and starts a newly available controller. Ready events
+without current audio do not extend the deadline. Switching or closing cancels
+the pending wait immediately; stale callbacks cannot affect the current dock.
+Expiry disconnects the failed player, clears active cards and shows a retryable
+alert. ``Retry playback`` builds a fresh activation; ``Close`` dismisses it.
+
 Payload identity
 ----------------
 
@@ -221,7 +233,13 @@ retirement, including ignored modified/other-owner clicks, without a DOM/browser
 The real-browser navigation, focus and custom-element tests remain required.
 
 After changing ``persistent-player.js`` run
-``just minify-static``.
+``just minify-static``. The minifier stages all three generated assets plus
+byte-exact recovery copies before publishing sibling replacements. A handled
+write/replace failure restores the previous set; if compensation fails, the
+exception identifies retained recovery copies. Restore those paths before
+committing/deploying and rerun the strict drift test. Publication is not atomic
+across process termination, power loss or concurrent minifier runs; run one
+minifier at a time and verify the committed set after interruption.
 
 ``tests/e2e/test_dock_transitions.py`` exercises queued updates in both orders,
 close during a pending switch, and activation without a transition, for both

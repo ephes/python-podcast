@@ -52,6 +52,7 @@
   // does a normal full load instead. Themes/tests may override it on the region
   // via data-cast-nav-timeout-ms. Resolved in init().
   var NAV_TIMEOUT_MS = 15000;
+  var PLAYER_READY_TIMEOUT_MS = 15000;
   // Bound buffered bytes and DOMParser work, including decoded compressed bodies.
   var NAV_MAX_BYTES = 2 * 1024 * 1024;
 
@@ -84,6 +85,8 @@
     // Listeners scoped to the lifetime of the current dock (audio events that
     // mirror playback state onto the page's play cards). Disposed on teardown.
     dockDisposers: [],
+    dockSeq: 0,
+    readinessCancel: null,
     dockResizeObserver: null,
     lastCardTimeText: "",
     lastDockError: null,
@@ -345,20 +348,43 @@
   function wireActiveAudio() {
     var audio = getActiveAudio();
     if (!audio) {
-      // The custom element upgrades synchronously when the bundle is loaded, but
-      // be defensive: resolve through the registry's document-level ready event.
+      var player = getPersistentPlayerEl();
+      var generation = state.dockSeq;
+      var initialController = player && player.controller;
+      var retired = false;
+      var timer = null;
+      var isCurrent = function () {
+        return !retired && generation === state.dockSeq && player === getPersistentPlayerEl();
+      };
+      var retire = function () {
+        retired = true;
+        window.clearTimeout(timer);
+        document.removeEventListener("cast:player-ready", onReady);
+        if (state.readinessCancel === retire) state.readinessCancel = null;
+      };
       var onReady = function (event) {
-        if (!event.detail || event.detail.playerId !== PLAYER_ID) {
+        if (!isCurrent() || !event.detail || event.detail.playerId !== PLAYER_ID || !getActiveAudio()) {
           return;
         }
-        document.removeEventListener("cast:player-ready", onReady);
+        retire();
         wireActiveAudio();
-        updateCards();
+        try {
+          // An async upgrade had no controller at the initial play action.
+          if (player.controller && player.controller !== initialController &&
+              typeof player.controller.play === "function") player.controller.play();
+          updateCards();
+        } catch (error) {
+          showPlayerReadinessError(error);
+        }
       };
       document.addEventListener("cast:player-ready", onReady);
-      state.dockDisposers.push(function () {
-        document.removeEventListener("cast:player-ready", onReady);
-      });
+      timer = window.setTimeout(function () {
+        var current = isCurrent();
+        retire();
+        if (current) showPlayerReadinessError(new Error("Player readiness deadline exceeded"));
+      }, PLAYER_READY_TIMEOUT_MS);
+      state.readinessCancel = retire;
+      state.dockDisposers.push(retire);
       return;
     }
     var onState = function () {
@@ -382,6 +408,7 @@
   }
 
   function teardownActive() {
+    state.dockSeq += 1;
     var region = getRegion();
     if (!region) {
       return;
@@ -393,6 +420,60 @@
     // before the replacement registers under the same id (no duplicate-id
     // warning).
     region.replaceChildren();
+  }
+
+  function resetFailedDock(error) {
+    state.lastDockError = error;
+    // Removing connected children runs their public disconnect cleanup,
+    // including partially connected player/controllers and panel listeners.
+    // Never let a secondary cleanup error replace the original failure.
+    try {
+      teardownActive();
+    } catch (cleanupError) {
+      // Preserve the initiating failure below.
+    }
+    var region = getRegion();
+    region.hidden = true;
+    region.removeAttribute("data-cast-active");
+    region.classList.remove("cast-vt-active");
+    document.body.classList.remove("cast-dock-open");
+    state.activePayloadId = null;
+    state.activeAudioId = null;
+    state.activeOpener = null;
+    clearMorphNames();
+    releaseDockSpace();
+    updateCards();
+  }
+
+  function showPlayerReadinessError(error) {
+    var payloadId = state.activePayloadId;
+    var opener = state.activeOpener;
+    resetFailedDock(error);
+    var region = getRegion();
+    var message = document.createElement("div");
+    message.className = "cast-dock__inner";
+    message.setAttribute("role", "alert");
+    message.textContent = "The audio player could not become ready. ";
+    var retry = document.createElement("button");
+    retry.type = "button";
+    retry.textContent = "Retry playback";
+    var onRetry = function () { activate(payloadId, opener); };
+    retry.addEventListener("click", onRetry);
+    message.appendChild(retry);
+    var close = document.createElement("button");
+    close.type = "button";
+    close.className = "cast-dock__close";
+    close.textContent = "Close";
+    close.addEventListener("click", closeDock);
+    message.appendChild(close);
+    state.dockDisposers.push(function () {
+      retry.removeEventListener("click", onRetry);
+      close.removeEventListener("click", closeDock);
+    });
+    region.appendChild(message);
+    region.hidden = false;
+    document.body.classList.add("cast-dock-open");
+    reserveDockSpace();
   }
 
   // Build the dock chrome (poster + title + close) and the single live player
@@ -430,25 +511,7 @@
       return wasActive;
     } catch (error) {
       state.lastDockError = connectionError || error;
-      // Removing connected children runs their public disconnect cleanup,
-      // including partially connected player/controllers and panel listeners.
-      // Never let a secondary cleanup error replace the original failure.
-      try {
-        teardownActive();
-      } catch (cleanupError) {
-        // Preserve the initiating failure below.
-      }
-      var region = getRegion();
-      region.hidden = true;
-      region.removeAttribute("data-cast-active");
-      region.classList.remove("cast-vt-active");
-      document.body.classList.remove("cast-dock-open");
-      state.activePayloadId = null;
-      state.activeAudioId = null;
-      state.activeOpener = null;
-      clearMorphNames();
-      releaseDockSpace();
-      updateCards();
+      resetFailedDock(state.lastDockError);
       throw state.lastDockError;
     } finally {
       window.removeEventListener("error", onError);
@@ -582,6 +645,8 @@
       return;
     }
 
+    if (state.readinessCancel) state.readinessCancel();
+
     // Neutralise any in-flight close synchronously — before the (deferred) View
     // Transition callback — so its finish() can't null manager state or tear down
     // the dock we are about to build.
@@ -711,6 +776,7 @@
   // players), distinct from pause (which keeps the player alive). Animates out
   // unless reduced motion is preferred.
   function closeDock() {
+    if (state.readinessCancel) state.readinessCancel();
     var region = getRegion();
     if (!region) {
       return;
@@ -1252,6 +1318,10 @@
     var navTimeout = Number(region.getAttribute("data-cast-nav-timeout-ms"));
     if (isFinite(navTimeout) && navTimeout > 0) {
       NAV_TIMEOUT_MS = navTimeout;
+    }
+    var readyTimeout = Number(region.getAttribute("data-cast-player-ready-timeout-ms"));
+    if (isFinite(readyTimeout) && readyTimeout > 0) {
+      PLAYER_READY_TIMEOUT_MS = readyTimeout;
     }
     installDiagnostics();
     document.addEventListener("click", onClick);

@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Stage and recover the generated asset set on handled publication failures.
+* Bound asynchronous player readiness and retire stale waits on switch/close;
+  expose an explicit playback retry after expiry.
 * Select forced shownote sources deterministically with revision/digest receipts;
   emit committed progress immediately and continue independent episode failures
   with a nonzero summary.

@@ -857,7 +857,8 @@ def test_archive_iteration_keeps_episode_hydration_bounded(monkeypatch):
 
     for number in range(8):
         _make_episode(
-            slug=f"bounded-{number}", num=number,
+            slug=f"bounded-{number}",
+            num=number,
             detail_children=[{"type": "paragraph", "value": "synthetic " * 10000}],
         )
     hydrated = weakref.WeakSet()
@@ -901,20 +902,28 @@ def test_failure_emits_committed_progress_and_continues_independent_episodes(mon
     from python_podcast.pp.management.commands.convert_show_notes import Command
 
     episodes = [
-        _make_episode(slug=f"receipt-{number}", num=number,
-                      detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
+        _make_episode(
+            slug=f"receipt-{number}", num=number, detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}]
+        )
         for number in range(3)
     ]
     original = Command._process_episode
+    original_save = Episode.save_revision
     output = StringIO()
 
     def process(self, episode, **kwargs):
         if episode.pk == episodes[1].pk:
             committed = Episode.objects.get(pk=episodes[0].pk).latest_revision_id
             assert f"revision {committed}" in output.getvalue(), "receipt was buffered beyond its transaction"
-            raise RuntimeError("synthetic private failure detail must not be printed")
         return original(self, episode, **kwargs)
 
+    def save_revision(self, *args, **kwargs):
+        revision = original_save(self, *args, **kwargs)
+        if self.pk == episodes[1].pk:
+            raise RuntimeError("synthetic private failure detail must not be printed")
+        return revision
+
+    monkeypatch.setattr(Episode, "save_revision", save_revision)
     monkeypatch.setattr(Command, "_process_episode", process)
     with pytest.raises(CommandError, match="receipt-1"):
         call_command("convert_show_notes", "--apply", stdout=output)
@@ -926,4 +935,5 @@ def test_failure_emits_committed_progress_and_continues_independent_episodes(mon
     assert episodes[1].revisions.count() == 0
     assert episodes[2].revisions.count() == 1
     monkeypatch.setattr(Command, "_process_episode", original)
+    monkeypatch.setattr(Episode, "save_revision", original_save)
     assert "1 changed, 2 skipped" in _run("--apply")
