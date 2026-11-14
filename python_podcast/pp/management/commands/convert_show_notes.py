@@ -32,10 +32,11 @@ current content.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import uuid
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from cast.models import Episode
 from django.core.exceptions import ObjectDoesNotExist
@@ -81,12 +82,14 @@ REVISION_BOOKKEEPING_FIELDS = frozenset(
 class EpisodeResult:
     slug: str
     pk: int
-    status: str  # "changed" | "skipped"
+    status: str  # "changed" | "skipped" | "failed"
     reason: str = ""
     before_types: list[str] = field(default_factory=list)
     after_types: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     revision_pk: int | None = None
+    source_revision_pk: int | None = None
+    source_sha256: str = ""
     # Why --publish was refused: the unrelated parts of the draft that differ from live.
     publish_conflict: list[str] = field(default_factory=list)
     # The episode changed between reading it and writing the conversion; nothing was written.
@@ -152,14 +155,39 @@ class Command(BaseCommand):
             episodes = episodes.filter(slug__in=slugs)
         episodes = episodes.order_by("pk")
 
-        results = [self._process_episode(episode, apply=apply, publish=publish, force=force) for episode in episodes]
-
-        for result in results:
+        results = []
+        for episode in episodes.iterator(chunk_size=20):
+            try:
+                result = self._process_episode(episode, apply=apply, publish=publish, force=force)
+            except Exception as exc:
+                # The per-episode transaction has unwound. Preserve earlier
+                # receipts and continue independent pages, without printing
+                # potentially sensitive exception text.
+                result = EpisodeResult(episode.slug, episode.pk, "failed", reason=type(exc).__name__)
             self._report(result)
+            self.stdout.flush()
+            # Only summary flags/identities survive this episode, not its body
+            # or potentially numerous conversion warnings.
+            results.append(
+                replace(
+                    result,
+                    before_types=[],
+                    after_types=[],
+                    warnings=result.warnings[:1],
+                    publish_conflict=result.publish_conflict[:1],
+                )
+            )
 
         self._report_summary(results, apply=apply, publish=publish)
 
         errors = []
+        failed = [result.slug for result in results if result.status == "failed"]
+        if failed:
+            errors.append(
+                f"{len(failed)} episode(s) failed: {', '.join(failed)}. "
+                "Earlier reported revisions remain committed; independent episodes were continued. "
+                "Inspect the failed episodes and retry; already converted drafts are skipped."
+            )
         conflicts = [result.slug for result in results if result.publish_conflict]
         if conflicts:
             errors.append(
@@ -181,8 +209,8 @@ class Command(BaseCommand):
     def _process_episode(self, episode: Episode, *, apply: bool, publish: bool, force: bool) -> EpisodeResult:
         """Convert one episode; an episode that disappears meanwhile is an edit conflict.
 
-        ``episode`` was loaded with the whole batch. It, or the revision it points
-        to, can be deleted before or while it is processed, and then one of the
+        ``episode`` was loaded by uncached archive iteration. It, or its current
+        revision, can be deleted before or while it is processed, and then one of the
         reads below fails. That is the same situation as any other edit made
         during the run, so it is reported the same way and the batch goes on.
         """
@@ -205,10 +233,16 @@ class Command(BaseCommand):
         # identifies that state; it is checked again, under the page lock, before
         # anything is written.
         snapshot = self._snapshot(episode) if apply else None
+        source_revision_pk = None
+        source_sha256 = ""
         if force:
-            raw_top = self._legacy_raw_top(episode)
-            if raw_top is None:
+            source = self._legacy_raw_top(episode)
+            if source is None:
                 return EpisodeResult(episode.slug, episode.pk, "skipped", reason="no legacy body to re-convert")
+            raw_top, source_revision_pk = source
+            source_sha256 = hashlib.sha256(
+                json.dumps(list(raw_top), sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+            ).hexdigest()
         else:
             raw_top = episode.get_latest_revision_as_object().body.raw_data
         detail_blocks = [block for block in raw_top if block["type"] == "detail"]
@@ -250,6 +284,8 @@ class Command(BaseCommand):
                 )
             return EpisodeResult(episode.slug, episode.pk, "skipped", reason="already converted")
 
+        # Full ordered lists for the per-episode review; handle() drops them
+        # from the retained summary record right after reporting.
         before_types = [child["type"] for block in detail_blocks for child in block["value"]]
 
         new_top, after_types, warnings, changed = self._convert_top(raw_top)
@@ -263,6 +299,8 @@ class Command(BaseCommand):
             before_types=before_types,
             after_types=after_types,
             warnings=warnings,
+            source_revision_pk=source_revision_pk,
+            source_sha256=source_sha256,
         )
 
         if apply:
@@ -436,7 +474,7 @@ class Command(BaseCommand):
     def _already_converted(detail_blocks: list[dict]) -> bool:
         return any(child["type"] in SHOW_NOTE_TYPES for block in detail_blocks for child in block["value"])
 
-    def _legacy_raw_top(self, episode: Episode) -> list[dict] | None:
+    def _legacy_raw_top(self, episode: Episode) -> tuple[list[dict], int | None] | None:
         """Return the most recent body that has not yet been converted.
 
         Prefers the live body when it is still legacy, otherwise scans revisions
@@ -446,16 +484,16 @@ class Command(BaseCommand):
         live = episode.body.raw_data
         live_detail = [block for block in live if block["type"] == "detail"]
         if live_detail and not self._already_converted(live_detail):
-            return live
+            return live, episode.live_revision_id
 
-        for revision in episode.revisions.order_by("-created_at"):
+        for revision in episode.revisions.order_by("-created_at", "-pk").iterator(chunk_size=20):
             body = revision.content.get("body")
             if body is None:
                 continue
             raw = json.loads(body) if isinstance(body, str) else body
             detail = [block for block in raw if block["type"] == "detail"]
             if detail and not self._already_converted(detail):
-                return raw
+                return raw, revision.pk
         return None
 
     def _convert_top(self, raw_top: list[dict]) -> tuple[list[dict], list[str], list[str], bool]:
@@ -497,6 +535,12 @@ class Command(BaseCommand):
     # -- reporting ------------------------------------------------------
     def _report(self, result: EpisodeResult) -> None:
         self.stdout.write(f"Episode {result.slug} (pk={result.pk})")
+        if result.source_sha256:
+            source = f"revision {result.source_revision_pk}" if result.source_revision_pk else "live page"
+            self.stdout.write(f"  source: {source}, sha256={result.source_sha256}")
+        if result.status == "failed":
+            self.stdout.write(f"  -> failed: {result.reason}; inspect and retry this episode")
+            return
         if result.publish_conflict:
             if result.before_types:
                 self.stdout.write(f"  before: {', '.join(result.before_types) or '(empty)'}")
@@ -537,6 +581,7 @@ class Command(BaseCommand):
 
     def _report_summary(self, results: list[EpisodeResult], *, apply: bool, publish: bool) -> None:
         changed = sum(1 for result in results if result.status == "changed")
+        failed = sum(1 for result in results if result.status == "failed")
         skipped = sum(1 for result in results if result.status == "skipped")
         with_warnings = sum(1 for result in results if result.warnings)
         conflicts = sum(1 for result in results if result.publish_conflict)
@@ -544,6 +589,8 @@ class Command(BaseCommand):
 
         self.stdout.write("")
         summary = f"Summary: {changed} changed, {skipped} skipped, {with_warnings} with warnings"
+        if failed:
+            summary += f", {failed} failed"
         if conflicts:
             summary += f", {conflicts} not published (conflict)"
         if edit_conflicts:

@@ -846,3 +846,108 @@ def test_editor_save_waits_for_the_conversion_and_then_completes():
     assert not editor.is_alive()
     assert errors == []
     assert Episode.objects.get(pk=episode.pk).get_latest_revision_as_object().title == "Saved after the conversion"
+
+
+@pytest.mark.django_db
+def test_archive_iteration_keeps_episode_hydration_bounded(monkeypatch):
+    import gc
+    import weakref
+
+    from python_podcast.pp.management.commands.convert_show_notes import Command, EpisodeResult
+
+    for number in range(8):
+        _make_episode(
+            slug=f"bounded-{number}",
+            num=number,
+            detail_children=[{"type": "paragraph", "value": "synthetic " * 10000}],
+        )
+    hydrated = weakref.WeakSet()
+    original = Episode.from_db
+
+    def from_db(cls, *args, **kwargs):
+        episode = original(*args, **kwargs)
+        hydrated.add(episode)
+        return episode
+
+    def process(self, episode, **kwargs):
+        gc.collect()
+        assert len(hydrated) <= 2, "archive queryset retained full episode bodies"
+        return EpisodeResult(episode.slug, episode.pk, "skipped")
+
+    monkeypatch.setattr(Episode, "from_db", classmethod(from_db))
+    monkeypatch.setattr(Command, "_process_episode", process)
+    assert "8 skipped" in _run()
+
+
+@pytest.mark.django_db
+def test_force_uses_stable_revision_identity_and_content_receipt():
+    import hashlib
+
+    episode = _make_episode(slug="stable-source", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
+    first = episode.save_revision()
+    raw = list(episode.body.raw_data)
+    # Non-ASCII content: the documented canonical form is UTF-8 JSON, not \u escapes.
+    raw[1]["value"][0]["value"] = SHOWNOTE_HTML.replace("Article A", "Neuester synthetischer Ärtikel – ü")
+    episode.body = episode.body.stream_block.to_python(raw)
+    second = episode.save_revision()
+    episode.revisions.filter(pk=second.pk).update(created_at=first.created_at)
+    _run("--slug", episode.slug, "--publish")
+    canonical = json.dumps(raw, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    assert "Ärtikel" in canonical
+    expected_digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    for flags in [(), (), ("--apply",), ()]:
+        output = _run("--slug", episode.slug, "--force", *flags)
+        assert f"source: revision {second.pk}, sha256={expected_digest}" in output
+
+
+@pytest.mark.django_db
+def test_failure_emits_committed_progress_and_continues_independent_episodes(monkeypatch):
+    from python_podcast.pp.management.commands.convert_show_notes import Command
+
+    episodes = [
+        _make_episode(
+            slug=f"receipt-{number}", num=number, detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}]
+        )
+        for number in range(3)
+    ]
+    original = Command._process_episode
+    original_save = Episode.save_revision
+    output = StringIO()
+
+    def process(self, episode, **kwargs):
+        if episode.pk == episodes[1].pk:
+            committed = Episode.objects.get(pk=episodes[0].pk).latest_revision_id
+            assert f"revision {committed}" in output.getvalue(), "receipt was buffered beyond its transaction"
+        return original(self, episode, **kwargs)
+
+    def save_revision(self, *args, **kwargs):
+        revision = original_save(self, *args, **kwargs)
+        if self.pk == episodes[1].pk:
+            raise RuntimeError("synthetic private failure detail must not be printed")
+        return revision
+
+    monkeypatch.setattr(Episode, "save_revision", save_revision)
+    monkeypatch.setattr(Command, "_process_episode", process)
+    with pytest.raises(CommandError, match="receipt-1"):
+        call_command("convert_show_notes", "--apply", stdout=output)
+    receipt = output.getvalue()
+    assert "failed: RuntimeError" in receipt
+    assert "1 failed" in receipt
+    assert "private failure detail" not in receipt
+    assert episodes[0].revisions.count() == 1
+    assert episodes[1].revisions.count() == 0
+    assert episodes[2].revisions.count() == 1
+    monkeypatch.setattr(Command, "_process_episode", original)
+    monkeypatch.setattr(Episode, "save_revision", original_save)
+    assert "1 changed, 2 skipped" in _run("--apply")
+
+
+@pytest.mark.django_db
+def test_dry_run_report_keeps_block_counts_and_order():
+    episode = _make_episode(
+        slug="block-order",
+        detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}, {"type": "paragraph", "value": SHOWNOTE_HTML}],
+    )
+    episode.save_revision()
+    output = _run("--slug", episode.slug)
+    assert "  before: paragraph, paragraph" in output

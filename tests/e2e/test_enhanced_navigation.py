@@ -33,7 +33,8 @@ SETTLE_MS = NAV_TIMEOUT_MS + 600
 def _page_html(marker: str, script: str, *, links: dict[str, str] | None = None) -> bytes:
     anchors = "".join(f'<a id="{link_id}" href="{href}">{link_id}</a>' for link_id, href in (links or {}).items())
     return f"""<!doctype html>
-<html><head><meta charset="utf-8"><title>{marker}</title></head>
+<html><head><meta name="cast-navigation-assets" content="fixture-v1">
+<meta charset="utf-8"><title>{marker}</title></head>
 <body>
 <div id="cast-persistent-player" data-cast-nav-timeout-ms="{NAV_TIMEOUT_MS}">
   <audio id="fixture-audio" src="/audio.wav" loop></audio>
@@ -698,3 +699,94 @@ def test_native_fragment_retires_pending_page_without_late_swap(nav, site, href)
     assert nav.parsed == []
     assert site.seen("/page/b", enhanced=False) == 0
     assert nav.evaluate("document.activeElement.id") == native_focus
+
+
+def test_destination_base_precedes_connection_and_media_requests(nav, site):
+    requests = []
+    nav.on("request", lambda request: requests.append(request.url))
+    nav.route("**/page/deep/image.png", lambda route: route.fulfill(status=204))
+    nav.route("**/page/deep/audio.mp3", lambda route: route.fulfill(status=204))
+    nav.route(
+        "**/page/deep/destination",
+        lambda route: route.fulfill(
+            content_type="text/html",
+            body="""<meta name="cast-navigation-assets" content="fixture-v1"><div id="paging-area"><h1>Destination</h1>
+                <base-capture></base-capture><img src="image.png" srcset="image.png 1x">
+                <audio src="audio.mp3" preload="auto"></audio></div>""",
+        ),
+    )
+    nav.evaluate("""() => {
+        customElements.define('base-capture', class extends HTMLElement {
+            connectedCallback() { window.connectedBase = this.baseURI; }
+        });
+        document.querySelector('#to-b').href = '/page/deep/destination';
+    }""")
+    nav.locator("#to-b").click()
+    nav.wait_for_function("!!window.connectedBase")
+    assert nav.evaluate("window.connectedBase") == site.base + "/page/deep/destination"
+    nav.wait_for_function("document.querySelector('img').complete")
+    assert site.base + "/page/deep/image.png" in requests
+    assert site.base + "/page/image.png" not in requests
+    assert nav.locator("audio[src]").last.evaluate("el => el.src") == site.base + "/page/deep/audio.mp3"
+    assert _audio_untouched(nav)
+
+
+def test_navigation_uses_htmx_removal_before_processing_replacement(nav, site):
+    nav.evaluate("""() => {
+        window.lifecycle = [];
+        window.htmx = {
+            remove(node) {
+                window.lifecycle.push(['cleanup', node.querySelector('#marker').textContent]);
+                node.remove();
+            },
+            process(node) { window.lifecycle.push(['process', node.querySelector('#marker').textContent]); }
+        };
+    }""")
+    nav.locator("#to-b").click()
+    nav.wait_for_function("location.pathname === '/page/b'")
+    assert nav.evaluate("window.lifecycle") == [["cleanup", "A PAGE"], ["process", "B PAGE"]]
+    assert _audio_untouched(nav)
+
+
+def test_navigation_runs_real_htmx_cleanup_on_retired_content(nav, site):
+    # The shipped htmx bundle, not a mock: its public remove() only detaches.
+    import cast
+
+    bundle = Path(cast.__file__).parent / "static" / "cast" / "js" / "htmx.min.js"
+    nav.add_script_tag(content=bundle.read_text(encoding="utf-8"))
+    nav.wait_for_function("() => !!window.htmx && typeof window.htmx.swap === 'function'")
+    nav.evaluate("""() => {
+        window.cleaned = [];
+        document.addEventListener('htmx:beforeCleanupElement', event => {
+            if (event.target.id === 'paging-area') {
+                window.cleaned.push([event.target.querySelector('#marker').textContent, event.target.isConnected]);
+            }
+        });
+    }""")
+    nav.locator("#to-b").click()
+    nav.wait_for_function("location.pathname === '/page/b'")
+    assert nav.evaluate("window.cleaned") == [["A PAGE", True]]
+    assert nav.evaluate("document.querySelector('#paging-area #marker').textContent") == "B PAGE"
+    assert _audio_untouched(nav)
+
+
+@pytest.mark.parametrize("marker", [None, "different-module-css-v2"])
+def test_incompatible_asset_set_uses_native_load(nav, site, marker):
+    nav.evaluate(
+        """marker => {
+        const meta = document.createElement('meta');
+        meta.name = 'cast-navigation-assets'; meta.content = 'fixture-v1'; document.head.append(meta);
+        const fetch = window.fetch;
+        window.fetch = async (url, options) => {
+            const response = await fetch(url, options);
+            const html = await response.text();
+            const tag = marker === null ? '' : `<meta name="cast-navigation-assets" content="${marker}">`;
+            return new Response(html.replace(/<meta name="cast-navigation-assets"[^>]*>/g, '') + tag,
+                {headers: {'content-type': 'text/html'}});
+        };
+    }""",
+        marker,
+    )
+    nav.locator("#to-b").click()
+    nav.wait_for_function("window.__TOKEN === undefined && !!window.__castPersistentAudioDebug")
+    assert site.seen("/page/b", enhanced=False) == 1

@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import pytest
 from django.conf import settings
 
 from scripts.minify_static import minified_assets
@@ -38,3 +39,86 @@ def test_public_media_objects_receive_cache_control_metadata():
     cache_control = settings.AWS_S3_OBJECT_PARAMETERS["CacheControl"]
     assert "max-age=604800" in cache_control
     assert "s-maxage=604800" in cache_control
+
+
+@pytest.mark.parametrize("operation", ["write", "backup", "replace", "replace-after"])
+@pytest.mark.parametrize("failure_call", [1, 2, 3])
+def test_minifier_failure_preserves_previous_asset_set(tmp_path, monkeypatch, operation, failure_call):
+    import os
+
+    from scripts import minify_static
+
+    targets = {tmp_path / f"asset-{number}": f"new {number}\n" for number in range(3)}
+    baseline = {target: f"old {number}\n" for number, target in enumerate(targets)}
+    for target, content in baseline.items():
+        target.write_text(content)
+    monkeypatch.setattr(minify_static, "minified_assets", lambda: targets)
+    monkeypatch.setattr(minify_static, "ROOT", tmp_path)
+    calls = 0
+    original = {
+        "write": Path.write_text,
+        "backup": Path.write_bytes,
+        "replace": os.replace,
+        "replace-after": os.replace,
+    }[operation]
+
+    def fail(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == failure_call:
+            if operation == "replace-after":
+                original(*args, **kwargs)
+            raise OSError("synthetic publication failure")
+        return original(*args, **kwargs)
+
+    if operation == "write":
+        monkeypatch.setattr(Path, "write_text", fail)
+    elif operation == "backup":
+        monkeypatch.setattr(Path, "write_bytes", fail)
+    else:
+        monkeypatch.setattr(os, "replace", fail)
+    with pytest.raises(OSError, match="synthetic publication failure"):
+        minify_static.main()
+    assert {target: target.read_text() for target in targets} == baseline
+    assert set(tmp_path.iterdir()) == set(targets)
+
+
+def test_minifier_success_publishes_expected_set(tmp_path, monkeypatch):
+    from scripts import minify_static
+
+    targets = {tmp_path / f"asset-{number}": f"new {number}\n" for number in range(3)}
+    monkeypatch.setattr(minify_static, "minified_assets", lambda: targets)
+    monkeypatch.setattr(minify_static, "ROOT", tmp_path)
+    minify_static.main()
+    assert {target: target.read_text() for target in targets} == targets
+    assert set(tmp_path.iterdir()) == set(targets)
+    assert all(target.stat().st_mode & 0o444 == 0o444 for target in targets)
+
+
+def test_minifier_reports_retained_recovery_copy_if_compensation_fails(tmp_path, monkeypatch):
+    import os
+
+    from scripts import minify_static
+
+    targets = {tmp_path / f"asset-{number}": f"new {number}\n" for number in range(3)}
+    for target in targets:
+        target.write_text("previous\r\n", newline="")
+    monkeypatch.setattr(minify_static, "minified_assets", lambda: targets)
+    original = os.replace
+    calls = 0
+
+    def fail(source, target):
+        nonlocal calls
+        calls += 1
+        if calls in {2, 4}:
+            raise OSError("synthetic replace failure")
+        return original(source, target)
+
+    monkeypatch.setattr(os, "replace", fail)
+    with pytest.raises(OSError) as error:
+        minify_static.main()
+    retained = set(tmp_path.iterdir()) - set(targets)
+    assert len(retained) == 1
+    recovery = retained.pop()
+    assert recovery.read_bytes() == b"previous\r\n"
+    assert str(recovery) in " ".join(error.value.__notes__)

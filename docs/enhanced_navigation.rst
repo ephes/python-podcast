@@ -79,6 +79,33 @@ targets, already-cancelled events and explicit non-swaps (``shouldSwap=false``)
 do not cancel enhanced navigation; our synchronous swaps do not emit
 htmx swap events, so they do not cancel themselves. Audio is left intact.
 
+Required asset compatibility
+-----------------------------
+
+Both documents must advertise the same nonempty ``cast-navigation-assets`` meta
+value. The pp and bootstrap5 base templates declare separate asset sets. A page
+that needs extra CSS or modules must override ``navigation_assets`` with a new
+value; pages sharing those requirements use the same value. pp posts with
+comments enabled load the comments stylesheet and therefore advertise
+``pp-v1+comments``. Bump the value when
+changing required assets. Missing or different markers cause a native load
+before any partial swap or history update. Enhanced navigation does not import
+head assets. Full loads restart playback.
+
+Adopting destination content
+----------------------------
+
+History is moved to the fetched final URL before connecting incoming nodes.
+Relative media URLs and synchronous custom-element callbacks therefore use the
+destination base. A history or swap error hands over to a full document load.
+When htmx is present, a synchronous public ``htmx.swap(old, "", {swapStyle:
+"delete"})`` retires the old content before connecting and processing the
+replacement: htmx runs its element cleanup (``htmx:beforeCleanupElement``,
+polling, listeners and extension hooks) and then detaches it. ``htmx.remove()``
+alone only detaches, so it is used only as a fallback for builds without
+``swap``.
+The persistent dock stays outside this boundary.
+
 Back and forward
 ----------------
 
@@ -127,6 +154,18 @@ errors retain the browser's original report; the original error object is also
 available as ``window.__castPersistentAudioDebug.lastDockError`` until the next
 successful build. Asynchronous media playback failures retain the player's
 existing handling.
+
+Player readiness deadline
+--------------------------
+
+If the custom player has no audio yet, its activation owns a 15-second deadline
+and a single ready listener. Themes/tests can set
+``data-cast-player-ready-timeout-ms`` on the region. Readiness for the current
+player retires the wait and starts a newly available controller. Ready events
+without current audio do not extend the deadline. Switching or closing cancels
+the pending wait immediately; stale callbacks cannot affect the current dock.
+Expiry disconnects the failed player, clears active cards and shows a retryable
+alert. ``Retry playback`` builds a fresh activation; ``Close`` dismisses it.
 
 Payload identity
 ----------------
@@ -200,7 +239,13 @@ retirement, including ignored modified/other-owner clicks, without a DOM/browser
 The real-browser navigation, focus and custom-element tests remain required.
 
 After changing ``persistent-player.js`` run
-``just minify-static``.
+``just minify-static``. The minifier stages all three generated assets plus
+byte-exact recovery copies before publishing sibling replacements. A handled
+write/replace failure restores the previous set; if compensation fails, the
+exception identifies retained recovery copies. Restore those paths before
+committing/deploying and rerun the strict drift test. Publication is not atomic
+across process termination, power loss or concurrent minifier runs; run one
+minifier at a time and verify the committed set after interruption.
 
 ``tests/e2e/test_dock_transitions.py`` exercises queued updates in both orders,
 close during a pending switch, and activation without a transition, for both

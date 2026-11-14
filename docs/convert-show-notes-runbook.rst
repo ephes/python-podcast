@@ -200,3 +200,33 @@ Implementation
   ``python_podcast/pp/show_notes/converter.py``
 * Tests: ``python_podcast/pp/tests/test_show_note_converter.py`` (parser) and
   ``python_podcast/pp/tests/test_convert_show_notes_command.py`` (command).
+
+Archive memory
+--------------
+
+Episodes are read with uncached iteration in chunks of 20. Each episode's report
+prints its full ordered before/after block lists; afterwards only compact result
+records (identities, the first warning and revision IDs, no block types) survive
+each episode; full page and revision bodies are not retained by the archive
+queryset.
+Per-episode locking and editor conflict checks still apply.
+
+Forced source and progress receipts
+-----------------------------------
+
+``--force`` prefers a still-legacy live body. Otherwise it selects the newest
+unconverted revision by descending ``created_at`` and primary key, including
+equal-timestamp histories. The receipt identifies that revision (or the live
+page when there is no live revision) and the SHA-256 of canonical source-body
+JSON (sorted keys, compact separators, UTF-8). Preserve this receipt with the
+operator's command log; it identifies the input used, not a new publication.
+
+Each episode's result is emitted immediately after its transaction finishes,
+including the created revision ID. A handled per-episode exception reports its
+identity and exception class without exception text; independent later episodes
+continue. The final summary and nonzero exit identify failures and conflicts.
+There is no archive-wide rollback: earlier reported revisions remain committed.
+Retrying a normal ``--apply`` skips already converted drafts. Forced retries
+intentionally create new revisions. Keep stdout/stderr in the operation log;
+process termination or an output-device failure cannot guarantee delivery of
+the last receipt. PostgreSQL concurrency tests remain required for row locks.

@@ -15,10 +15,13 @@ async function main() {
   const window = {
     location: {href: 'https://podcast.invalid/page/a', origin: 'https://podcast.invalid',
       assign: url => assigned.push(url)},
-    history: {state: {}, pushState() {}},
+    history: {state: {}, pushState(state, title, url) { window.location.href = url; }},
     setTimeout, clearTimeout, addEventListener() {}, scrollTo() {}
   };
+  paging.parentNode = {insertBefore() { swapped++; assert.equal(window.location.href, 'https://podcast.invalid/page/b'); }};
+  paging.nextSibling = null;
   const document = {
+    querySelector: () => ({content: 'fixture-v1'}),
     readyState: 'complete', body: {addEventListener() {}},
     getElementById: id => id === 'cast-persistent-player' ? region : paging,
     querySelectorAll: () => [], importNode: node => node,
@@ -28,10 +31,19 @@ async function main() {
   let signal;
   let responseBody;
   const mode = process.argv[3];
+  if (mode === 'cleanup') window.htmx = {process() {}, remove() { assert.fail('remove() skips htmx cleanup'); },
+    swap(node, content, spec) {
+      assert.equal(node, paging);
+      assert.equal(content, '');
+      // spec comes from the vm realm; compare its fields, not its prototype.
+      assert.equal(JSON.stringify(spec), JSON.stringify({swapStyle: 'delete', swapDelay: 0, transition: false}));
+      cancelled++;
+    }};
+  if (mode === 'base') paging.replaceWith = () => { assert.equal(window.location.href, 'https://podcast.invalid/page/b'); swapped++; };
   const deferred = mode !== 'oversize';
   const retired = mode === 'fragment';
   const context = {window, document, URL, AbortController, TextDecoder,
-    DOMParser: class {parseFromString() { parsed++; return {getElementById: () => paging}; }},
+    DOMParser: class {parseFromString() { parsed++; return {getElementById: () => paging, querySelector: () => ({content: mode === 'assets' ? 'other-v2' : 'fixture-v1'})}; }},
     fetch: (url, options) => {
       signal = options.signal;
       if (deferred) return new Promise(resolve => { release = () => resolve(
@@ -58,16 +70,17 @@ async function main() {
   };
   dispatch('/page/b');
   if (deferred) {
-    assert.equal(dispatch('#comments', {modified: mode === 'modified', owned: mode === 'owned'}).defaultPrevented, undefined);
+    if (['fragment', 'modified', 'owned'].includes(mode)) assert.equal(dispatch('#comments', {modified: mode === 'modified', owned: mode === 'owned'}).defaultPrevented, undefined);
     release();
   }
   // Drain promise and stream continuations, including fallback/cancellation.
   await new Promise(resolve => setTimeout(resolve, 100));
   const admitted = deferred && !retired ? 1 : 0;
   assert.equal(parsed, admitted, 'unadmitted or retired HTML reached DOMParser');
-  assert.equal(swapped, admitted);
-  assert.equal(assigned.length, deferred ? 0 : 1);
-  assert.equal(signal.aborted, !deferred || retired);
+  assert.equal(swapped, mode === 'assets' ? 0 : admitted);
+  if (mode === 'cleanup') assert.equal(cancelled, 1, 'htmx owner was not retired');
+  assert.equal(assigned.length, !deferred || mode === 'assets' ? 1 : 0);
+  assert.equal(signal.aborted, !deferred || retired || mode === 'assets');
   if (!deferred) {
     assert.equal(cancelled, 1);
     assert.equal(responseBody.locked, false);
