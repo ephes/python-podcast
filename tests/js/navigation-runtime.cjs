@@ -21,6 +21,7 @@ async function main() {
   paging.parentNode = {insertBefore() { swapped++; assert.equal(window.location.href, 'https://podcast.invalid/page/b'); }};
   paging.nextSibling = null;
   const document = {
+    querySelector: () => ({content: 'fixture-v1'}),
     readyState: 'complete', body: {addEventListener() {}},
     getElementById: id => id === 'cast-persistent-player' ? region : paging,
     querySelectorAll: () => [], importNode: node => node,
@@ -35,7 +36,7 @@ async function main() {
   const deferred = mode !== 'oversize';
   const retired = mode === 'fragment';
   const context = {window, document, URL, AbortController, TextDecoder,
-    DOMParser: class {parseFromString() { parsed++; return {getElementById: () => paging}; }},
+    DOMParser: class {parseFromString() { parsed++; return {getElementById: () => paging, querySelector: () => ({content: mode === 'assets' ? 'other-v2' : 'fixture-v1'})}; }},
     fetch: (url, options) => {
       signal = options.signal;
       if (deferred) return new Promise(resolve => { release = () => resolve(
@@ -69,10 +70,10 @@ async function main() {
   await new Promise(resolve => setTimeout(resolve, 100));
   const admitted = deferred && !retired ? 1 : 0;
   assert.equal(parsed, admitted, 'unadmitted or retired HTML reached DOMParser');
-  assert.equal(swapped, admitted);
+  assert.equal(swapped, mode === 'assets' ? 0 : admitted);
   if (mode === 'cleanup') assert.equal(cancelled, 1, 'htmx owner was not retired');
-  assert.equal(assigned.length, deferred ? 0 : 1);
-  assert.equal(signal.aborted, !deferred || retired);
+  assert.equal(assigned.length, !deferred || mode === 'assets' ? 1 : 0);
+  assert.equal(signal.aborted, !deferred || retired || mode === 'assets');
   if (!deferred) {
     assert.equal(cancelled, 1);
     assert.equal(responseBody.locked, false);

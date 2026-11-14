@@ -200,3 +200,11 @@ Implementation
   ``python_podcast/pp/show_notes/converter.py``
 * Tests: ``python_podcast/pp/tests/test_show_note_converter.py`` (parser) and
   ``python_podcast/pp/tests/test_convert_show_notes_command.py`` (command).
+
+Archive memory
+--------------
+
+Episodes are read with uncached iteration in chunks of 20. Only compact result
+records (identities, unique block types, warnings and revision IDs) survive each
+episode; full page and revision bodies are not retained by the archive queryset.
+Per-episode locking and editor conflict checks still apply.

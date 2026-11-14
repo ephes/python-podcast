@@ -48,6 +48,7 @@
 {% endblock headerscript %}
 
 {% block additionalheaders %}
+  {% block navigation_assets %}<meta name="cast-navigation-assets" content="bootstrap5-v1">{% endblock navigation_assets %}
   <link rel="icon" href="{% static 'images/favicons/favicon.ico' %}">
   {% comment %}
     Mastodon identity verification as a head rel=me link, so the (empty)

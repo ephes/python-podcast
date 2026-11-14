@@ -33,7 +33,7 @@ SETTLE_MS = NAV_TIMEOUT_MS + 600
 def _page_html(marker: str, script: str, *, links: dict[str, str] | None = None) -> bytes:
     anchors = "".join(f'<a id="{link_id}" href="{href}">{link_id}</a>' for link_id, href in (links or {}).items())
     return f"""<!doctype html>
-<html><head><meta charset="utf-8"><title>{marker}</title></head>
+<html><head><meta name="cast-navigation-assets" content="fixture-v1"><meta charset="utf-8"><title>{marker}</title></head>
 <body>
 <div id="cast-persistent-player" data-cast-nav-timeout-ms="{NAV_TIMEOUT_MS}">
   <audio id="fixture-audio" src="/audio.wav" loop></audio>
@@ -709,7 +709,7 @@ def test_destination_base_precedes_connection_and_media_requests(nav, site):
         "**/page/deep/destination",
         lambda route: route.fulfill(
             content_type="text/html",
-            body='''<div id="paging-area"><h1>Destination</h1>
+            body='''<meta name="cast-navigation-assets" content="fixture-v1"><div id="paging-area"><h1>Destination</h1>
                 <base-capture></base-capture><img src="image.png" srcset="image.png 1x">
                 <audio src="audio.mp3" preload="auto"></audio></div>''',
         ),
@@ -745,3 +745,22 @@ def test_navigation_uses_htmx_removal_before_processing_replacement(nav, site):
     nav.wait_for_function("location.pathname === '/page/b'")
     assert nav.evaluate("window.lifecycle") == [["cleanup", "A PAGE"], ["process", "B PAGE"]]
     assert _audio_untouched(nav)
+
+
+@pytest.mark.parametrize("marker", [None, "different-module-css-v2"])
+def test_incompatible_asset_set_uses_native_load(nav, site, marker):
+    nav.evaluate("""marker => {
+        const meta = document.createElement('meta');
+        meta.name = 'cast-navigation-assets'; meta.content = 'fixture-v1'; document.head.append(meta);
+        const fetch = window.fetch;
+        window.fetch = async (url, options) => {
+            const response = await fetch(url, options);
+            const html = await response.text();
+            const tag = marker === null ? '' : `<meta name="cast-navigation-assets" content="${marker}">`;
+            return new Response(html.replace(/<meta name="cast-navigation-assets"[^>]*>/g, '') + tag,
+                {headers: {'content-type': 'text/html'}});
+        };
+    }""", marker)
+    nav.locator("#to-b").click()
+    nav.wait_for_function("window.__TOKEN === undefined && !!window.__castPersistentAudioDebug")
+    assert site.seen("/page/b", enhanced=False) == 1

@@ -79,6 +79,17 @@ targets, already-cancelled events and explicit non-swaps (``shouldSwap=false``)
 do not cancel enhanced navigation; our synchronous swaps do not emit
 htmx swap events, so they do not cancel themselves. Audio is left intact.
 
+Required asset compatibility
+-----------------------------
+
+Both documents must advertise the same nonempty ``cast-navigation-assets`` meta
+value. The pp and bootstrap5 base templates declare separate asset sets. A page
+that needs extra CSS or modules must override ``navigation_assets`` with a new
+value; pages sharing those requirements use the same value. Bump the value when
+changing required assets. Missing or different markers cause a native load
+before any partial swap or history update. Enhanced navigation does not import
+head assets. Full loads restart playback.
+
 Adopting destination content
 ----------------------------
 

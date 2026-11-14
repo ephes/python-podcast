@@ -846,3 +846,33 @@ def test_editor_save_waits_for_the_conversion_and_then_completes():
     assert not editor.is_alive()
     assert errors == []
     assert Episode.objects.get(pk=episode.pk).get_latest_revision_as_object().title == "Saved after the conversion"
+
+
+@pytest.mark.django_db
+def test_archive_iteration_keeps_episode_hydration_bounded(monkeypatch):
+    import gc
+    import weakref
+
+    from python_podcast.pp.management.commands.convert_show_notes import Command, EpisodeResult
+
+    for number in range(8):
+        _make_episode(
+            slug=f"bounded-{number}", num=number,
+            detail_children=[{"type": "paragraph", "value": "synthetic " * 10000}],
+        )
+    hydrated = weakref.WeakSet()
+    original = Episode.from_db
+
+    def from_db(cls, *args, **kwargs):
+        episode = original(*args, **kwargs)
+        hydrated.add(episode)
+        return episode
+
+    def process(self, episode, **kwargs):
+        gc.collect()
+        assert len(hydrated) <= 2, "archive queryset retained full episode bodies"
+        return EpisodeResult(episode.slug, episode.pk, "skipped")
+
+    monkeypatch.setattr(Episode, "from_db", classmethod(from_db))
+    monkeypatch.setattr(Command, "_process_episode", process)
+    assert "8 skipped" in _run()

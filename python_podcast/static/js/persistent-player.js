@@ -1113,6 +1113,14 @@
           return;
         }
         var doc = new DOMParser().parseFromString(text, "text/html");
+        var assetMarker = 'meta[name="cast-navigation-assets"]';
+        var loadedAssets = document.querySelector(assetMarker);
+        var requiredAssets = doc.querySelector(assetMarker);
+        if (!loadedAssets || !requiredAssets || !loadedAssets.content.trim() ||
+            loadedAssets.content !== requiredAssets.content) {
+          fullLoad();
+          return;
+        }
         var incoming = doc.getElementById(PAGING_ID);
         var current = document.getElementById(PAGING_ID);
         if (!incoming || !current) {

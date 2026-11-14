@@ -152,7 +152,7 @@ class Command(BaseCommand):
             episodes = episodes.filter(slug__in=slugs)
         episodes = episodes.order_by("pk")
 
-        results = [self._process_episode(episode, apply=apply, publish=publish, force=force) for episode in episodes]
+        results = [self._process_episode(episode, apply=apply, publish=publish, force=force) for episode in episodes.iterator(chunk_size=20)]
 
         for result in results:
             self._report(result)
@@ -250,7 +250,7 @@ class Command(BaseCommand):
                 )
             return EpisodeResult(episode.slug, episode.pk, "skipped", reason="already converted")
 
-        before_types = [child["type"] for block in detail_blocks for child in block["value"]]
+        before_types = sorted({child["type"] for block in detail_blocks for child in block["value"]})
 
         new_top, after_types, warnings, changed = self._convert_top(raw_top)
         if not changed:
@@ -261,7 +261,7 @@ class Command(BaseCommand):
             episode.pk,
             "changed",
             before_types=before_types,
-            after_types=after_types,
+            after_types=sorted(set(after_types)),
             warnings=warnings,
         )
 

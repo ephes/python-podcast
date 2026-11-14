@@ -4,6 +4,8 @@ Changelog
 Unreleased
 ----------
 
+* Require matching navigation asset markers before partial swaps, and iterate
+  shownote archives without retaining every full episode body.
 * Establish the destination URL before connecting navigation content and retire
   old htmx node work before processing the replacement.
 
