@@ -52,6 +52,8 @@
   // does a normal full load instead. Themes/tests may override it on the region
   // via data-cast-nav-timeout-ms. Resolved in init().
   var NAV_TIMEOUT_MS = 15000;
+  // Bound buffered bytes and DOMParser work, including decoded compressed bodies.
+  var NAV_MAX_BYTES = 2 * 1024 * 1024;
 
   var CLOSE_ICON =
     '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
@@ -84,6 +86,7 @@
     dockDisposers: [],
     dockResizeObserver: null,
     lastCardTimeText: "",
+    lastDockError: null,
   };
 
   // Clear the morph view-transition-names currently held by the dock (poster +
@@ -397,6 +400,55 @@
   // Returns whether the dock was already active (an in-place episode switch),
   // so the caller can avoid re-animating the dock entrance on a switch.
   function buildActiveDock(payloadId, payload, opts) {
+    // Custom-element reactions report exceptions to window instead of throwing
+    // from appendChild/createElement. Observe only this synchronous build; do
+    // not hide the browser's original error report or capture later work.
+    var connectionError = null;
+    var onError = function (event) {
+      if (!connectionError && event.error) {
+        connectionError = event.error;
+      }
+    };
+    window.addEventListener("error", onError);
+    try {
+      var wasActive = constructActiveDock(payloadId, payload, opts, function () {
+        if (connectionError) {
+          throw connectionError;
+        }
+      });
+      if (connectionError) {
+        throw connectionError;
+      }
+      state.lastDockError = null;
+      return wasActive;
+    } catch (error) {
+      state.lastDockError = connectionError || error;
+      // Removing connected children runs their public disconnect cleanup,
+      // including partially connected player/controllers and panel listeners.
+      // Never let a secondary cleanup error replace the original failure.
+      try {
+        teardownActive();
+      } catch (cleanupError) {
+        // Preserve the initiating failure below.
+      }
+      var region = getRegion();
+      region.hidden = true;
+      region.removeAttribute("data-cast-active");
+      region.classList.remove("cast-vt-active");
+      document.body.classList.remove("cast-dock-open");
+      state.activePayloadId = null;
+      state.activeAudioId = null;
+      state.activeOpener = null;
+      clearMorphNames();
+      releaseDockSpace();
+      updateCards();
+      throw state.lastDockError;
+    } finally {
+      window.removeEventListener("error", onError);
+    }
+  }
+
+  function constructActiveDock(payloadId, payload, opts, checkConnection) {
     var region = getRegion();
     if (!region) {
       return false;
@@ -483,6 +535,7 @@
       inner.className += " cast-rise";
     }
     region.appendChild(inner);
+    checkConnection();
     region.hidden = false;
     region.setAttribute("data-cast-active", "true");
     document.body.classList.add("cast-dock-open");
@@ -735,13 +788,13 @@
 
   // ---- enhanced navigation --------------------------------------------------
 
-  function isEnhanceable(anchor) {
+  function isPublicLink(anchor) {
     if (!anchor || anchor.tagName !== "A") {
       return false;
     }
     var href = anchor.getAttribute("href");
-    if (!href || href.charAt(0) === "#") {
-      return false; // hash-only -> browser native
+    if (!href) {
+      return false;
     }
     if (anchor.hasAttribute("download")) {
       return false;
@@ -766,9 +819,6 @@
       url = new URL(anchor.href, window.location.href);
     } catch (err) {
       return false;
-    }
-    if (url.hash && sameUrlIgnoringHash(url.href, window.location.href)) {
-      return false; // same-document fragment scrolling stays browser native
     }
     return isEnhanceableUrl(url);
   }
@@ -915,6 +965,47 @@
     }
   }
 
+  async function readNavigationHtml(response) {
+    var declared = Number(response.headers.get("content-length"));
+    if (declared > NAV_MAX_BYTES) {
+      if (response.body) {
+        await response.body.cancel();
+      }
+      throw new Error("Enhanced navigation HTML exceeds byte budget");
+    }
+    // Never fall back to text(): it buffers an unbounded body before admission.
+    if (!response.body || !response.body.getReader) {
+      throw new Error("Enhanced navigation requires a readable body");
+    }
+    var reader = response.body.getReader();
+    var decoder = new TextDecoder();
+    var parts = [];
+    var total = 0;
+    try {
+      while (true) {
+        var chunk = await reader.read();
+        if (chunk.done) {
+          parts.push(decoder.decode());
+          return parts.join("");
+        }
+        total += chunk.value.byteLength;
+        if (total > NAV_MAX_BYTES) {
+          throw new Error("Enhanced navigation HTML exceeds byte budget");
+        }
+        parts.push(decoder.decode(chunk.value, { stream: true }));
+      }
+    } catch (error) {
+      try {
+        await reader.cancel();
+      } catch (cancelError) {
+        // Preserve the read/admission error even if cancellation also fails.
+      }
+      throw error;
+    } finally {
+      reader.releaseLock();
+    }
+  }
+
   function navigateTo(url, options) {
     var push = !options || options.push !== false;
     var token = ++navToken;
@@ -1007,7 +1098,7 @@
           fullLoad();
           return null;
         }
-        return response.text();
+        return readNavigationHtml(response);
       })
       .then(function (text) {
         if (text === null || text === undefined || !isCurrent()) {
@@ -1050,8 +1141,14 @@
       return;
     }
     var anchor = event.target.closest ? event.target.closest("a") : null;
-    if (!anchor || !isEnhanceable(anchor)) {
+    if (!isPublicLink(anchor)) {
       return;
+    }
+    var destination = new URL(anchor.href, window.location.href);
+    if (anchor.getAttribute("href").charAt(0) === "#" ||
+        (destination.hash && sameUrlIgnoringHash(destination.href, window.location.href))) {
+      invalidateNavigation();
+      return; // let the browser scroll/focus the newer same-document intent
     }
     event.preventDefault();
     navigateTo(anchor.href, { push: true });
@@ -1079,6 +1176,9 @@
       },
       get activeAudioId() {
         return state.activeAudioId;
+      },
+      get lastDockError() {
+        return state.lastDockError;
       },
       get switchCount() {
         return state.switchCount;

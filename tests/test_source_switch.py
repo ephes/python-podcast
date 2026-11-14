@@ -174,7 +174,7 @@ def test_unsupported_or_malformed_input_leaves_the_original_bytes(project, uv_sy
 
     assert excinfo.value.exit_code == 1
     assert path.read_bytes() == text.encode("utf-8")
-    assert sorted(entry.name for entry in project.iterdir()) == ["pyproject.toml"]
+    assert sorted(entry.name for entry in project.iterdir()) == [".source-switch.lock", "pyproject.toml"]
     assert calls == []
     output = capsys.readouterr().out
     assert "left unchanged" in " ".join(output.split())
@@ -257,3 +257,108 @@ def test_dev_switch_without_local_checkouts_changes_nothing(monkeypatch, tmp_pat
     assert path.read_bytes() == MULTILINE_PYPROJECT.encode("utf-8")
     assert calls == []
     assert "activated" not in capsys.readouterr().out
+
+
+def test_source_switch_serializes_read_publication_and_sync(project, tmp_path):
+    """Two real processes must not publish while the other's sync is running."""
+    import os
+    import sys
+    import time
+
+    path = write_pyproject(project)
+    signals = tmp_path / "signals"
+    signals.mkdir()
+    driver = r"""
+import json
+import sys
+import time
+from pathlib import Path
+import commands
+root, signals, mode = Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3]
+commands.get_project_root = lambda: root
+update = commands._update_uv_sources
+
+def wait(name):
+    deadline = time.monotonic() + 10
+    while not (signals / name).exists():
+        if time.monotonic() > deadline:
+            raise RuntimeError('barrier timeout: ' + name)
+        time.sleep(0.01)
+
+def paused_update(*args):
+    (signals / (mode + '-read')).touch()
+    if mode == 'dev':
+        wait('release-read')
+    update(*args)
+commands._update_uv_sources = paused_update
+
+def sync(args, pyproject_path):
+    import tomllib
+    def sources():
+        return tomllib.loads(pyproject_path.read_text())['tool']['uv']['sources']
+    before = sources()
+    (signals / (mode + '-sync')).touch()
+    if mode == 'dev':
+        wait('release-sync')
+    assert sources() == before, 'configuration changed during sync'
+    (signals / (mode + '-result')).write_text(json.dumps(before))
+commands._sync_environment = sync
+(signals / (mode + '-attempt')).touch()
+getattr(commands, 'switch_to_dev_environment' if mode == 'dev' else 'switch_to_git_sources')()
+"""
+
+    def wait(name):
+        deadline = time.monotonic() + 10
+        while not (signals / name).exists():
+            assert time.monotonic() < deadline, f"missing subprocess barrier: {name}"
+            time.sleep(0.01)
+
+    children = []
+    try:
+        for mode in ("dev", "git"):
+            child = subprocess.Popen(
+                [sys.executable, "-c", driver, str(project), str(signals), mode],
+                cwd=os.path.dirname(commands.__file__),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            children.append(child)
+            wait(mode + "-attempt")
+            if mode == "dev":
+                wait("dev-read")
+        # The second process is at the command boundary while the first owns
+        # the operation before its read. It must remain outside that read.
+        time.sleep(0.3)
+        assert not (signals / "git-read").exists(), "concurrent switch entered the read/publication phase"
+        (signals / "release-read").touch()
+        wait("dev-sync")
+        time.sleep(0.3)
+        assert not (signals / "git-read").exists(), "lock released before uv sync completed"
+        (signals / "release-sync").touch()
+        for child in children:
+            stdout, stderr = child.communicate(timeout=10)
+            assert child.returncode == 0, stdout + stderr
+        import json
+
+        for mode, expected in (("dev", DEV_SOURCES), ("git", GIT_SOURCES)):
+            result = json.loads((signals / (mode + "-result")).read_text())
+            assert {key: result[key] for key in expected} == expected
+        assert without_sources(path.read_text()) == without_sources(MULTILINE_PYPROJECT)
+    finally:
+        (signals / "release-read").touch()
+        (signals / "release-sync").touch()
+        for child in children:
+            if child.poll() is None:
+                child.kill()
+            child.communicate(timeout=5)
+
+
+def test_failed_sync_releases_lock_for_recovery(project, uv_sync, capsys):
+    write_pyproject(project)
+    uv_sync(returncode=7)
+    with pytest.raises(typer.Exit):
+        commands.switch_to_dev_environment()
+    uv_sync()
+    commands.switch_to_git_sources()
+    assert "Switched back to git sources!" in capsys.readouterr().out

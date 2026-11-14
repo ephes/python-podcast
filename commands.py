@@ -41,6 +41,7 @@ except ImportError:
     bootstrap()
     import typer
 
+from filelock import FileLock  # noqa
 from rich import print  # noqa
 from rich.markup import escape  # noqa
 
@@ -682,17 +683,19 @@ def switch_to_dev_environment():
 
     if updates:
         try:
-            _update_uv_sources(pyproject_path, updates)
-            print("\nRunning uv sync to apply changes...")
-            _sync_environment(["uv", "sync"], pyproject_path)
+            # Stable sidecar: pyproject itself is atomically replaced. Hold the
+            # same lock as the Git switch through sync and its success report.
+            with FileLock(project_root / ".source-switch.lock"):
+                _update_uv_sources(pyproject_path, updates)
+                print("\nRunning uv sync to apply changes...")
+                _sync_environment(["uv", "sync"], pyproject_path)
+                print("\nDevelopment environment activated!")
+                print("Local packages are now installed in editable mode.")
+                print("Changes to the source code will be reflected immediately.")
+                print("\nIMPORTANT: Remember to run prek hooks before committing!")
+                print("To switch back to git sources, run: uv run python commands.py switch-to-git-sources")
         except SourceSwitchError as error:
             _fail_source_switch(error)
-
-        print("\nDevelopment environment activated!")
-        print("Local packages are now installed in editable mode.")
-        print("Changes to the source code will be reflected immediately.")
-        print("\nIMPORTANT: Remember to run prek hooks before committing!")
-        print("To switch back to git sources, run: uv run python commands.py switch-to-git-sources")
 
 
 @cli.command()
@@ -718,14 +721,14 @@ def switch_to_git_sources():
         print(f"✓ {package_name} -> {git_source}")
 
     try:
-        _update_uv_sources(pyproject_path, default_sources)
-        print("\nRunning uv sync to apply changes...")
-        _sync_environment(["uv", "sync", "--reinstall"], pyproject_path)
+        with FileLock(project_root / ".source-switch.lock"):
+            _update_uv_sources(pyproject_path, default_sources)
+            print("\nRunning uv sync to apply changes...")
+            _sync_environment(["uv", "sync", "--reinstall"], pyproject_path)
+            print("\nSwitched back to git sources!")
+            print("All packages are now installed from their git repositories.")
     except SourceSwitchError as error:
         _fail_source_switch(error)
-
-    print("\nSwitched back to git sources!")
-    print("All packages are now installed from their git repositories.")
 
 
 if __name__ == "__main__":

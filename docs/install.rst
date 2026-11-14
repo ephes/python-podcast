@@ -113,6 +113,17 @@ installed from Git by default. Two commands rewrite their entries in
 ``switch-to-dev-environment`` only switches packages whose checkout exists next
 to this repository.
 
+Concurrent switches
+~~~~~~~~~~~~~~~~~~~
+
+Both commands hold the same project-local ``.source-switch.lock`` from before
+reading ``pyproject.toml`` through atomic replacement, ``uv sync`` and the
+success report. A second switch waits, so each sync sees the sources selected
+by its own operation. The stable sidecar is ignored by Git; do not remove it
+while a switch is running. A failed sync releases the lock and retains the
+new sources for the recovery procedure below. Independent invocations of
+``uv sync`` and manual edits do not participate in this lock.
+
 What happens to ``pyproject.toml``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -150,3 +161,10 @@ command in the environment as it is:
 .. code-block:: console
 
    $ uv run --no-sync commands.py switch-to-git-sources
+
+
+Unreleased
+----------
+
+* Serialize development/Git source switches across source admission, publication
+  and environment sync, retaining explicit failed-sync recovery.

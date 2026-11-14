@@ -52,6 +52,17 @@ destination, so a stalled response cannot leave a clicked link dead. A theme
 can change the deadline with ``data-cast-nav-timeout-ms`` on the
 ``#cast-persistent-player`` region.
 
+HTML is admitted before parsing with a 2 MiB byte ceiling. Declared oversized
+responses are cancelled immediately; streamed bytes (after decompression) are
+counted before retaining each chunk, including when Content-Length is absent or
+incorrect. Oversize bodies and browsers without readable response streams use
+the same single native-navigation fallback.
+
+A plain native same-document fragment click also retires a pending enhanced
+navigation, so its late response or deadline cannot replace the chosen page.
+Modified clicks and links owned by htmx, forms, downloads or another target keep
+their normal behavior without cancelling the pending navigation.
+
 Starting another navigation aborts the request of the previous one. An aborted,
 superseded navigation never triggers the full-load fallback; only the current
 navigation can hand over to the browser. Browsers without ``AbortController``
@@ -101,6 +112,19 @@ rejected transition falls back to plain activation when the update has not run.
 An update that already built the dock is not repeated. All transition promises
 are handled, and cleanup or fallback from an older activation cannot change a
 newer dock.
+
+Dock construction recovery
+--------------------------
+
+A synchronous player/panel connection or initial controller-play failure closes
+and empties the failed dock. Partially connected elements are disconnected,
+manager listeners and reserved space are released, and all cards return to idle.
+The next explicit play builds a fresh player, including when retrying the same
+episode. View Transition fallback does not repeat a failed build. Connection
+errors retain the browser's original report; the original error object is also
+available as ``window.__castPersistentAudioDebug.lastDockError`` until the next
+successful build. Asynchronous media playback failures retain the player's
+existing handling.
 
 Payload identity
 ----------------
@@ -168,6 +192,11 @@ in CI in the ``dock-transitions`` job. The exact isolated local command is::
 
     uv run --locked pytest -p no:django -p no:sugar -o addopts='' -m e2e tests/e2e/test_dock_transitions.py tests/e2e/test_enhanced_navigation.py
 
+``tests/test_navigation_runtime.py`` additionally runs a small Node transport
+oracle when Node is installed. It checks streaming rejection and generation
+retirement, including ignored modified/other-owner clicks, without a DOM/browser.
+The real-browser navigation, focus and custom-element tests remain required.
+
 After changing ``persistent-player.js`` run
 ``just minify-static``.
 
@@ -220,6 +249,11 @@ or permissive baseline count can hide redundant initial requests.
 
 Unreleased
 ----------
+
+* Recover a coherent, closed and retryable dock after synchronous player, panel
+  or initial play failures, retaining the original error.
+* Limit enhanced HTML to 2 MiB before parsing and retire pending page navigation
+  on newer native fragment clicks, preserving continuous audio.
 
 * Verify exact core-media report identities, including every theme and response
   ordering; terminate the owned POSIX process group on timeout or interruption.

@@ -242,3 +242,103 @@ def test_rejected_old_transition_cannot_activate_or_clean_new_owner(dock):
     assert dock.locator("#cast-persistent-player").evaluate("el => el.classList.contains('cast-vt-active')")
     dock.evaluate("window.transitions[1].update()")
     _assert_active(dock, 2, [2])
+
+
+@pytest.mark.parametrize("motion", ["reduce", "no-preference"])
+@pytest.mark.parametrize("fault", ["player", "transcript", "chapters", "play"])
+def test_partial_custom_element_failure_clears_dock_and_next_play_recovers(page, asset_name, motion, fault):
+    # Real custom-element connection callbacks report exceptions to window;
+    # appendChild itself does not throw. Fail after allocating resources so
+    # disconnect must clean a genuinely partially connected element.
+    page.emulate_media(reduced_motion=motion)
+    page.set_content("""
+        <div id="cast-persistent-player" hidden></div>
+        <div id="paging-area">
+          <div class="cast-play-card" data-cast-episode-payload="a">
+            <button id="play-a" data-cast-play="a">A</button>
+          </div>
+          <div class="cast-play-card" data-cast-episode-payload="b">
+            <button id="play-b" data-cast-play="b">B</button>
+          </div>
+        </div>
+        <script type="application/json" id="a">{"audioId":1,"title":"A"}</script>
+        <script type="application/json" id="b">{"audioId":2,"title":"B"}</script>
+    """)
+    page.evaluate("""() => {
+        window.liveControllers = new Set();
+        window.livePanels = new Set();
+        window.panelListeners = 0;
+        window.injectedError = new Error('original dock failure');
+        window.failAt = null;
+        window.registry = new Map();
+        customElements.define('cast-audio-player', class extends HTMLElement {
+            connectedCallback() {
+                const audio = document.createElement('audio');
+                let paused = true;
+                Object.defineProperty(audio, 'paused', {get: () => paused});
+                this.appendChild(audio);
+                const controller = new EventTarget();
+                controller.play = () => {
+                    if (window.failAt === 'play') throw window.injectedError;
+                    paused = false;
+                    audio.dispatchEvent(new Event('play'));
+                };
+                this.controller = controller;
+                window.registry.set(this.id, controller);
+                window.liveControllers.add(controller);
+                document.dispatchEvent(new CustomEvent('cast:player-ready', {detail: {playerId: this.id}}));
+                if (window.failAt === 'player') throw window.injectedError;
+            }
+            disconnectedCallback() {
+                window.liveControllers.delete(this.controller);
+                window.registry.delete(this.id);
+                this.controller = null;
+            }
+        });
+        for (const name of ['transcript', 'chapters']) {
+            customElements.define('cast-' + name, class extends HTMLElement {
+                connectedCallback() {
+                    this.controller = window.registry.get(this.getAttribute('for'));
+                    this.listener = () => {};
+                    this.controller.addEventListener('tick', this.listener);
+                    window.panelListeners++;
+                    window.livePanels.add(this);
+                    if (window.failAt === name) throw window.injectedError;
+                }
+                disconnectedCallback() {
+                    this.controller.removeEventListener('tick', this.listener);
+                    window.panelListeners--;
+                    window.livePanels.delete(this);
+                }
+            });
+        }
+        document.startViewTransition = update => {
+            const done = Promise.resolve().then(update);
+            return {ready: done, updateCallbackDone: done, finished: done};
+        };
+    }""")
+    # Use the same source/minified parameterization as the existing fixture.
+    page.add_script_tag(path=str(STATIC_JS / asset_name))
+    page.locator("#play-a").click()
+    page.wait_for_function("window.__castPersistentAudioDebug.activeAudioId === 1")
+    page.evaluate("fault => { window.failAt = fault; }", fault)
+    page.locator("#play-b").click()
+    page.wait_for_function("window.__castPersistentAudioDebug.activeAudioId === null")
+    assert page.evaluate("window.__castPersistentAudioDebug.lastDockError === window.injectedError")
+    assert page.locator("#cast-persistent-player").evaluate("el => el.hidden && !el.hasAttribute('data-cast-active')")
+    assert page.locator("cast-audio-player, cast-transcript, cast-chapters, audio").count() == 0
+    assert page.evaluate("[liveControllers.size, livePanels.size, panelListeners]") == [0, 0, 0]
+    assert page.evaluate("window.__castPersistentAudioDebug.cardStates()") == {"a": None, "b": None}
+    assert page.evaluate("window.__castPersistentAudioDebug.dockHeight()") == ""
+    page.evaluate("window.failAt = null")
+    # Retry the failed episode explicitly; no stale 'active' card may toggle it.
+    page.locator("#play-b").click()
+    page.wait_for_function("window.__castPersistentAudioDebug.activeAudioId === 2")
+    assert page.locator("cast-audio-player audio").count() == 1
+    assert page.evaluate("[liveControllers.size, livePanels.size, panelListeners]") == [1, 2, 2]
+    assert page.evaluate("window.__castPersistentAudioDebug.cardStates()") == {"a": None, "b": "playing"}
+
+
+@pytest.fixture(params=["persistent-player.js", "persistent-player.min.js"])
+def asset_name(request):
+    return request.param
