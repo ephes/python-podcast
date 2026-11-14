@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Select forced shownote sources deterministically with revision/digest receipts;
+  emit committed progress immediately and continue independent episode failures
+  with a nonzero summary.
 * Require matching navigation asset markers before partial swaps, and iterate
   shownote archives without retaining every full episode body.
 * Establish the destination URL before connecting navigation content and retire

@@ -876,3 +876,54 @@ def test_archive_iteration_keeps_episode_hydration_bounded(monkeypatch):
     monkeypatch.setattr(Episode, "from_db", classmethod(from_db))
     monkeypatch.setattr(Command, "_process_episode", process)
     assert "8 skipped" in _run()
+
+
+@pytest.mark.django_db
+def test_force_uses_stable_revision_identity_and_content_receipt():
+    import hashlib
+
+    episode = _make_episode(slug="stable-source", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
+    first = episode.save_revision()
+    raw = list(episode.body.raw_data)
+    raw[1]["value"][0]["value"] = SHOWNOTE_HTML.replace("Article A", "Newest synthetic article")
+    episode.body = episode.body.stream_block.to_python(raw)
+    second = episode.save_revision()
+    episode.revisions.filter(pk=second.pk).update(created_at=first.created_at)
+    _run("--slug", episode.slug, "--publish")
+    expected_digest = hashlib.sha256(json.dumps(raw, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    for flags in [(), (), ("--apply",), ()]:
+        output = _run("--slug", episode.slug, "--force", *flags)
+        assert f"source: revision {second.pk}, sha256={expected_digest}" in output
+
+
+@pytest.mark.django_db
+def test_failure_emits_committed_progress_and_continues_independent_episodes(monkeypatch):
+    from python_podcast.pp.management.commands.convert_show_notes import Command
+
+    episodes = [
+        _make_episode(slug=f"receipt-{number}", num=number,
+                      detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
+        for number in range(3)
+    ]
+    original = Command._process_episode
+    output = StringIO()
+
+    def process(self, episode, **kwargs):
+        if episode.pk == episodes[1].pk:
+            committed = Episode.objects.get(pk=episodes[0].pk).latest_revision_id
+            assert f"revision {committed}" in output.getvalue(), "receipt was buffered beyond its transaction"
+            raise RuntimeError("synthetic private failure detail must not be printed")
+        return original(self, episode, **kwargs)
+
+    monkeypatch.setattr(Command, "_process_episode", process)
+    with pytest.raises(CommandError, match="receipt-1"):
+        call_command("convert_show_notes", "--apply", stdout=output)
+    receipt = output.getvalue()
+    assert "failed: RuntimeError" in receipt
+    assert "1 failed" in receipt
+    assert "private failure detail" not in receipt
+    assert episodes[0].revisions.count() == 1
+    assert episodes[1].revisions.count() == 0
+    assert episodes[2].revisions.count() == 1
+    monkeypatch.setattr(Command, "_process_episode", original)
+    assert "1 changed, 2 skipped" in _run("--apply")
