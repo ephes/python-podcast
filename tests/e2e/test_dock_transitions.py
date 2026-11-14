@@ -244,13 +244,7 @@ def test_rejected_old_transition_cannot_activate_or_clean_new_owner(dock):
     _assert_active(dock, 2, [2])
 
 
-@pytest.mark.parametrize("motion", ["reduce", "no-preference"])
-@pytest.mark.parametrize("fault", ["player", "transcript", "chapters", "play"])
-def test_partial_custom_element_failure_clears_dock_and_next_play_recovers(page, asset_name, motion, fault):
-    # Real custom-element connection callbacks report exceptions to window;
-    # appendChild itself does not throw. Fail after allocating resources so
-    # disconnect must clean a genuinely partially connected element.
-    page.emulate_media(reduced_motion=motion)
+def _partial_dock_page(page, asset_name):
     page.set_content("""
         <div id="cast-persistent-player" hidden></div>
         <div id="paging-area">
@@ -293,6 +287,7 @@ def test_partial_custom_element_failure_clears_dock_and_next_play_recovers(page,
                 window.liveControllers.delete(this.controller);
                 window.registry.delete(this.id);
                 this.controller = null;
+                if (window.failAt === 'old-disconnect') throw new Error('old dock teardown failure');
             }
         });
         for (const name of ['transcript', 'chapters']) {
@@ -319,6 +314,16 @@ def test_partial_custom_element_failure_clears_dock_and_next_play_recovers(page,
     }""")
     # Use the same source/minified parameterization as the existing fixture.
     page.add_script_tag(path=str(STATIC_JS / asset_name))
+
+
+@pytest.mark.parametrize("motion", ["reduce", "no-preference"])
+@pytest.mark.parametrize("fault", ["player", "transcript", "chapters", "play"])
+def test_partial_custom_element_failure_clears_dock_and_next_play_recovers(page, asset_name, motion, fault):
+    # Real custom-element connection callbacks report exceptions to window;
+    # appendChild itself does not throw. Fail after allocating resources so
+    # disconnect must clean a genuinely partially connected element.
+    page.emulate_media(reduced_motion=motion)
+    _partial_dock_page(page, asset_name)
     page.locator("#play-a").click()
     page.wait_for_function("window.__castPersistentAudioDebug.activeAudioId === 1")
     page.evaluate("fault => { window.failAt = fault; }", fault)
@@ -342,3 +347,19 @@ def test_partial_custom_element_failure_clears_dock_and_next_play_recovers(page,
 @pytest.fixture(params=["persistent-player.js", "persistent-player.min.js"])
 def asset_name(request):
     return request.param
+
+
+@pytest.mark.parametrize("motion", ["reduce", "no-preference"])
+def test_previous_dock_teardown_error_does_not_fail_the_new_dock(page, asset_name, motion):
+    # An error from disconnecting the OLD player during an in-place switch is
+    # not a failure of the new build; the new dock must stay connected.
+    page.emulate_media(reduced_motion=motion)
+    _partial_dock_page(page, asset_name)
+    page.locator("#play-a").click()
+    page.wait_for_function("window.__castPersistentAudioDebug.activeAudioId === 1")
+    page.evaluate("window.failAt = 'old-disconnect'")
+    page.locator("#play-b").click()
+    page.wait_for_function("window.__castPersistentAudioDebug.activeAudioId === 2")
+    assert page.evaluate("window.__castPersistentAudioDebug.lastDockError") is None
+    assert page.locator("cast-audio-player audio").count() == 1
+    assert page.evaluate("[liveControllers.size, livePanels.size, panelListeners]") == [1, 2, 2]

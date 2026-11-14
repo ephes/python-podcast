@@ -411,9 +411,16 @@
     };
     window.addEventListener("error", onError);
     try {
-      var wasActive = constructActiveDock(payloadId, payload, opts, function () {
-        if (connectionError) {
-          throw connectionError;
+      var wasActive = constructActiveDock(payloadId, payload, opts, {
+        // Errors from tearing down the previous dock are not failures of the
+        // new build: observe only from the moment the new dock is attached.
+        begin: function () {
+          connectionError = null;
+        },
+        check: function () {
+          if (connectionError) {
+            throw connectionError;
+          }
         }
       });
       if (connectionError) {
@@ -448,7 +455,7 @@
     }
   }
 
-  function constructActiveDock(payloadId, payload, opts, checkConnection) {
+  function constructActiveDock(payloadId, payload, opts, connection) {
     var region = getRegion();
     if (!region) {
       return false;
@@ -534,8 +541,9 @@
     if (opts && opts.rise && !wasActive) {
       inner.className += " cast-rise";
     }
+    connection.begin();
     region.appendChild(inner);
-    checkConnection();
+    connection.check();
     region.hidden = false;
     region.setAttribute("data-cast-active", "true");
     document.body.classList.add("cast-dock-open");

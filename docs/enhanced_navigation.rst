@@ -120,7 +120,9 @@ A synchronous player/panel connection or initial controller-play failure closes
 and empties the failed dock. Partially connected elements are disconnected,
 manager listeners and reserved space are released, and all cards return to idle.
 The next explicit play builds a fresh player, including when retrying the same
-episode. View Transition fallback does not repeat a failed build. Connection
+episode. Errors reported while the previous dock is torn down during an
+in-place switch are not attributed to the new build. View Transition fallback
+does not repeat a failed build. Connection
 errors retain the browser's original report; the original error object is also
 available as ``window.__castPersistentAudioDebug.lastDockError`` until the next
 successful build. Asynchronous media playback failures retain the player's

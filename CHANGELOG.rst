@@ -11,3 +11,4 @@ Unreleased
   publication and environment sync, retaining failed-sync recovery.
 * Clear partially constructed docks after synchronous player/panel connection
   or initial play failures; retain the original error and allow explicit retry.
+  Errors raised while tearing down the previous dock do not fail the new one.
