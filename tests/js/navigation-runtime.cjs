@@ -15,9 +15,11 @@ async function main() {
   const window = {
     location: {href: 'https://podcast.invalid/page/a', origin: 'https://podcast.invalid',
       assign: url => assigned.push(url)},
-    history: {state: {}, pushState() {}},
+    history: {state: {}, pushState(state, title, url) { window.location.href = url; }},
     setTimeout, clearTimeout, addEventListener() {}, scrollTo() {}
   };
+  paging.parentNode = {insertBefore() { swapped++; assert.equal(window.location.href, 'https://podcast.invalid/page/b'); }};
+  paging.nextSibling = null;
   const document = {
     readyState: 'complete', body: {addEventListener() {}},
     getElementById: id => id === 'cast-persistent-player' ? region : paging,
@@ -28,6 +30,8 @@ async function main() {
   let signal;
   let responseBody;
   const mode = process.argv[3];
+  if (mode === 'cleanup') window.htmx = {process() {}, remove(node) { assert.equal(node, paging); cancelled++; }};
+  if (mode === 'base') paging.replaceWith = () => { assert.equal(window.location.href, 'https://podcast.invalid/page/b'); swapped++; };
   const deferred = mode !== 'oversize';
   const retired = mode === 'fragment';
   const context = {window, document, URL, AbortController, TextDecoder,
@@ -58,7 +62,7 @@ async function main() {
   };
   dispatch('/page/b');
   if (deferred) {
-    assert.equal(dispatch('#comments', {modified: mode === 'modified', owned: mode === 'owned'}).defaultPrevented, undefined);
+    if (['fragment', 'modified', 'owned'].includes(mode)) assert.equal(dispatch('#comments', {modified: mode === 'modified', owned: mode === 'owned'}).defaultPrevented, undefined);
     release();
   }
   // Drain promise and stream continuations, including fallback/cancellation.
@@ -66,6 +70,7 @@ async function main() {
   const admitted = deferred && !retired ? 1 : 0;
   assert.equal(parsed, admitted, 'unadmitted or retired HTML reached DOMParser');
   assert.equal(swapped, admitted);
+  if (mode === 'cleanup') assert.equal(cancelled, 1, 'htmx owner was not retired');
   assert.equal(assigned.length, deferred ? 0 : 1);
   assert.equal(signal.aborted, !deferred || retired);
   if (!deferred) {

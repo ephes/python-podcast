@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Establish the destination URL before connecting navigation content and retire
+  old htmx node work before processing the replacement.
+
 * Bound enhanced-navigation HTML to 2 MiB before parsing; cancel oversized
   streams and use one native-navigation fallback.
 * Retire pending enhanced navigation on a newer native same-page fragment click.

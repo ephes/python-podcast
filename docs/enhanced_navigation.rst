@@ -79,6 +79,16 @@ targets, already-cancelled events and explicit non-swaps (``shouldSwap=false``)
 do not cancel enhanced navigation; our synchronous swaps do not emit
 htmx swap events, so they do not cancel themselves. Audio is left intact.
 
+Adopting destination content
+----------------------------
+
+History is moved to the fetched final URL before connecting incoming nodes.
+Relative media URLs and synchronous custom-element callbacks therefore use the
+destination base. A history or swap error hands over to a full document load.
+When htmx is present, its public ``remove`` API retires the old content before
+connecting and processing the replacement, releasing polling and extension work.
+The persistent dock stays outside this boundary.
+
 Back and forward
 ----------------
 

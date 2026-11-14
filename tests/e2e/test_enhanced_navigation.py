@@ -698,3 +698,50 @@ def test_native_fragment_retires_pending_page_without_late_swap(nav, site, href)
     assert nav.parsed == []
     assert site.seen("/page/b", enhanced=False) == 0
     assert nav.evaluate("document.activeElement.id") == native_focus
+
+
+def test_destination_base_precedes_connection_and_media_requests(nav, site):
+    requests = []
+    nav.on("request", lambda request: requests.append(request.url))
+    nav.route("**/page/deep/image.png", lambda route: route.fulfill(status=204))
+    nav.route("**/page/deep/audio.mp3", lambda route: route.fulfill(status=204))
+    nav.route(
+        "**/page/deep/destination",
+        lambda route: route.fulfill(
+            content_type="text/html",
+            body='''<div id="paging-area"><h1>Destination</h1>
+                <base-capture></base-capture><img src="image.png" srcset="image.png 1x">
+                <audio src="audio.mp3" preload="auto"></audio></div>''',
+        ),
+    )
+    nav.evaluate("""() => {
+        customElements.define('base-capture', class extends HTMLElement {
+            connectedCallback() { window.connectedBase = this.baseURI; }
+        });
+        document.querySelector('#to-b').href = '/page/deep/destination';
+    }""")
+    nav.locator("#to-b").click()
+    nav.wait_for_function("!!window.connectedBase")
+    assert nav.evaluate("window.connectedBase") == site.base + "/page/deep/destination"
+    nav.wait_for_function("document.querySelector('img').complete")
+    assert site.base + "/page/deep/image.png" in requests
+    assert site.base + "/page/image.png" not in requests
+    assert nav.locator("audio[src]").last.evaluate("el => el.src") == site.base + "/page/deep/audio.mp3"
+    assert _audio_untouched(nav)
+
+
+def test_navigation_uses_htmx_removal_before_processing_replacement(nav, site):
+    nav.evaluate("""() => {
+        window.lifecycle = [];
+        window.htmx = {
+            remove(node) {
+                window.lifecycle.push(['cleanup', node.querySelector('#marker').textContent]);
+                node.remove();
+            },
+            process(node) { window.lifecycle.push(['process', node.querySelector('#marker').textContent]); }
+        };
+    }""")
+    nav.locator("#to-b").click()
+    nav.wait_for_function("location.pathname === '/page/b'")
+    assert nav.evaluate("window.lifecycle") == [["cleanup", "A PAGE"], ["process", "B PAGE"]]
+    assert _audio_untouched(nav)

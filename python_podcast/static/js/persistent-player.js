@@ -1123,10 +1123,6 @@
         // navigation is settled only once the swap is complete: if anything
         // below throws (e.g. pushState), the catch still does a full load.
         var adopted = document.importNode(incoming, true);
-        current.replaceWith(adopted);
-        if (doc.title) {
-          document.title = doc.title;
-        }
         if (push) {
           window.history.pushState({ castNav: true }, "", finalUrl);
         } else if (finalUrl !== window.location.href) {
@@ -1134,6 +1130,19 @@
           // entry's URL in place (same state, no new entry) so the address bar
           // and relative links match the displayed page.
           window.history.replaceState(window.history.state, "", finalUrl);
+        }
+        // Set the destination base before any connectedCallback or media load.
+        // Retire htmx-owned polling/extensions through its public removal API.
+        if (window.htmx && typeof window.htmx.remove === "function") {
+          var parent = current.parentNode;
+          var next = current.nextSibling;
+          window.htmx.remove(current);
+          parent.insertBefore(adopted, next);
+        } else {
+          current.replaceWith(adopted);
+        }
+        if (doc.title) {
+          document.title = doc.title;
         }
         onContentReady();
         focusDestination(adopted, finalUrl);
