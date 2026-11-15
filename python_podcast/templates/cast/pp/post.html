@@ -10,16 +10,8 @@
   {% load comments %}
 {% endif %}
 
-{# Comment-enabled posts need the comments stylesheet, which enhanced #}
-{# navigation does not import: advertise a distinct asset set for them. #}
-{% block navigation_assets %}{% if page.comments_are_enabled %}<meta name="cast-navigation-assets" content="pp-v1+comments">{% else %}{{ block.super }}{% endif %}{% endblock navigation_assets %}
-
-{% block css %}
-  {{ block.super }}
-  {% if page.comments_are_enabled %}
-    <link rel="stylesheet" type="text/css" href="{% static 'fluent_comments/css/ajaxcomments.css' %}" />
-  {% endif %}
-{% endblock css %}
+{# The pp base template loads the comments stylesheet on every page, so #}
+{# comment-enabled posts share its navigation asset set. #}
 
 {% block robots %}
   {% if blog.noindex %}

@@ -14,7 +14,7 @@ MARKER = re.compile(rb'<meta name="cast-navigation-assets" content="([^"]+)">')
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("comments_enabled", [True, False])
-def test_pp_post_marker_tracks_comment_stylesheet(client, settings, monkeypatch, comments_enabled):
+def test_pp_pages_share_marker_and_comment_stylesheet(client, settings, monkeypatch, comments_enabled):
     from django_vite.core.asset_loader import DjangoViteAssetLoader
 
     monkeypatch.setattr(DjangoViteAssetLoader, "generate_vite_asset", lambda *a, **kw: "")
@@ -45,8 +45,9 @@ def test_pp_post_marker_tracks_comment_stylesheet(client, settings, monkeypatch,
     assert list_page.status_code == detail.status_code == 200
     (list_marker,) = MARKER.findall(list_page.content)
     (post_marker,) = MARKER.findall(detail.content)
-    has_comment_css = b"fluent_comments/css/ajaxcomments.css" in detail.content
-    assert has_comment_css is comments_enabled
-    # Same required assets <=> same marker, so enhanced navigation never swaps
-    # in comments without their stylesheet.
-    assert (post_marker == list_marker) is (not has_comment_css)
+    # Every pp page loads the comments stylesheet, so comment-enabled posts keep
+    # the shared marker: enhanced navigation (and the persistent player) survives
+    # navigating to and from them, and swapped-in comments are still styled.
+    for response in (list_page, detail):
+        assert b"fluent_comments/css/ajaxcomments.css" in response.content
+    assert post_marker == list_marker == b"pp-v2"

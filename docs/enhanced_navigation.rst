@@ -85,9 +85,12 @@ Required asset compatibility
 Both documents must advertise the same nonempty ``cast-navigation-assets`` meta
 value. The pp and bootstrap5 base templates declare separate asset sets. A page
 that needs extra CSS or modules must override ``navigation_assets`` with a new
-value; pages sharing those requirements use the same value. pp posts with
-comments enabled load the comments stylesheet and therefore advertise
-``pp-v1+comments``. Bump the value when
+value; pages sharing those requirements use the same value. The pp base
+template loads the comments stylesheet on every page (asset set ``pp-v2``), so
+comment-enabled posts share the marker and navigating to or from them keeps the
+persistent player. The pp theme loads no comment JavaScript (``ajaxcomments.js``
+is only used by other themes), so no comment script is lost when a post's content
+is swapped in. Bump the value when
 changing required assets. Missing or different markers cause a native load
 before any partial swap or history update. Enhanced navigation does not import
 head assets. Full loads restart playback.
