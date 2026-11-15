@@ -85,9 +85,12 @@ Required asset compatibility
 Both documents must advertise the same nonempty ``cast-navigation-assets`` meta
 value. The pp and bootstrap5 base templates declare separate asset sets. A page
 that needs extra CSS or modules must override ``navigation_assets`` with a new
-value; pages sharing those requirements use the same value. pp posts with
-comments enabled load the comments stylesheet and therefore advertise
-``pp-v1+comments``. Bump the value when
+value; pages sharing those requirements use the same value. The pp base
+template loads the comments stylesheet on every page (asset set ``pp-v2``), so
+comment-enabled posts share the marker and navigating to or from them keeps the
+persistent player. The pp theme loads no comment JavaScript (``ajaxcomments.js``
+is only used by other themes), so no comment script is lost when a post's content
+is swapped in. Bump the value when
 changing required assets. Missing or different markers cause a native load
 before any partial swap or history update. Enhanced navigation does not import
 head assets. Full loads restart playback.
@@ -294,9 +297,23 @@ episode too. Separate cases release old/current episode responses in both
 orders and require the current episode's cues after both settle. No fixed sleep
 or permissive baseline count can hide redundant initial requests.
 
+The gate in ``tests/e2e/transcript-gate.js`` marks a JSON read settled in
+``finally``, on the next task after the consumer's continuation. Disconnecting
+the old player cancels its transcript hydration and aborts the response body;
+the resulting ``AbortError`` is a valid terminal outcome for the retired
+episode. Waiting only for successful JSON reads would deadlock the test when
+releasing that response. The current episode must still render its expected
+cues after both releases, so a failed current request cannot pass the test.
+Run ``uv run --locked pytest tests/test_transcript_gate.py`` for a Node-based,
+browser-free regression using native Response streams with successful, aborted
+and malformed JSON bodies. Node is required for this regression. It supplements
+the seven-case real Chromium gate; it does not replace playback verification.
+
 Unreleased
 ----------
 
+* Correct delayed-transcript test settlement for cancelled response bodies,
+  preserving both response orders and all cue/fetch-count assertions.
 * Recover a coherent, closed and retryable dock after synchronous player, panel
   or initial play failures, retaining the original error.
 * Limit enhanced HTML to 2 MiB before parsing and retire pending page navigation

@@ -4,6 +4,14 @@ Changelog
 Unreleased
 ----------
 
+* Settle the delayed-transcript browser-test gate after rejected JSON reads too:
+  switching episodes correctly aborts the retired player's response body. Keep
+  both response orders, exact fetch counts and current-episode cue assertions;
+  add a browser-free regression for successful, aborted and invalid JSON bodies.
+* Load the comments stylesheet on every pp page (navigation asset set
+  ``pp-v2``) instead of giving comment-enabled posts their own ``pp-v1+comments``
+  set: that marker forced a full page load when navigating from such a post,
+  which stopped the persistent player in the pp theme.
 * Stage and recover the generated asset set on handled publication failures.
 * Bound asynchronous player readiness and retire stale waits on switch/close;
   expose an explicit playback retry after expiry.

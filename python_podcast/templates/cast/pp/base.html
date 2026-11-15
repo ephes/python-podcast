@@ -6,7 +6,9 @@
 <!DOCTYPE html>
 <html lang="en-US">
   <head>
-    {% block navigation_assets %}<meta name="cast-navigation-assets" content="pp-v1">{% endblock navigation_assets %}
+    {# pp-v2: every pp page loads the comments stylesheet, so comment-enabled posts #}
+    {# share the asset set and enhanced navigation keeps the persistent player. #}
+    {% block navigation_assets %}<meta name="cast-navigation-assets" content="pp-v2">{% endblock navigation_assets %}
     {% block meta %}
       <meta charset="utf-8">
       <meta http-equiv="x-ua-compatible" content="ie=edge">
@@ -24,6 +26,7 @@
 
     {% block css %}
       <link href="{% static 'css/pp/style.css' %}" rel="stylesheet">
+      <link href="{% static 'fluent_comments/css/ajaxcomments.css' %}" rel="stylesheet">
       {% if persistent_audio_player and audio_player_mode == "custom" %}
         {# Cards are initial content, so keep their small critical slice inline. #}
         {# The hidden dock can load without blocking the first paint. #}
