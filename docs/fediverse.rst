@@ -56,7 +56,13 @@ domain while the actual server runs at ``https://fedi.python-podcast.de``. Since
      completion; lookups stuck forever require a web process restart.
    * These ``502``/``504`` responses are expected when the fedi host is slow
      or briefly unreachable. Each is logged as a warning
-     (``Timeout fetching ...`` / ``Failed to fetch ...``) but does not mail
+     with only the fixed discovery path and a fixed category (``timeout``,
+     ``dns``, ``connect``, ``tls``, ``request``, ``protocol``, ``transport``,
+     ``resolver-capacity``, ``resolver-start``, ``response-too-large``,
+     ``response-truncated`` or ``invalid-response``; unknown failures use
+     ``upstream-failure``). Raw transport exceptions, query values and remote
+     status/header/redirect text are omitted. Client error bodies remain generic.
+     These warnings do not mail
      the admins: ``python_podcast.fedi.log_filters.SkipFediUpstreamFailures``,
      installed on the ``django.request`` logger in ``FediConfig.ready``, drops
      the request log record for them. Any ``500`` (an exception in the view or
@@ -70,5 +76,7 @@ example ``curl 'https://python-podcast.de/.well-known/webfinger?resource=acct:sh
 Unreleased
 ----------
 
+* Separate cached discovery representations by ``Accept`` and keep upstream
+  diagnostics free of raw query, exception and header text.
 * Bound outstanding DNS helper threads, retaining their slots after request
   timeout until the underlying lookup completes.
