@@ -197,12 +197,13 @@ def test_redirect_is_passed_on_not_followed(client, upstream):
     assert len(upstream.requests) == 2  # not followed
 
 
-def test_oversized_upstream_returns_502(client, upstream):
+def test_oversized_upstream_returns_502(client, upstream, caplog):
     upstream.routes["/.well-known/nodeinfo"] = lambda h: send_document(h, body=b"x" * (views.MAX_UPSTREAM_BYTES + 1))
 
     response = client.get("/.well-known/nodeinfo")
 
     assert response.status_code == 502
+    assert "response-too-large" in caplog.text
 
 
 def test_connection_refused_returns_502(client, upstream):
@@ -266,7 +267,7 @@ def test_dripping_upstream_hits_overall_deadline(client, upstream, phase):
     assert elapsed < views.UPSTREAM_DEADLINE + 0.5
 
 
-def test_truncated_body_returns_502(client, upstream):
+def test_truncated_body_returns_502(client, upstream, caplog):
     def truncated(handler):
         handler.send_response(200)
         handler.send_header("Content-Length", "100")
@@ -279,6 +280,7 @@ def test_truncated_body_returns_502(client, upstream):
     response = client.get("/.well-known/nodeinfo")
 
     assert response.status_code == 502
+    assert "response-truncated" in caplog.text
 
 
 def test_content_encoding_passed_through_undecoded(client, upstream):
@@ -581,3 +583,149 @@ def test_resolver_start_failure_returns_capacity(monkeypatch):
             views._resolve("synthetic.invalid", 443, 1)
     assert slots.acquire(blocking=False)
     slots.release()
+
+
+@pytest.mark.parametrize("method", ["get", "head", "post"])
+@pytest.mark.parametrize("outcome", [200, 302, 404, "timeout", "connection", "invalid-header"])
+def test_proxy_always_varies_on_accept(rf, monkeypatch, method, outcome):
+    def fetch(*args):
+        if outcome == "timeout":
+            raise views.UpstreamTimeout
+        if outcome == "connection":
+            raise views.UpstreamError("synthetic connection failure")
+        if outcome == "invalid-header":
+            return 200, {"Content-Type": "invalid\r\nheader"}, b"document"
+        return outcome, {"Content-Type": "application/json", "Location": "/next"}, b"document"
+
+    monkeypatch.setattr(views, "_fetch", fetch)
+    response = views.wellknown_webfinger(getattr(rf, method)("/.well-known/webfinger"))
+
+    expected = {"timeout": 504, "connection": 502, "invalid-header": 502}.get(outcome, outcome)
+    assert response.status_code == (405 if method == "post" else expected)
+    assert response["Vary"] == "Accept"
+    if method == "head":
+        assert response.content == b""
+
+
+@pytest.mark.parametrize("upstream_vary, expected", [("aCcEpT, Cookie, Origin", "accept"), ("*", "*")])
+def test_only_supported_upstream_vary_is_preserved(client, upstream, upstream_vary, expected):
+    def document(handler):
+        # Repeated Vary fields must also preserve the wildcard.
+        handler.send_response(200)
+        handler.send_header("Vary", "Accept-Encoding")
+        handler.send_header("Vary", upstream_vary)
+        handler.send_header("Content-Length", "2")
+        handler.end_headers()
+        handler.wfile.write(b"{}")
+
+    upstream.routes["/.well-known/nodeinfo"] = document
+    response = client.get("/.well-known/nodeinfo")
+
+    assert response["Vary"].lower() == expected
+
+
+def test_shared_cache_keeps_accept_representations_separate(rf, monkeypatch):
+    from django.core.cache import cache
+    from django.middleware.cache import CacheMiddleware
+
+    calls = []
+
+    def fetch(url, accept):
+        calls.append(accept)
+        return 200, {"Content-Type": accept}, accept.encode()
+
+    monkeypatch.setattr(views, "_fetch", fetch)
+    cached = CacheMiddleware(views.wellknown_webfinger, cache_timeout=60, key_prefix="fedi-accept-regression")
+    cache.clear()
+    try:
+        for accept in ["application/jrd+json", "application/json"] * 2:
+            response = cached(rf.get("/.well-known/webfinger?resource=synthetic", HTTP_ACCEPT=accept))
+            assert response.content == accept.encode()
+            assert response["Content-Type"] == accept
+        assert calls == ["application/jrd+json", "application/json"]
+    finally:
+        cache.clear()
+
+
+@pytest.mark.parametrize(
+    "phase, category, status",
+    [
+        ("dns", "dns", 502),
+        ("connect", "connect", 502),
+        ("tls", "tls", 502),
+        ("request", "request", 502),
+        ("protocol", "protocol", 502),
+        ("transport", "transport", 502),
+        ("timeout", "timeout", 504),
+        ("capacity", "resolver-capacity", 502),
+        ("resolver-start", "resolver-start", 502),
+        ("invalid-header", "invalid-response", 502),
+        ("invalid-location", "invalid-response", 502),
+        ("invalid-status", "invalid-response", 502),
+        ("unknown", "upstream-failure", 502),
+    ],
+)
+def test_upstream_diagnostics_never_log_remote_text(rf, monkeypatch, caplog, phase, category, status):
+    from types import SimpleNamespace
+
+    secret = "synthetic-query-token\r\nINJECTED-LOG"
+
+    def fail(error):
+        def raise_error(*args, **kwargs):
+            raise error
+
+        return raise_error
+
+    conn = SimpleNamespace(sock=None, request=lambda *a, **kw: None, close=lambda: None)
+    monkeypatch.setattr(views.http.client, "HTTPConnection", lambda *a: conn)
+    if phase == "dns":
+        monkeypatch.setattr(views.socket, "getaddrinfo", fail(socket.gaierror(secret)))
+    elif phase == "connect":
+        monkeypatch.setattr(
+            views, "_resolve", lambda *a: [(socket.AF_INET, socket.SOCK_STREAM, 0, "", ("127.0.0.1", 1))]
+        )
+        sock = SimpleNamespace(settimeout=lambda *a: None, connect=fail(OSError(secret)), close=lambda: None)
+        monkeypatch.setattr(views.socket, "socket", lambda *a: sock)
+    elif phase == "capacity":
+        monkeypatch.setattr(views, "_resolver_slots", threading.BoundedSemaphore(0))
+    elif phase == "resolver-start":
+        # Don't replace Timer.start: only the DNS helper fails to start.
+        real_start = threading.Thread.start
+
+        def start(thread):
+            if isinstance(thread, threading.Timer):
+                return real_start(thread)
+            raise RuntimeError(secret)
+
+        monkeypatch.setattr(threading.Thread, "start", start)
+    elif phase == "unknown":
+        monkeypatch.setattr(views, "_fetch", fail(views.UpstreamError(secret)))
+    elif phase.startswith("invalid-"):
+        headers = {"Content-Type": secret} if phase == "invalid-header" else {"Location": "http://[" + secret}
+        upstream_status = 99 if phase == "invalid-status" else 302
+        monkeypatch.setattr(views, "_fetch", lambda *a: (upstream_status, headers, b"document"))
+    else:
+        monkeypatch.setattr(views, "_connect", lambda *a: None)
+        error = {
+            "tls": ssl.SSLError(secret),
+            "request": ValueError(secret),
+            "protocol": views.http.client.BadStatusLine(secret),
+            "transport": OSError(secret),
+            "timeout": TimeoutError(secret),
+        }[phase]
+        if phase == "protocol":
+            conn.getresponse = fail(error)
+        else:
+            conn.request = fail(error)
+
+    response = views.wellknown_webfinger(rf.get("/.well-known/webfinger?resource=synthetic-query-token"))
+
+    assert response.status_code == status
+    assert response.content == (b"Upstream timeout" if status == 504 else b"Bad gateway")
+    records = [record for record in caplog.records if record.name == views.__name__]
+    assert len(records) == 1
+    assert "/.well-known/webfinger" in records[0].getMessage()
+    assert "synthetic-query-token" not in caplog.text
+    assert "INJECTED-LOG" not in caplog.text
+    assert records[0].exc_info is None
+    assert category in records[0].getMessage()

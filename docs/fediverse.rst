@@ -26,7 +26,16 @@ domain while the actual server runs at ``https://fedi.python-podcast.de``. Since
      nodeinfo takes no query).
    * Only the upstream status, ``Content-Type``, ``Cache-Control``,
      ``Access-Control-Allow-Origin`` and ``Content-Encoding`` are returned.
-     Upstream ``Set-Cookie`` and all other headers are dropped.
+     Upstream ``Set-Cookie`` and all other headers are dropped, except for
+     the supported ``Vary`` fields below.
+   * Every proxy response varies on ``Accept``, including redirects, upstream
+     error statuses, gateway failures, ``HEAD`` and method refusals. Shared caches
+     therefore keep representations separate. Upstream ``Vary: Accept`` is
+     merged case-insensitively; ``Vary: *`` is preserved to prohibit reuse. Other
+     upstream variation fields are dropped because those client headers are
+     not forwarded (``Accept-Encoding`` is fixed to ``identity``). Middleware
+     can still add its own variation fields. ``HEAD`` has no body on gateway
+     failures as well as successful responses.
    * The body is not decoded: ``Accept-Encoding: identity`` is requested and
      any ``Content-Encoding`` the upstream still uses is passed on as is.
    * Upstream redirects are not followed; a ``3xx`` is returned to the client
@@ -47,7 +56,13 @@ domain while the actual server runs at ``https://fedi.python-podcast.de``. Since
      completion; lookups stuck forever require a web process restart.
    * These ``502``/``504`` responses are expected when the fedi host is slow
      or briefly unreachable. Each is logged as a warning
-     (``Timeout fetching ...`` / ``Failed to fetch ...``) but does not mail
+     with only the fixed discovery path and a fixed category (``timeout``,
+     ``dns``, ``connect``, ``tls``, ``request``, ``protocol``, ``transport``,
+     ``resolver-capacity``, ``resolver-start``, ``response-too-large``,
+     ``response-truncated`` or ``invalid-response``; unknown failures use
+     ``upstream-failure``). Raw transport exceptions, query values and remote
+     status/header/redirect text are omitted. Client error bodies remain generic.
+     These warnings do not mail
      the admins: ``python_podcast.fedi.log_filters.SkipFediUpstreamFailures``,
      installed on the ``django.request`` logger in ``FediConfig.ready``, drops
      the request log record for them. Any ``500`` (an exception in the view or
@@ -61,5 +76,7 @@ example ``curl 'https://python-podcast.de/.well-known/webfinger?resource=acct:sh
 Unreleased
 ----------
 
+* Separate cached discovery representations by ``Accept`` and keep upstream
+  diagnostics free of raw query, exception and header text.
 * Bound outstanding DNS helper threads, retaining their slots after request
   timeout until the underlying lookup completes.

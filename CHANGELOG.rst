@@ -4,6 +4,14 @@ Changelog
 Unreleased
 ----------
 
+* Log Fediverse upstream failures with fixed categories and discovery paths;
+  omit raw exception, query, status, header and redirect text while preserving
+  generic 502/504 responses and timeout/capacity/protocol distinctions.
+
+* Vary every Fediverse discovery proxy response on ``Accept`` to separate
+  cached representations; preserve supported upstream variation and wildcard
+  no-reuse semantics, and keep gateway ``HEAD`` responses bodyless.
+
 * Settle the delayed-transcript browser-test gate after rejected JSON reads too:
   switching episodes correctly aborts the retired player's response body. Keep
   both response orders, exact fetch counts and current-episode cue assertions;

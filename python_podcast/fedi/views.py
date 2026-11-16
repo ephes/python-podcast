@@ -8,6 +8,8 @@ from urllib.parse import urljoin, urlsplit
 
 import certifi
 from django.http import HttpResponse, HttpResponseNotAllowed, HttpResponseRedirect
+from django.utils.cache import patch_vary_headers
+from django.views.decorators.vary import vary_on_headers
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +41,24 @@ class UpstreamTimeout(Exception):
 
 
 class UpstreamError(Exception):
-    pass
+    """A fixed diagnostic category, never remote exception or header text."""
+
+    def __init__(self, category):
+        if category not in {
+            "response-too-large",
+            "response-truncated",
+            "resolver-capacity",
+            "resolver-start",
+            "dns",
+            "connect",
+            "tls",
+            "request",
+            "protocol",
+            "transport",
+        }:
+            category = "upstream-failure"
+        self.category = category
+        super().__init__(category)
 
 
 def _get_ssl_context():
@@ -60,11 +79,11 @@ def _read_limited(upstream) -> bytes:
             break
         total += len(chunk)
         if total > MAX_UPSTREAM_BYTES:
-            raise UpstreamError("upstream response too large")
+            raise UpstreamError("response-too-large")
         chunks.append(chunk)
     if upstream.length:
         # read1 signals a premature EOF only by returning b"" with bytes outstanding.
-        raise UpstreamError("upstream response truncated")
+        raise UpstreamError("response-truncated")
     return b"".join(chunks)
 
 
@@ -76,7 +95,7 @@ def _resolve(host, port, remaining):
     if remaining <= 0:
         raise UpstreamTimeout
     if not _resolver_slots.acquire(blocking=False):
-        raise UpstreamError("resolver capacity exhausted")
+        raise UpstreamError("resolver-capacity")
     slots = _resolver_slots
     result = {}
 
@@ -93,12 +112,12 @@ def _resolve(host, port, remaining):
         resolver.start()
     except RuntimeError as exc:
         slots.release()
-        raise UpstreamError("cannot start resolver") from exc
+        raise UpstreamError("resolver-start") from exc
     resolver.join(max(remaining, 0))
     if resolver.is_alive():
         raise UpstreamTimeout
     if "error" in result:
-        raise UpstreamError(f"cannot resolve {host}: {result['error']}")
+        raise UpstreamError("dns")
     return result["addresses"]
 
 
@@ -141,7 +160,7 @@ def _connect(conn, parts, deadline, deadline_hit, active):
         return
     if isinstance(last_error, TimeoutError):
         raise UpstreamTimeout from last_error
-    raise UpstreamError(f"cannot connect to {parts.hostname}: {last_error}")
+    raise UpstreamError("connect")
 
 
 def _fetch(url, accept):
@@ -198,7 +217,15 @@ def _fetch(url, accept):
     except (OSError, ValueError, http.client.HTTPException) as exc:
         if deadline_hit.is_set() or isinstance(exc, TimeoutError):
             raise UpstreamTimeout from exc
-        raise UpstreamError(f"{type(exc).__name__}: {exc}") from exc
+        if isinstance(exc, ssl.SSLError):
+            category = "tls"
+        elif isinstance(exc, ValueError):
+            category = "request"
+        elif isinstance(exc, http.client.HTTPException):
+            category = "protocol"
+        else:
+            category = "transport"
+        raise UpstreamError(category) from exc
     finally:
         timer.cancel()
         conn.close()
@@ -206,6 +233,7 @@ def _fetch(url, accept):
             active["sock"].close()
 
 
+@vary_on_headers("Accept")
 def _proxy_wellknown(request, path, *, forward_query=True, default_accept="*/*"):
     """
     Fetch a fediverse .well-known document from the fedi host and return it.
@@ -226,18 +254,18 @@ def _proxy_wellknown(request, path, *, forward_query=True, default_accept="*/*")
     try:
         status, headers, content = _fetch(url, accept)
     except UpstreamTimeout:
-        logger.warning("Timeout fetching %s", path)
+        logger.warning("Timeout fetching %s (timeout)", path)
         return _gateway_error(request, "Upstream timeout", 504)
     except UpstreamError as exc:
-        logger.warning("Failed to fetch %s: %s", path, exc)
+        logger.warning("Failed to fetch %s (%s)", path, exc.category)
         return _gateway_error(request, "Bad gateway", 502)
 
     try:
         return _build_response(request, url, status, headers, content)
-    except ValueError as exc:
+    except ValueError:
         # Invalid upstream status or header values (BadHeaderError is a ValueError),
         # or a malformed redirect location.
-        logger.warning("Invalid upstream response for %s: %s", path, exc)
+        logger.warning("Invalid upstream response for %s (invalid-response)", path)
         return _gateway_error(request, "Bad gateway", 502)
 
 
@@ -248,7 +276,7 @@ def _gateway_error(request, text, status):
     the admins about it. The warning logged above stays the record.
     """
     request.fedi_upstream_failure = True
-    return HttpResponse(text, status=status, content_type="text/plain")
+    return HttpResponse(b"" if request.method == "HEAD" else text, status=status, content_type="text/plain")
 
 
 def _build_response(request, url, status, headers, content):
@@ -261,6 +289,13 @@ def _build_response(request, url, status, headers, content):
         value = headers.get(name)
         if value is not None:
             response[name] = value
+    # Accept is the only variable client input forwarded upstream. Preserve the
+    # wildcard's no-reuse semantics too, including repeated upstream Vary fields.
+    for name, value in headers.items():
+        if name.lower() == "vary":
+            patch_vary_headers(
+                response, [field.strip() for field in value.split(",") if field.strip().lower() in {"accept", "*"}]
+            )
     location = headers.get("Location")
     if 300 <= status < 400 and location:
         # Redirects are not followed; pass them on, absolute against the fedi host.
