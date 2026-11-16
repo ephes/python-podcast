@@ -8,6 +8,8 @@ from urllib.parse import urljoin, urlsplit
 
 import certifi
 from django.http import HttpResponse, HttpResponseNotAllowed, HttpResponseRedirect
+from django.utils.cache import patch_vary_headers
+from django.views.decorators.vary import vary_on_headers
 
 logger = logging.getLogger(__name__)
 
@@ -206,6 +208,7 @@ def _fetch(url, accept):
             active["sock"].close()
 
 
+@vary_on_headers("Accept")
 def _proxy_wellknown(request, path, *, forward_query=True, default_accept="*/*"):
     """
     Fetch a fediverse .well-known document from the fedi host and return it.
@@ -248,7 +251,7 @@ def _gateway_error(request, text, status):
     the admins about it. The warning logged above stays the record.
     """
     request.fedi_upstream_failure = True
-    return HttpResponse(text, status=status, content_type="text/plain")
+    return HttpResponse(b"" if request.method == "HEAD" else text, status=status, content_type="text/plain")
 
 
 def _build_response(request, url, status, headers, content):
@@ -261,6 +264,13 @@ def _build_response(request, url, status, headers, content):
         value = headers.get(name)
         if value is not None:
             response[name] = value
+    # Accept is the only variable client input forwarded upstream. Preserve the
+    # wildcard's no-reuse semantics too, including repeated upstream Vary fields.
+    for name, value in headers.items():
+        if name.lower() == "vary":
+            patch_vary_headers(
+                response, [field.strip() for field in value.split(",") if field.strip().lower() in {"accept", "*"}]
+            )
     location = headers.get("Location")
     if 300 <= status < 400 and location:
         # Redirects are not followed; pass them on, absolute against the fedi host.

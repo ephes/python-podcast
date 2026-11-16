@@ -581,3 +581,65 @@ def test_resolver_start_failure_returns_capacity(monkeypatch):
             views._resolve("synthetic.invalid", 443, 1)
     assert slots.acquire(blocking=False)
     slots.release()
+
+
+@pytest.mark.parametrize("method", ["get", "head", "post"])
+@pytest.mark.parametrize("outcome", [200, 302, 404, "timeout", "connection", "invalid-header"])
+def test_proxy_always_varies_on_accept(rf, monkeypatch, method, outcome):
+    def fetch(*args):
+        if outcome == "timeout":
+            raise views.UpstreamTimeout
+        if outcome == "connection":
+            raise views.UpstreamError("synthetic connection failure")
+        if outcome == "invalid-header":
+            return 200, {"Content-Type": "invalid\r\nheader"}, b"document"
+        return outcome, {"Content-Type": "application/json", "Location": "/next"}, b"document"
+
+    monkeypatch.setattr(views, "_fetch", fetch)
+    response = views.wellknown_webfinger(getattr(rf, method)("/.well-known/webfinger"))
+
+    expected = {"timeout": 504, "connection": 502, "invalid-header": 502}.get(outcome, outcome)
+    assert response.status_code == (405 if method == "post" else expected)
+    assert response["Vary"] == "Accept"
+    if method == "head":
+        assert response.content == b""
+
+
+@pytest.mark.parametrize("upstream_vary, expected", [("aCcEpT, Cookie, Origin", "accept"), ("*", "*")])
+def test_only_supported_upstream_vary_is_preserved(client, upstream, upstream_vary, expected):
+    def document(handler):
+        # Repeated Vary fields must also preserve the wildcard.
+        handler.send_response(200)
+        handler.send_header("Vary", "Accept-Encoding")
+        handler.send_header("Vary", upstream_vary)
+        handler.send_header("Content-Length", "2")
+        handler.end_headers()
+        handler.wfile.write(b"{}")
+
+    upstream.routes["/.well-known/nodeinfo"] = document
+    response = client.get("/.well-known/nodeinfo")
+
+    assert response["Vary"].lower() == expected
+
+
+def test_shared_cache_keeps_accept_representations_separate(rf, monkeypatch):
+    from django.core.cache import cache
+    from django.middleware.cache import CacheMiddleware
+
+    calls = []
+
+    def fetch(url, accept):
+        calls.append(accept)
+        return 200, {"Content-Type": accept}, accept.encode()
+
+    monkeypatch.setattr(views, "_fetch", fetch)
+    cached = CacheMiddleware(views.wellknown_webfinger, cache_timeout=60, key_prefix="fedi-accept-regression")
+    cache.clear()
+    try:
+        for accept in ["application/jrd+json", "application/json"] * 2:
+            response = cached(rf.get("/.well-known/webfinger?resource=synthetic", HTTP_ACCEPT=accept))
+            assert response.content == accept.encode()
+            assert response["Content-Type"] == accept
+        assert calls == ["application/jrd+json", "application/json"]
+    finally:
+        cache.clear()
