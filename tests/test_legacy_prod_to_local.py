@@ -44,6 +44,7 @@ def test_invalid_identity_stops_before_fetch(monkeypatch, key, value):
     helper = load_helper()
     calls = []
     monkeypatch.setattr(helper, "fetch_backup", lambda *args: calls.append(args))
+    monkeypatch.setattr(helper, "check_restore", lambda *args, **kwargs: calls.append(args))
     env = {"PRODUCTION_HOST": "backup.invalid", "PRODUCTION_USERNAME": "test", "DATABASE_NAME": "podcast"}
     env["POSTGRES_USER"] = "local_role"
     env[key] = value
@@ -78,6 +79,7 @@ def test_transfer_does_not_swallow_restore_process_failure(monkeypatch, tmp_path
     helper = load_helper()
     path = tmp_path / "dump.sql.gz"
     monkeypatch.setattr(helper, "fetch_backup", lambda *args: path)
+    monkeypatch.setattr(helper, "check_restore", lambda *args, **kwargs: None)
 
     def fail(*args, **kwargs):
         raise subprocess.CalledProcessError(2, args[0])
@@ -103,6 +105,74 @@ def test_local_dump_command_delegates_confirmation(monkeypatch, tmp_path):
     result = CliRunner().invoke(commands.cli, ["restore-local-dump", str(path), "--replace-existing"])
     assert result.exit_code == 0, result.output
     assert calls == [(path, "python_podcast", True)]
+
+
+def test_precondition_check_uses_literal_argv_and_connection_role(monkeypatch):
+    helper = load_helper()
+    calls = []
+    monkeypatch.setattr(helper.subprocess, "run", lambda *args, **kwargs: calls.append((args, kwargs)))
+    helper.check_restore("podcast", "local_role", replace_existing=False)
+    args, kwargs = calls[0]
+    assert args[0] == [
+        sys.executable,
+        str(SCRIPT.parents[1] / "commands.py"),
+        "check-local-restore",
+        "--local-db-name",
+        "podcast",
+    ]
+    assert kwargs["env"]["PGUSER"] == "local_role"
+    assert kwargs["check"] is True
+    assert not kwargs.get("shell")
+
+
+def test_refused_precondition_stops_before_contacting_production(monkeypatch):
+    helper = load_helper()
+    calls = []
+
+    def refused(*args, **kwargs):
+        calls.append("check")
+        raise subprocess.CalledProcessError(1, ["check-local-restore"])
+
+    monkeypatch.setattr(helper, "check_restore", refused)
+    monkeypatch.setattr(helper, "fetch_backup", lambda *args: calls.append("fetch"))
+    monkeypatch.setattr(helper, "restore_download", lambda *args, **kwargs: calls.append("restore"))
+    with pytest.raises(subprocess.CalledProcessError):
+        helper.transfer(
+            {
+                "PRODUCTION_HOST": "backup.invalid",
+                "PRODUCTION_USERNAME": "test",
+                "DATABASE_NAME": "podcast",
+                "POSTGRES_USER": "local_role",
+            }
+        )
+    assert calls == ["check"]
+
+
+@pytest.mark.parametrize(
+    "existing,replace,exit_code",
+    [
+        (set(), False, 0),
+        ({"python_podcast"}, False, 1),
+        ({"python_podcast"}, True, 0),
+        ({"python_podcast", "python_podcast_restore_staging"}, True, 1),
+        ({"python_podcast_restore_previous"}, True, 1),
+    ],
+)
+def test_check_local_restore_command_changes_nothing(monkeypatch, existing, replace, exit_code):
+    calls = []
+    monkeypatch.setattr(commands, "_honcho_is_running", lambda: False)
+    monkeypatch.setattr(commands, "_local_database_exists", lambda name: calls.append(name) or name in existing)
+    monkeypatch.setattr(commands.subprocess, "run", lambda *args, **kwargs: pytest.fail("check ran a process"))
+    arguments = ["check-local-restore"] + (["--replace-existing"] if replace else [])
+    result = CliRunner().invoke(commands.cli, arguments)
+    assert result.exit_code == exit_code, result.output
+    assert calls
+
+
+def test_check_local_restore_command_refuses_while_honcho_runs(monkeypatch):
+    monkeypatch.setattr(commands, "_honcho_is_running", lambda: True)
+    result = CliRunner().invoke(commands.cli, ["check-local-restore"])
+    assert result.exit_code == 1
 
 
 # Faithful minimal Paramiko seams: no connection or subprocess is started.
@@ -267,6 +337,9 @@ def transport(monkeypatch):
         )
         monkeypatch.setattr(fake, "open_session", lambda **kwargs: channel)
         monkeypatch.setattr(paramiko, "SSHClient", lambda: fake)
+        monkeypatch.setattr(
+            helper, "check_restore", lambda *args, **kwargs: fake.calls.append(("check", args, kwargs))
+        )
         return fake
 
     return helper, install
@@ -309,19 +382,31 @@ def test_uncertain_producer_never_reaches_local_restore(transport, monkeypatch, 
 
 
 @pytest.mark.parametrize(
-    "fault", ["partial", "wrong-size", "symlink", "close-file", "close-sftp", "close-channel", "close-client"]
+    "fault,error,message",
+    [
+        ("partial", OSError, "synthetic interrupted download"),
+        ("wrong-size", ValueError, "backup download is incomplete"),
+        ("symlink", ValueError, "regular nonempty file"),
+        ("close-file", OSError, "synthetic close failure: file"),
+        ("close-sftp", OSError, "synthetic close failure: sftp"),
+        ("close-channel", OSError, "synthetic close failure: channel"),
+        ("close-client", OSError, "synthetic close failure: client"),
+    ],
 )
-def test_transfer_fault_preserves_previous_backup_and_prevents_restore(transport, monkeypatch, tmp_path, fault):
+def test_transfer_fault_preserves_previous_backup_and_prevents_restore(
+    transport, monkeypatch, tmp_path, fault, error, message
+):
     helper, install = transport
     fake = install(fault=fault)
     backups = tmp_path / "backups"
     backups.mkdir()
-    previous = backups / "backup_test.sql.gz"
+    # A different name: a collision with the announced name would refuse on its own.
+    previous = backups / "backup_older.sql.gz"
     previous.write_bytes(b"previous backup")
     calls = []
     monkeypatch.setattr(helper, "ROOT", tmp_path)
     monkeypatch.setattr(helper, "restore_download", lambda *args, **kwargs: calls.append(args))
-    with pytest.raises((ValueError, OSError)):
+    with pytest.raises(error, match=message):
         helper.transfer(
             {
                 "PRODUCTION_HOST": "backup.invalid",
@@ -497,6 +582,7 @@ def test_success_publishes_one_backup_before_one_restore(transport, monkeypatch,
         }
     )
     assert calls == [("podcast", "local_role", False)]
+    assert fake.calls[0] == ("check", ("podcast", "local_role"), {"replace_existing": False})
     assert len(list((tmp_path / "backups").iterdir())) == 1
 
 

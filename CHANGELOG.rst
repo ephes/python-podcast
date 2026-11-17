@@ -13,6 +13,8 @@ Unreleased
   identities and pass downloaded paths as literal process arguments. Remove its
   independent Docker/SQL restore and automatic role creation; delegate to the
   maintained staging/cutover restore with explicit existing-database confirmation.
+  The new ``check-local-restore`` command runs those restore preconditions before
+  the helper contacts production.
 
 * Log Fediverse upstream failures with fixed categories and discovery paths;
   omit raw exception, query, status, header and redirect text while preserving

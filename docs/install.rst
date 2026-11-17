@@ -117,6 +117,10 @@ role is used as-is, never inferred from a failed ``createuser`` command. The hel
 calls ``commands.py restore-local-dump`` with a literal absolute file argument;
 that command owns gzip/SQL validation, staging and recovery described above.
 An existing database is refused unless ``--replace-existing`` is explicitly passed.
+Before contacting production, the helper runs ``commands.py check-local-restore``
+with the same database name, role and confirmation. It changes nothing; an
+unconfirmed existing database, a leftover staging/recovery database or a running
+honcho stops the run before any remote backup is produced or downloaded.
 Downloaded dumps are retained when the local restore fails.
 
 Transfer admission and recovery

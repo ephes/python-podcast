@@ -198,18 +198,20 @@ def fetch_backup(host, username, backups):
     return final
 
 
-def restore_download(path, db_name, db_user, *, replace_existing):
-    args = [
-        sys.executable,
-        str(ROOT / "commands.py"),
-        "restore-local-dump",
-        str(path.resolve()),
-        "--local-db-name",
-        db_name,
-    ]
+def _run_commands(arguments, db_name, db_user, replace_existing):
+    args = [sys.executable, str(ROOT / "commands.py"), *arguments, "--local-db-name", db_name]
     if replace_existing:
         args.append("--replace-existing")
     subprocess.run(args, env={**os.environ, "PGUSER": db_user}, check=True)
+
+
+def check_restore(db_name, db_user, *, replace_existing):
+    """Refuse before contacting production when the maintained restore would refuse."""
+    _run_commands(["check-local-restore"], db_name, db_user, replace_existing)
+
+
+def restore_download(path, db_name, db_user, *, replace_existing):
+    _run_commands(["restore-local-dump", str(path.resolve())], db_name, db_user, replace_existing)
 
 
 def transfer(env, *, replace_existing=False):
@@ -223,6 +225,7 @@ def transfer(env, *, replace_existing=False):
     username = env.get("PRODUCTION_USERNAME", "")
     if not host or not username:
         raise ValueError("PRODUCTION_HOST and PRODUCTION_USERNAME are required")
+    check_restore(db_name, db_user, replace_existing=replace_existing)
     path = fetch_backup(host, username, ROOT / "backups")
     restore_download(path, db_name, db_user, replace_existing=replace_existing)
     return path

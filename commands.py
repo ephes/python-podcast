@@ -342,6 +342,22 @@ def _restore_dump_into_local_database(backup_path: Path, local_db_name: str, rep
 
 
 @cli.command()
+def check_local_restore(
+    local_db_name: str = typer.Option("python_podcast", help="Local PostgreSQL database name."),
+    replace_existing: bool = typer.Option(False, help="Confirm replacement of an existing local database."),
+):
+    """Check the maintained restore preconditions without fetching or changing anything."""
+    if _honcho_is_running():
+        print("stop honcho before restoring; only local PostgreSQL should be running")
+        raise typer.Exit(1)
+    try:
+        _check_local_restore_preconditions(local_db_name, replace_existing)
+    except LocalRestoreError as error:
+        print(f"restore refused: {error}")
+        raise typer.Exit(1) from error
+
+
+@cli.command()
 def restore_local_dump(
     backup_path: Path,
     local_db_name: str = typer.Option("python_podcast", help="Local PostgreSQL database name."),
