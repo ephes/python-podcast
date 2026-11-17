@@ -4,6 +4,18 @@ Changelog
 Unreleased
 ----------
 
+* Admit exactly one bounded, successful legacy backup announcement. Bound SSH,
+  command, SFTP and close phases; stage private downloads, verify stable size and
+  complete bounded gzip/SQL content, and publish without overwriting old backups.
+  Transfer or cleanup uncertainty stops before any local restore.
+
+* Make the legacy production-transfer helper inert on import, validate local
+  identities and pass downloaded paths as literal process arguments. Remove its
+  independent Docker/SQL restore and automatic role creation; delegate to the
+  maintained staging/cutover restore with explicit existing-database confirmation.
+  The new ``check-local-restore`` command runs those restore preconditions before
+  the helper contacts production.
+
 * Log Fediverse upstream failures with fixed categories and discovery paths;
   omit raw exception, query, status, header and redirect text while preserving
   generic 502/504 responses and timeout/capacity/protocol distinctions.
