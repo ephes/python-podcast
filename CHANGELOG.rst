@@ -4,6 +4,11 @@ Changelog
 Unreleased
 ----------
 
+* Make the legacy production-transfer helper inert on import, validate local
+  identities and pass downloaded paths as literal process arguments. Remove its
+  independent Docker/SQL restore and automatic role creation; delegate to the
+  maintained staging/cutover restore with explicit existing-database confirmation.
+
 * Log Fediverse upstream failures with fixed categories and discovery paths;
   omit raw exception, query, status, header and redirect text while preserving
   generic 502/504 responses and timeout/capacity/protocol distinctions.

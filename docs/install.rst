@@ -98,6 +98,27 @@ To override the SSH host or database names, see:
 
    $ uv run commands.py production-db-to-local --help
 
+Legacy transfer helper
+----------------------
+
+Prefer ``commands.py production-db-to-local`` for current installations. The
+independent ``python -m scripts.prod_to_local`` helper is retained for the legacy
+``site/scripts/prod_backup.py`` producer. Importing it performs no work. It reads
+``PRODUCTION_HOST``, ``PRODUCTION_USERNAME``, ``DATABASE_NAME`` and ``POSTGRES_USER``
+from the environment (or ``.env`` when explicitly run). Database names follow the
+maintained restore allowance: lowercase letters/digits/underscores, starting with
+a letter or underscore, at most 46 characters; role names allow 63 characters.
+
+Start local PostgreSQL yourself and provision the connection role beforehand.
+The helper no longer starts/stops Docker, creates roles or attempts a second SQL
+restore. ``POSTGRES_USER`` becomes ``PGUSER`` only in the restore child process;
+connection, permission and database-creation errors stop the operation. An existing
+role is used as-is, never inferred from a failed ``createuser`` command. The helper
+calls ``commands.py restore-local-dump`` with a literal absolute file argument;
+that command owns gzip/SQL validation, staging and recovery described above.
+An existing database is refused unless ``--replace-existing`` is explicitly passed.
+Downloaded dumps are retained when the local restore fails.
+
 Work on local package checkouts
 -------------------------------
 

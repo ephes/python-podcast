@@ -349,3 +349,29 @@ def test_postgres_restore_into_new_database_needs_no_confirmation(scratch_databa
 
     assert psql_value(scratch_database, "SELECT note FROM restored") == "from production"
     assert existing_databases(scratch_database) == {scratch_database}
+
+
+def test_local_dump_cli_refuses_existing_database(fake_postgres, monkeypatch, tmp_path):
+    fake = fake_postgres(databases={"python_podcast"})
+    monkeypatch.setattr(commands, "_honcho_is_running", lambda: False)
+    with pytest.raises(typer.Exit) as error:
+        commands.restore_local_dump(write_dump(tmp_path / "dump.sql.gz"), "python_podcast", False)
+    assert error.value.exit_code == 1
+    assert fake.ran("createdb") == fake.ran("bash") == []
+    assert fake.databases == {"python_podcast"}
+
+
+def test_local_dump_cli_propagates_database_creation_failure(fake_postgres, monkeypatch, tmp_path):
+    fake = fake_postgres()
+    monkeypatch.setattr(commands, "_honcho_is_running", lambda: False)
+
+    def denied(cmd, **kwargs):
+        if cmd[0] == "createdb":
+            raise subprocess.CalledProcessError(1, cmd, stderr="synthetic permission failure")
+        return fake.run(cmd, **kwargs)
+
+    monkeypatch.setattr(commands.subprocess, "run", denied)
+    with pytest.raises(subprocess.CalledProcessError):
+        commands.restore_local_dump(write_dump(tmp_path / "dump.sql.gz"), "python_podcast", False)
+    assert fake.ran("bash") == []
+    assert fake.databases == set()

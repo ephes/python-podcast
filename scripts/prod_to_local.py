@@ -1,101 +1,78 @@
+"""Legacy backup acquisition; SQL publication belongs to commands.py.
+
+Run as ``python -m scripts.prod_to_local`` from the repository root.
+Importing this module never loads configuration or performs external work.
+"""
+
+import argparse
 import os
-from subprocess import check_output
+import re
+import subprocess
+import sys
+from pathlib import Path
 
-import paramiko
-from dotenv import find_dotenv, load_dotenv
+ROOT = Path(__file__).resolve().parents[1]
 
-load_dotenv(find_dotenv())
 
-# get backup dump from production
-host = os.environ.get("PRODUCTION_HOST")
-username = os.environ.get("PRODUCTION_USERNAME")
-db_name = os.environ.get("DATABASE_NAME")
-db_user = os.environ.get("POSTGRES_USER")
-client = paramiko.SSHClient()
-client.load_system_host_keys()
-client.connect(host, username=username)
+def fetch_backup(host, username, backups):
+    import paramiko
 
-ssh_stdin, ssh_stdout, ssh_stderr = client.exec_command("cd site;python3 scripts/prod_backup.py")
-stdout_lines = ssh_stdout.read().decode("utf-8").split("\n")
-print(stdout_lines)
-remote_path = None
-for line in stdout_lines:
-    if "scp" in line:
-        remote_path = line.split()[1].split(":")[-1]
-print(remote_path)
-file_name = os.path.basename(remote_path)
-local_path = os.path.join("backups", file_name)
+    backups.mkdir(exist_ok=True)
+    with paramiko.SSHClient() as client:
+        client.load_system_host_keys()
+        client.connect(host, username=username)
+        _, stdout, _ = client.exec_command("cd site && python3 scripts/prod_backup.py")
+        remote_path = None
+        for line in stdout.read().decode("utf-8").splitlines():
+            if "scp" in line:
+                remote_path = line.split()[1].split(":")[-1]
+        if remote_path is None:
+            raise ValueError("backup producer did not announce a path")
+        local_path = backups / Path(remote_path).name
+        with client.open_sftp() as sftp:
+            sftp.get(remote_path, str(local_path))
+    return local_path
 
-if not os.path.exists("backups"):
-    os.mkdir("backups")
-sftp = client.open_sftp()
-sftp.get(remote_path, f"backups/{file_name}")
 
-# recreate local docker environment from production
+def restore_download(path, db_name, db_user, *, replace_existing):
+    args = [
+        sys.executable,
+        str(ROOT / "commands.py"),
+        "restore-local-dump",
+        str(path.resolve()),
+        "--local-db-name",
+        db_name,
+    ]
+    if replace_existing:
+        args.append("--replace-existing")
+    subprocess.run(args, env={**os.environ, "PGUSER": db_user}, check=True)
 
-docker_postgres_cmd = "docker-compose -f local.yml up -d postgres"
-detach_postgres_out = check_output(docker_postgres_cmd, shell=True)
-print(detach_postgres_out)
 
-# restore backup dump to database
-docker_id_cmd = 'docker ps | grep postgres | cut -d " " -f 1'
-postgres_id = check_output(docker_id_cmd, shell=True).decode("utf-8").replace("\n", "")
-print(postgres_id)
+def transfer(env, *, replace_existing=False):
+    db_name = env.get("DATABASE_NAME", "")
+    db_user = env.get("POSTGRES_USER", "")
+    # Same database allowance as the maintained restore (room for recovery suffixes).
+    for name, maximum in ((db_name, 46), (db_user, 63)):
+        if not re.fullmatch(r"[a-z_][a-z0-9_]*", name) or len(name) > maximum:
+            raise ValueError("DATABASE_NAME / POSTGRES_USER must be lowercase PostgreSQL identifiers")
+    host = env.get("PRODUCTION_HOST", "")
+    username = env.get("PRODUCTION_USERNAME", "")
+    if not host or not username:
+        raise ValueError("PRODUCTION_HOST and PRODUCTION_USERNAME are required")
+    path = fetch_backup(host, username, ROOT / "backups")
+    restore_download(path, db_name, db_user, replace_existing=replace_existing)
+    return path
 
-backup_copy_cmd = f"docker cp {local_path} {postgres_id}:/backups"
-print(backup_copy_cmd)
-result = check_output(backup_copy_cmd, shell=True)
-print(result)
 
-docker_down = "docker-compose -f local.yml down"
-result = check_output(docker_down, shell=True)
-print(result)
+def main():
+    from dotenv import find_dotenv, load_dotenv
 
-start_postgres_cmd = "docker-compose -f local.yml run --rm django ./manage.py"
-result = check_output(start_postgres_cmd, shell=True)
-print(result)
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--replace-existing", action="store_true", help="Confirm replacement of an existing local DB")
+    args = parser.parse_args()
+    load_dotenv(find_dotenv())
+    transfer(os.environ, replace_existing=args.replace_existing)
 
-restore_cmd = f"docker-compose -f local.yml run --rm postgres restore {file_name}"
-print(restore_cmd)
-result = check_output(restore_cmd, shell=True)
-print(result)
 
-# remove stale media files
-# delete_stale_cmd = "docker-compose -f local.yml run --rm django ./manage.py s3_stale --delete"
-# delete_stale_cmd = "docker-compose -f local.yml run --rm django ./manage.py s3_stale"
-# print(delete_stale_cmd)
-# result = check_output(delete_stale_cmd, shell=True)
-# print(result)
-
-# get new media files from s3
-# backup_s3_cmd = "docker-compose -f local.yml run --rm django ./manage.py s3_backup"
-# print(backup_s3_cmd)
-# result = check_output(backup_s3_cmd, shell=True)
-# print(result)
-
-# recreate local db from production
-# dropdb_cmd = f"dropdb {db_name}"
-# print(dropdb_cmd)
-# result = check_output(dropdb_cmd, shell=True)
-# print(result)
-
-try:
-    createdb_cmd = f"createuser {db_user}"
-    print(createdb_cmd)
-    result = check_output(createdb_cmd, shell=True)
-    print(result)
-except Exception:
-    pass
-
-try:
-    createdb_cmd = f"createdb {db_name}"
-    print(createdb_cmd)
-    result = check_output(createdb_cmd, shell=True)
-    print(result)
-except Exception:
-    pass
-
-local_restore_cmd = f"gunzip -c {local_path} | psql {db_name} -U {db_name}"
-print(local_restore_cmd)
-result = check_output(local_restore_cmd, shell=True)
-print(result)
+if __name__ == "__main__":
+    main()
