@@ -119,6 +119,42 @@ that command owns gzip/SQL validation, staging and recovery described above.
 An existing database is refused unless ``--replace-existing`` is explicitly passed.
 Downloaded dumps are retained when the local restore fails.
 
+Transfer admission and recovery
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The legacy helper uses Paramiko from the locked development dependencies and
+requires a POSIX main thread without an already active real-time alarm. It uses
+system SSH known-host keys and refuses unknown keys. The fixed remote producer
+command must exit successfully and emit exactly one standalone line of this form::
+
+    scp python-podcast:site/backups/backup_NAME.sql.gz backups
+
+Only a basename starting with a letter, digit or underscore, followed by letters,
+digits, underscores, dots or hyphens and ending in ``.sql.gz``, is admitted (at most
+188 characters). Both output streams together are limited to 64 KiB. Other paths,
+host aliases, shell syntax and ambiguous announcements are refused.
+
+Connection/authentication has a 30-second overall deadline, producer/channel work
+60 seconds, SFTP acquisition/download 300 seconds and gzip validation another
+300 seconds. Every transport close has its own 5-second deadline; all finalizers
+are attempted, and any close failure prevents publication and restore. These
+POSIX alarms bound whole phases even when a peer keeps sending small chunks.
+
+The remote file must be regular, nonempty and at most 1 GiB compressed. Its size,
+mode and modification time must agree before and after the read. SFTP bytes go
+into an exclusive 0600 file within a private 0700 staging directory. The received
+size must match; gzip integrity, at most 4 GiB of expanded SQL and the final
+``pg_dump`` completion marker are checked before atomic publication in
+``backups/``. The authenticated producer and these completeness checks establish
+admission; there is no independent remote content digest or immutable snapshot.
+
+A final filename is never overwritten, including when it is a symlink. A collision
+refuses the run and preserves the old bytes; request a newly named remote backup
+for a later attempt. Failure removes only the private stage and causes no local
+Docker/database work. A complete published backup remains available if the later
+maintained SQL restore fails. Do not run the helper in tests: its regression suite
+uses only fake SSH/SFTP/process boundaries and synthetic gzip data.
+
 Work on local package checkouts
 -------------------------------
 

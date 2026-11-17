@@ -4,6 +4,11 @@ Changelog
 Unreleased
 ----------
 
+* Admit exactly one bounded, successful legacy backup announcement. Bound SSH,
+  command, SFTP and close phases; stage private downloads, verify stable size and
+  complete bounded gzip/SQL content, and publish without overwriting old backups.
+  Transfer or cleanup uncertainty stops before any local restore.
+
 * Make the legacy production-transfer helper inert on import, validate local
   identities and pass downloaded paths as literal process arguments. Remove its
   independent Docker/SQL restore and automatic role creation; delegate to the
