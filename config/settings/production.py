@@ -83,6 +83,12 @@ ADMIN_LOGIN_THROTTLE_LOCK_PATH = os.path.join(env("DJANGO_CACHE_LOCATION"), "adm
 # Local and test settings keep the library default 0 (REMOTE_ADDR).
 INDIEWEB_RATE_LIMIT_TRUSTED_PROXY_HOPS = env.int("DJANGO_NUM_PROXIES", default=1)
 
+# allauth rate limits (login, failed logins, password reset, also used for the
+# Wagtail admin password reset) key on the client address. Without this every
+# request counts against Traefik's 127.0.0.1, so one client could lock every
+# editor out. Same knob and trust rule as above; see docs/admin_login_throttle.rst.
+ALLAUTH_TRUSTED_PROXY_COUNT = env.int("DJANGO_NUM_PROXIES", default=1)
+
 # SECURITY
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#secure-proxy-ssl-header

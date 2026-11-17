@@ -4,6 +4,17 @@ Changelog
 Unreleased
 ----------
 
+* Count allauth rate limits per client behind Traefik: production and staging
+  set ``ALLAUTH_TRUSTED_PROXY_COUNT`` from ``DJANGO_NUM_PROXIES`` (default 1).
+  Before, every request counted against Traefik's ``127.0.0.1``, so one client
+  could lock all editors out of ``/accounts/login/`` and the password reset.
+
+* Limit the Wagtail admin password reset (``/cms/password_reset/``) with
+  allauth's ``reset_password`` rate and key, shared with
+  ``/accounts/password/reset/``; it previously sent unlimited reset emails.
+
+* Lock the development-only Tornado (Jupyter) at 6.6.1 for GHSA-5cjw-f85j-cv6r.
+
 * Admit exactly one bounded, successful legacy backup announcement. Bound SSH,
   command, SFTP and close phases; stage private downloads, verify stable size and
   complete bounded gzip/SQL content, and publish without overwriting old backups.

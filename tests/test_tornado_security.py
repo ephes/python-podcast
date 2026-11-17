@@ -1,4 +1,4 @@
-"""Synthetic regressions for the Tornado 6.6 security update."""
+"""Synthetic regressions for the Tornado 6.6 and 6.6.1 security updates."""
 
 import pytest
 from tornado.httputil import HTTPHeaders, HTTPInputError
@@ -20,5 +20,11 @@ class TestRedirectHostBoundary(AsyncHTTPTestCase):
     def test_capture_cannot_change_redirect_host(self):
         # GHSA-pw9p-v7r6-gx4p: a leading slash made the target protocol-relative.
         response = self.fetch("//attacker.invalid/target", follow_redirects=False)
+        assert response.code == 400
+        assert "Location" not in response.headers
+
+    def test_three_leading_slashes_cannot_change_redirect_host(self):
+        # GHSA-5cjw-f85j-cv6r: browsers read "///host" as protocol-relative too.
+        response = self.fetch("///attacker.invalid/target", follow_redirects=False)
         assert response.code == 400
         assert "Location" not in response.headers

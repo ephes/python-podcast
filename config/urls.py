@@ -12,7 +12,7 @@ from wagtail.documents import urls as wagtaildocs_urls
 
 from python_podcast.core import views as core_views
 from python_podcast.pp import views as pp_views
-from python_podcast.users import login_throttle
+from python_podcast.users import login_throttle, password_reset
 
 handler404 = default_views_cast.page_not_found
 handler500 = default_views_cast.server_error
@@ -72,6 +72,11 @@ urlpatterns = [
     path(
         f"{settings.WAGTAILADMIN_BASE_URL}login/",
         login_throttle.throttle_failed_logins(wagtailadmin_account.LoginView.as_view()),
+    ),
+    # Reset requests share allauth's reset_password limit: see docs/admin_login_throttle.rst
+    path(
+        f"{settings.WAGTAILADMIN_BASE_URL}password_reset/",
+        password_reset.ThrottledWagtailPasswordResetView.as_view(),
     ),
     path(settings.WAGTAILADMIN_BASE_URL, include(wagtailadmin_urls)),
     path("documents/", include(wagtaildocs_urls)),
