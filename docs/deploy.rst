@@ -75,6 +75,97 @@ chromium`` and run ``just test-e2e``. Before deploying, also check the new froze
 environment with production settings and ``migrate --plan`` against PostgreSQL,
 and retain a fresh database backup and the previous commit/lock for rollback.
 
+2026-11-18 Wagtail 8.1 and django-cast e0c632ad
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``uv.lock`` moves Wagtail from 8.0.1 to 8.1 (``pyproject.toml`` now allows
+``>=8.1,<8.2``), django-cast ``develop`` from ``c290ec1a`` to ``e0c632ad``
+(release 0.2.68 plus the 0.2.69 version bump, the revision the homepage runs)
+and draftjs-exporter from 7.1.0 to 7.3.1, which Wagtail 8.1 requires.
+django-cast no longer depends on ``python-dateutil`` directly; nothing else in
+the lock changed. Neither package adds migrations in this range: the 196
+numbered migration files of the Wagtail apps this site installs are
+byte-identical between the 8.0.1 and 8.1 wheels, and django-cast stays at
+``cast.0094``.
+
+Wagtail 8.1 upgrade considerations, checked for this site:
+
+* Python 3.10 support is dropped; the site runs on Python 3.15.2.
+* The internal admin API ``/cms/api/main/`` and the ``construct_admin_api``
+  hook are replaced by ``/cms/api/explorer/<id>/``. The site has no
+  ``wagtail_hooks.py`` and does not call the old API.
+* Pages with an ``ajax_template`` now send ``Vary: X-Requested-With``. No page
+  model of this site or django-cast defines one.
+* Sitemaps include all locales with ``WAGTAIL_I18N_ENABLED``, which is off;
+  the site serves no Wagtail sitemap.
+* Redirects are only auto-created when live pages move or are renamed, not
+  drafts (``WAGTAILREDIRECTS_AUTO_CREATE = "always"`` restores the old
+  behaviour). The default is kept.
+* On Django 6.1 Wagtail sends admin mail through ``mailers.default``. Without
+  ``MAILERS`` Django builds it from ``EMAIL_BACKEND``, so production keeps the
+  Mailgun backend (checked under production settings). Moving to ``MAILERS``
+  is separate work.
+
+django-cast upgrade actions between ``c290ec1a`` and ``e0c632ad``, checked for
+this site:
+
+* Configured ``cast_public_transcripts`` and ``cast_voice_references`` storages
+  now fail loudly instead of falling back to other storages. Both are
+  configured here; on production both initialize (the S3 transcript storage
+  with its bucket, the voice references on the local filesystem).
+* Theme discovery only looks at ``<template-root>/cast/<theme>/``. The offered
+  themes (bootstrap4, plain, vue, bootstrap5, pp) are the same before and after.
+* Comment posting only accepts Wagtail page targets unless
+  ``CAST_COMMENTS_ALLOWED_TARGET_MODELS`` opts in others. Comments here are on
+  episodes and posts, so the setting stays unset.
+* The modal facet counts need PostgreSQL with Wagtail's default database search
+  backend, which the site uses.
+* Galleries are limited to 500 images; the largest gallery here has one.
+* No ``cast/audio``, ``cast/video`` or ``cast/transcript`` ``confirm_delete.html``
+  overrides exist, so the new delete confirmation field needs no template
+  change. New transcript uploads need ``.json`` or ``.vtt`` extensions.
+* The development styleguide (``config/settings/local.py``) now admits remote
+  media only from allowed origins; extra CDN origins go into
+  ``CAST_STYLEGUIDE_REMOTE_ALLOWED_ORIGINS``. Production does not enable it.
+
+Local gates on Python 3.15.2 with PostgreSQL 17: 610 tests passed (one skipped
+test needs ``--migrations`` and passed in that mode), the 167 browser tests
+(``just test-e2e``) and the core media gate passed, as did
+``makemigrations --check``, prek and ``pip-audit`` of the exported lock. Under
+production settings ``check`` reports the same issues as before, ``migrate
+--plan`` plans nothing and ``collectstatic --clear`` post-processes all files.
+A database migrated and seeded with synthetic blog, podcast, image, gallery,
+audio and transcript content under the old lock migrated with "No migrations to
+apply" under the new one, with an identical ``showmigrations`` and the same
+responses for pages, feeds and the admin. In a browser, the admin page explorer
+loaded its pages from the new endpoint without JavaScript errors or missing
+static files.
+
+Rollback: redeploy the previous commit with a clean static rebuild; no
+database step is needed. Hold the shared deploy lock on the host for the whole
+sequence (``python -m pyinfra_support.deploy_lock acquire production`` in
+ops-control, export ``OPS_CONTROL_DEPLOY_LOCK=production=<token>`` so the
+nested deploy accepts it, release afterwards):
+
+1. As root stop ``python-podcast.service`` and
+   ``python-podcast-db-worker.service``.
+2. As the ``python-podcast`` user empty ``/home/python-podcast/site/staticfiles``
+   (what ``collectstatic --clear`` does; it only holds collected files).
+3. In ops-control run ``just deploy-one python_podcast production`` with
+   ``PROJECTS_ROOT`` set to a directory whose ``python-podcast`` subdirectory is
+   a clean checkout of the previous commit. Its ``collectstatic`` fills the
+   empty directory from the old packages, and the deploy starts both units
+   again. Check each unit with its own ``systemctl is-active``.
+
+The deploy's plain ``collectstatic`` skips a source file that is not newer
+than the collected copy. The virtualenv hardlinks files from the uv cache, so
+older packages carry the cache's older timestamps; without the clean rebuild a
+rollback would keep the Wagtail 8.1 and django-cast static files, including
+``cast/vite/manifest.json``, next to a ``staticfiles.json`` for the old lock.
+The first forward deploy is not affected, because Wagtail 8.1 and django-cast
+``e0c632ad`` were never installed for this user. A forward deploy after a
+rollback needs the same sequence.
+
 2026-10-29 Python 3.15.2
 ~~~~~~~~~~~~~~~~~~~~~~~~
 

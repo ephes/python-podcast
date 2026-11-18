@@ -4,6 +4,12 @@ Changelog
 Unreleased
 ----------
 
+* Upgrade Wagtail 8.0.1 to 8.1 (range ``>=8.1,<8.2``) and relock django-cast
+  to develop ``e0c632ad`` (release 0.2.68 plus the 0.2.69 version bump; from
+  ``c290ec1a``), the revision the homepage runs, with the Wagtail 8 hook order
+  and media chooser fixes. draftjs-exporter moves to 7.3.1 with Wagtail.
+  Neither package adds migrations in this range.
+
 * Allow one minified asset generator per checkout from source reads through
   recovery. A competing run exits immediately and can be retried.
 
