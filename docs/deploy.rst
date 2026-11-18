@@ -143,10 +143,13 @@ loaded its pages from the new endpoint without JavaScript errors or missing
 static files.
 
 The deploy restarts ``python-podcast-db-worker.service``, and a stop kills a
-transcript job after the unit's stop timeout; the next worker does not pick up
-a job left ``RUNNING``. Deploy only while no task is ``RUNNING`` (check the
-``django_tasks_db`` results), and check afterwards that no ``RUNNING`` row
-started before the restart.
+transcript job after the unit's 90-second stop timeout; the next worker does
+not pick up a job left ``RUNNING``. So stop the worker before the deploy, under
+the shared deploy lock: check that no ``django_tasks_db`` result is
+``RUNNING``, stop the unit, and check again (if a job was claimed in between,
+start the worker again and wait). New tasks stay ``READY`` until the deploy
+starts the worker again. Afterwards check that no ``RUNNING`` row started
+before the stop.
 
 If a deploy stops before its end, run it again: the pending markers in
 ``/var/lib/ops-deploy/python_podcast/`` make the next run repeat the sync,
