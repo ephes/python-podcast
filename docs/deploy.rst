@@ -142,53 +142,45 @@ responses for pages, feeds and the admin. In a browser, the admin page explorer
 loaded its pages from the new endpoint without JavaScript errors or missing
 static files.
 
-Stopping the task worker. ``db_worker`` exits at once on SIGTERM when it is
-idle, but a claim it committed just before has not started its task yet, and
-a running task is killed after the unit's 90-second stop timeout; the next
-worker does not pick up a row left ``RUNNING``. Stop the worker before the
-deploy, under the shared deploy lock, with its claims quiesced: in one
-``psql`` session as ``postgres`` take ``LOCK TABLE
-django_tasks_database_dbtaskresult IN EXCLUSIVE MODE`` (this blocks the
-worker's ``SELECT ... FOR UPDATE`` claim and waits for a claim in flight to
-commit), check that no row is ``RUNNING``, stop
-``python-podcast-db-worker.service`` and only then ``COMMIT``. Reads continue
-while the lock is held; new tasks (transcripts, incoming Webmentions) wait for
-the lock and then stay ``READY`` until the deploy starts the worker again. If a
-row is ``RUNNING``, roll back the lock transaction and deploy later.
+Deploy with the usual ``just deploy-one python_podcast production`` from
+ops-control. Before it, check that no task result is ``READY`` or ``RUNNING``
+(transcripts, incoming Webmentions): the deploy restarts
+``python-podcast-db-worker.service``, and a task that runs longer than the
+unit's 90-second stop timeout is killed and its row stays ``RUNNING``. If a
+task is pending, deploy later.
 
-If a deploy stops before its end, do not simply run it again: an interrupted
-``collectstatic`` can leave a truncated file whose timestamp is newer than its
-source, so a plain retry would keep it. Redeploy cleanly instead (the same
-sequence as a rollback, with the intended commit): it rebuilds the static
-directory from empty. It also works when the site's Python no longer starts.
+Rollback: redeploy the previous commit with a clean static rebuild; no
+database step is needed. Hold the shared deploy lock on the host for the whole
+sequence (``python -m pyinfra_support.deploy_lock acquire production`` in
+ops-control, export ``OPS_CONTROL_DEPLOY_LOCK=production=<token>`` so the
+nested ``just deploy-one`` accepts it, release afterwards):
 
-Rollback (and clean redeploy): no database step is needed. Hold the shared
-deploy lock on the host for the whole sequence (``python -m
-pyinfra_support.deploy_lock acquire production`` in ops-control, export
-``OPS_CONTROL_DEPLOY_LOCK=production=<token>`` so the nested deploy accepts it,
-release afterwards):
-
-1. Stop ``python-podcast-db-worker.service`` as above (in an emergency also
-   with a ``RUNNING`` row; report that row, do not edit it), then
-   ``python-podcast.service``.
-2. As the ``python-podcast`` user empty ``/home/python-podcast/site/staticfiles``
-   (what ``collectstatic --clear`` does; it only holds collected files).
+1. Check for ``READY`` or ``RUNNING`` tasks as above, then as root stop
+   ``python-podcast.service`` and ``python-podcast-db-worker.service``.
+2. As the ``python-podcast`` user empty
+   ``/home/python-podcast/site/staticfiles`` (what ``collectstatic --clear``
+   does; it only holds collected files).
 3. In ops-control run ``just deploy-one python_podcast production`` with
-   ``PROJECTS_ROOT`` set to a directory whose ``python-podcast`` subdirectory is
-   a clean checkout of the commit to deploy. Its ``collectstatic`` fills the
-   empty directory (a missing ``staticfiles.json`` forces that step even when
-   the source is unchanged), and the deploy starts both units again. Check each
-   unit with its own ``systemctl is-active`` and look for ``RUNNING`` tasks
-   started before step 1.
+   ``PROJECTS_ROOT`` set to a directory whose ``python-podcast`` subdirectory
+   is a clean checkout of the previous commit. Its ``collectstatic`` fills the
+   empty directory from the old packages, and the deploy starts both units
+   again. Check each unit with its own ``systemctl is-active``.
 
 The deploy's plain ``collectstatic`` skips a source file that is not newer
-than the collected copy. The virtualenv hardlinks files from the uv cache, so
-older packages carry the cache's older timestamps; without the clean rebuild a
-rollback would keep the Wagtail 8.1 and django-cast static files, including
-``cast/vite/manifest.json``, next to a ``staticfiles.json`` for the old lock.
-The first forward deploy is not affected, because Wagtail 8.1 and django-cast
-``e0c632ad`` were never installed for this user. A forward deploy after a
-rollback needs the same sequence.
+than the collected copy. The site's virtualenv hardlinks files from the uv
+cache, so the older packages carry the cache's older timestamps. Without the
+clean rebuild a rollback would keep the Wagtail 8.1 and django-cast static
+files, including ``cast/vite/manifest.json``, next to a ``staticfiles.json``
+for the old lock. The units stay stopped until the deploy starts them, because
+WhiteNoise indexes the static files at startup and fails on a file removed
+under it.
+
+The first forward deploy is not affected: Wagtail 8.1 and django-cast
+``e0c632ad`` were never installed for this user, so they are unpacked into
+the cache freshly and are newer than the collected files. A forward deploy
+after a rollback, or a retry after a deploy that stopped during
+``collectstatic``, is affected the same way, so it needs the same sequence
+with the intended commit.
 
 2026-10-29 Python 3.15.2
 ~~~~~~~~~~~~~~~~~~~~~~~~

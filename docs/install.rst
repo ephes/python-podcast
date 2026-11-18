@@ -124,7 +124,7 @@ honcho stops the run before any remote backup is produced or downloaded.
 Downloaded dumps are retained when the local restore fails.
 
 Transfer admission and recovery
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The legacy helper uses Paramiko from the locked development dependencies and
 requires a POSIX main thread without an already active real-time alarm. It uses
