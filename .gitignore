@@ -362,3 +362,6 @@ python_podcast/cast-private-media/
 
 # Stable source-switch operation lock (never remove while switches run)
 .source-switch.lock
+
+# Per-checkout persistent-player asset generation lock
+/.minify-static.lock

@@ -1,11 +1,14 @@
 """Cheap regression checks for the mobile performance asset cleanup."""
 
+import subprocess
+import sys
+import time
 from pathlib import Path
 
 import pytest
 from django.conf import settings
 
-from scripts.minify_static import minified_assets
+from scripts.minify_static import DOCK_MARKER, minified_assets
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -41,20 +44,31 @@ def test_public_media_objects_receive_cache_control_metadata():
     assert "s-maxage=604800" in cache_control
 
 
+@pytest.fixture
+def asset_dir(tmp_path, monkeypatch):
+    from scripts import minify_static
+
+    monkeypatch.setattr(minify_static, "ROOT", tmp_path)
+    directory = tmp_path / "assets"
+    directory.mkdir()
+    return directory
+
+
 @pytest.mark.parametrize("operation", ["write", "backup", "replace", "replace-after"])
 @pytest.mark.parametrize("failure_call", [1, 2, 3])
-def test_minifier_failure_preserves_previous_asset_set(tmp_path, monkeypatch, operation, failure_call):
+@pytest.mark.parametrize("failure_type", [OSError, KeyboardInterrupt, SystemExit])
+def test_minifier_failure_preserves_previous_asset_set(asset_dir, monkeypatch, operation, failure_call, failure_type):
     import os
 
     from scripts import minify_static
 
-    targets = {tmp_path / f"asset-{number}": f"new {number}\n" for number in range(3)}
+    targets = {asset_dir / f"asset-{number}": f"new {number}\n" for number in range(3)}
     baseline = {target: f"old {number}\n" for number, target in enumerate(targets)}
     for target, content in baseline.items():
         target.write_text(content)
     monkeypatch.setattr(minify_static, "minified_assets", lambda: targets)
-    monkeypatch.setattr(minify_static, "ROOT", tmp_path)
     calls = 0
+    failure = failure_type("synthetic publication failure")
     original = {
         "write": Path.write_text,
         "backup": Path.write_bytes,
@@ -68,7 +82,7 @@ def test_minifier_failure_preserves_previous_asset_set(tmp_path, monkeypatch, op
         if calls == failure_call:
             if operation == "replace-after":
                 original(*args, **kwargs)
-            raise OSError("synthetic publication failure")
+            raise failure
         return original(*args, **kwargs)
 
     if operation == "write":
@@ -77,48 +91,172 @@ def test_minifier_failure_preserves_previous_asset_set(tmp_path, monkeypatch, op
         monkeypatch.setattr(Path, "write_bytes", fail)
     else:
         monkeypatch.setattr(os, "replace", fail)
-    with pytest.raises(OSError, match="synthetic publication failure"):
+    with pytest.raises(failure_type) as error:
         minify_static.main()
+    assert error.value is failure
     assert {target: target.read_text() for target in targets} == baseline
-    assert set(tmp_path.iterdir()) == set(targets)
+    assert set(asset_dir.iterdir()) == set(targets)
 
 
-def test_minifier_success_publishes_expected_set(tmp_path, monkeypatch):
+def test_minifier_success_publishes_expected_set(asset_dir, monkeypatch):
     from scripts import minify_static
 
-    targets = {tmp_path / f"asset-{number}": f"new {number}\n" for number in range(3)}
+    targets = {asset_dir / f"asset-{number}": f"new {number}\n" for number in range(3)}
     monkeypatch.setattr(minify_static, "minified_assets", lambda: targets)
-    monkeypatch.setattr(minify_static, "ROOT", tmp_path)
     minify_static.main()
     assert {target: target.read_text() for target in targets} == targets
-    assert set(tmp_path.iterdir()) == set(targets)
+    assert set(asset_dir.iterdir()) == set(targets)
     assert all(target.stat().st_mode & 0o444 == 0o444 for target in targets)
 
 
-def test_minifier_reports_retained_recovery_copy_if_compensation_fails(tmp_path, monkeypatch):
+@pytest.mark.parametrize("failure_type", [OSError, KeyboardInterrupt, SystemExit])
+def test_minifier_reports_retained_recovery_copy_if_compensation_fails(asset_dir, monkeypatch, failure_type):
     import os
 
     from scripts import minify_static
 
-    targets = {tmp_path / f"asset-{number}": f"new {number}\n" for number in range(3)}
+    targets = {asset_dir / f"asset-{number}": f"new {number}\n" for number in range(3)}
     for target in targets:
         target.write_text("previous\r\n", newline="")
     monkeypatch.setattr(minify_static, "minified_assets", lambda: targets)
     original = os.replace
     calls = 0
+    failure = failure_type("synthetic publication failure")
 
     def fail(source, target):
         nonlocal calls
         calls += 1
-        if calls in {2, 4}:
-            raise OSError("synthetic replace failure")
+        if calls == 2:
+            raise failure
+        if calls == 4:
+            raise failure_type("synthetic restore failure")
         return original(source, target)
 
     monkeypatch.setattr(os, "replace", fail)
-    with pytest.raises(OSError) as error:
+    with pytest.raises(failure_type) as error:
         minify_static.main()
-    retained = set(tmp_path.iterdir()) - set(targets)
+    assert error.value is failure
+    retained = set(asset_dir.iterdir()) - set(targets)
     assert len(retained) == 1
     recovery = retained.pop()
     assert recovery.read_bytes() == b"previous\r\n"
     assert str(recovery) in " ".join(error.value.__notes__)
+
+
+def test_minifier_cleanup_failure_does_not_hide_publication_interrupt(asset_dir, monkeypatch):
+    from scripts import minify_static
+
+    target = asset_dir / "asset"
+    target.write_text("previous")
+    monkeypatch.setattr(minify_static, "minified_assets", lambda: {target: "new"})
+    failure = KeyboardInterrupt("synthetic staging interrupt")
+
+    def interrupt_write(path, *args, **kwargs):
+        raise failure
+
+    original = Path.unlink
+
+    def fail_cleanup(path, *args, **kwargs):
+        if path.parent == asset_dir:
+            raise OSError("synthetic cleanup failure")
+        return original(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "write_text", interrupt_write)
+    monkeypatch.setattr(Path, "unlink", fail_cleanup)
+    with pytest.raises(KeyboardInterrupt) as error:
+        minify_static.main()
+    assert error.value is failure
+    assert "synthetic cleanup failure" in " ".join(error.value.__notes__)
+    assert target.read_text() == "previous"
+
+
+@pytest.mark.parametrize("pause_at", [2, 3], ids=["publish", "restore"])
+def test_minifier_excludes_other_process_until_recovery(tmp_path, pause_at):
+    css = tmp_path / "python_podcast/static/css/persistent-player.css"
+    js = tmp_path / "python_podcast/static/js/persistent-player.js"
+    critical = tmp_path / "python_podcast/templates/cast/_persistent_player_critical.min.css"
+    dock = css.with_name("persistent-player-dock.min.css")
+    player = js.with_suffix(".min.js")
+    targets = (critical, dock, player)
+    for path in (*targets, css, js):
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+    def write_sources(color):
+        css.write_text(f".play {{ color: {color}; }}\n{DOCK_MARKER} */\n.dock {{ color: {color}; }}")
+        js.write_text(f"const color = '{color}';\n")
+
+    worker = """
+import sys
+from pathlib import Path
+from scripts import minify_static as minifier
+
+root, role, pause_at = sys.argv[1:]
+minifier.ROOT = root = Path(root)
+minifier.PERSISTENT_CSS = root / "python_podcast/static/css/persistent-player.css"
+minifier.PERSISTENT_JS = root / "python_podcast/static/js/persistent-player.js"
+generate = minifier.minified_assets
+
+def tracked_generation():
+    (root / f"{role}.captured").touch()
+    return generate()
+
+minifier.minified_assets = tracked_generation
+if role == "interrupted":
+    original = minifier.os.replace
+    calls = 0
+
+    def replace(source, target):
+        global calls
+        calls += 1
+        if calls == int(pause_at):
+            (root / "ready").touch()
+            sys.stdin.readline()
+        if calls == 2:
+            raise KeyboardInterrupt("synthetic publication interrupt")
+        return original(source, target)
+
+    minifier.os.replace = replace
+minifier.main()
+"""
+
+    def command(role):
+        return [sys.executable, "-c", worker, str(tmp_path), role, str(pause_at)]
+
+    write_sources("red")
+    subprocess.run(command("baseline"), cwd=ROOT, check=True, capture_output=True, timeout=15)
+    previous = tuple(path.read_bytes() for path in targets)
+    write_sources("green")
+    with subprocess.Popen(
+        command("interrupted"), cwd=ROOT, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    ) as first:
+        try:
+            deadline = time.monotonic() + 15
+            while not (tmp_path / "ready").exists():
+                if first.poll() is not None:
+                    pytest.fail(first.stderr.read().decode())
+                if time.monotonic() >= deadline:
+                    pytest.fail("minifier did not reach the replace barrier")
+                time.sleep(0.01)
+            assert critical.read_text() == ".play{color:green}\n"
+            write_sources("blue")
+            competing = subprocess.run(command("competing"), cwd=ROOT, capture_output=True, timeout=15)
+            captured_while_busy = (tmp_path / "competing.captured").exists()
+            _, error = first.communicate(input=b"\n", timeout=15)
+        finally:
+            if first.poll() is None:
+                first.kill()
+
+    assert first.returncode != 0
+    assert b"KeyboardInterrupt: synthetic publication interrupt" in error
+    assert competing.returncode != 0, "second writer ran while the first still owned publication"
+    assert b"already running" in competing.stderr
+    assert not captured_while_busy
+    assert tuple(path.read_bytes() for path in targets) == previous
+
+    subprocess.run(command("competing"), cwd=ROOT, check=True, capture_output=True, timeout=15)
+    assert tuple(path.read_text() for path in targets) == (
+        ".play{color:blue}\n",
+        ".dock{color:blue}\n",
+        "const color='blue';\n",
+    )
+    assert all(not list(path.parent.glob(f".{path.name}.*")) for path in targets)
