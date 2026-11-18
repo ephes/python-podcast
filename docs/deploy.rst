@@ -160,18 +160,12 @@ nested ``just deploy-one`` accepts it, release afterwards):
    ``python-podcast-db-worker.service``, then look at the task results. A
    rollback does not wait for an empty queue: ``READY`` rows stay queued and
    the restarted worker runs them. A task still running when the worker
-   stopped finishes within the 90-second stop timeout or is killed; only a
-   row still ``RUNNING`` after both units stopped may have been interrupted.
-   It is not picked up again; report it and do not edit it. Before asking
-   anyone to redo work, check the outcome the task was for (the transcript
-   generation's status in the admin, the Webmention's state): the task result
-   is recorded separately from the application's own write, and older
-   interrupted results stay ``RUNNING`` after a later attempt succeeded. Only
-   work that did not complete is redone at the source: a Webmention sender
-   retries, and an editor restarts the transcript
-   once the admin shows the generation as interrupted (after
-   ``CAST_VOXHELM_STALE_AFTER``, by default the Voxhelm poll timeout plus a
-   margin).
+   stopped finishes within the 90-second stop timeout or is killed. A row
+   still ``RUNNING`` after both units stopped is not picked up again: report
+   it with its id, task path and start time to the site owner and edit
+   nothing. Whether its work completed and needs redoing (a transcript
+   generation, a Webmention) is a separate decision; this rollback does not
+   retry anything.
 2. As the ``python-podcast`` user empty
    ``/home/python-podcast/site/staticfiles`` (what ``collectstatic --clear``
    does; it only holds collected files).
