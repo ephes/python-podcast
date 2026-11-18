@@ -142,18 +142,25 @@ responses for pages, feeds and the admin. In a browser, the admin page explorer
 loaded its pages from the new endpoint without JavaScript errors or missing
 static files.
 
-The deploy restarts ``python-podcast-db-worker.service``, and a stop kills a
-transcript job after the unit's 90-second stop timeout; the next worker does
-not pick up a job left ``RUNNING``. So stop the worker before the deploy, under
-the shared deploy lock: check that no ``django_tasks_db`` result is
-``RUNNING``, stop the unit, and check again (if a job was claimed in between,
-start the worker again and wait). New tasks stay ``READY`` until the deploy
-starts the worker again. Afterwards check that no ``RUNNING`` row started
-before the stop.
+The task worker shares one queue between transcript jobs (started by editors)
+and incoming Webmentions (public). On SIGTERM ``db_worker`` exits at once when
+it is idle and finishes the current task otherwise, but systemd kills it after
+the unit's 90-second stop timeout, and the next worker does not pick up a row
+left ``RUNNING``. So stop the worker before the deploy, under the shared deploy
+lock: proceed only while no ``django_tasks_db`` result is ``READY`` or
+``RUNNING``, stop ``python-podcast-db-worker.service`` right away, and check
+that no row became ``RUNNING`` in between (if one did, start the worker again,
+report the row and retry later). Tasks queued while the worker is stopped stay
+``READY`` until the deploy starts it again. A task enqueued and claimed in the
+moment between the check and the stop is detected, not prevented; such a row
+stays ``RUNNING`` and is reported rather than edited, and its work is redone at
+its source (an editor starts the transcript again; a Webmention sender retries).
 
 If a deploy stops before its end, run it again: the pending markers in
 ``/var/lib/ops-deploy/python_podcast/`` make the next run repeat the sync,
-dependency, migration, static and restart steps.
+dependency, migration, static and restart steps. If the site's Python cannot
+start any more (for example after an interrupted dependency sync), the task
+check cannot run; use the rollback below, which proceeds without it.
 
 Rollback: redeploy the previous commit with a clean static rebuild; no
 database step is needed. It also works after a deploy that stopped early.
