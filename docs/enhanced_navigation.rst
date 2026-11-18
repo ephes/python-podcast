@@ -243,12 +243,13 @@ The real-browser navigation, focus and custom-element tests remain required.
 
 After changing ``persistent-player.js`` run
 ``just minify-static``. The minifier stages all three generated assets plus
-byte-exact recovery copies before publishing sibling replacements. A handled
-write/replace failure restores the previous set; if compensation fails, the
-exception identifies retained recovery copies. Restore those paths before
-committing/deploying and rerun the strict drift test. Publication is not atomic
-across process termination, power loss or concurrent minifier runs; run one
-minifier at a time and verify the committed set after interruption.
+byte-exact recovery copies before publishing sibling replacements. On a
+write/replace failure, Ctrl-C or Python exit, it attempts to restore the
+previous set before propagating the original exception. If restoration fails,
+use the recovery paths reported with the exception to restore the corresponding
+assets. Run ``uv run --locked pytest tests/test_performance_assets.py`` before
+committing or deploying. Run one minifier at a time. After a forced process kill
+or power loss, verify the generated assets before relying on them.
 
 ``tests/e2e/test_dock_transitions.py`` exercises queued updates in both orders,
 close during a pending switch, and activation without a transition, for both

@@ -38,12 +38,13 @@ def main() -> None:
     staged: dict[Path, Path] = {}
     backups: dict[Path, Path | None] = {}
     attempted: list[Path] = []
+    error: BaseException | None = None
 
     def sibling(target: Path) -> Path:
         descriptor, name = tempfile.mkstemp(prefix=f".{target.name}.", dir=target.parent)
-        os.close(descriptor)
         path = Path(name)
         temporary.add(path)
+        os.close(descriptor)
         return path
 
     try:
@@ -65,7 +66,8 @@ def main() -> None:
         for target, candidate in staged.items():
             attempted.append(target)
             os.replace(candidate, target)
-    except Exception as error:
+    except BaseException as publication_error:
+        error = publication_error
         for target in reversed(attempted):
             backup = backups[target]
             try:
@@ -73,7 +75,7 @@ def main() -> None:
                     target.unlink(missing_ok=True)
                 else:
                     os.replace(backup, target)
-            except OSError as recovery_error:
+            except BaseException as recovery_error:
                 if backup is not None:
                     temporary.discard(backup)
                     error.add_note(f"Restore {target} from retained recovery copy {backup}: {recovery_error}")
@@ -82,7 +84,14 @@ def main() -> None:
         raise
     finally:
         for path in temporary:
-            path.unlink(missing_ok=True)
+            try:
+                path.unlink(missing_ok=True)
+            except BaseException as cleanup_error:
+                if error is None:
+                    error = cleanup_error
+                error.add_note(f"Could not clean up {path}: {cleanup_error}")
+    if error is not None:
+        raise error
     for target in assets:
         print(f"wrote {target.relative_to(ROOT)}")
 

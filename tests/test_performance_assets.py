@@ -43,7 +43,8 @@ def test_public_media_objects_receive_cache_control_metadata():
 
 @pytest.mark.parametrize("operation", ["write", "backup", "replace", "replace-after"])
 @pytest.mark.parametrize("failure_call", [1, 2, 3])
-def test_minifier_failure_preserves_previous_asset_set(tmp_path, monkeypatch, operation, failure_call):
+@pytest.mark.parametrize("failure_type", [OSError, KeyboardInterrupt, SystemExit])
+def test_minifier_failure_preserves_previous_asset_set(tmp_path, monkeypatch, operation, failure_call, failure_type):
     import os
 
     from scripts import minify_static
@@ -55,6 +56,7 @@ def test_minifier_failure_preserves_previous_asset_set(tmp_path, monkeypatch, op
     monkeypatch.setattr(minify_static, "minified_assets", lambda: targets)
     monkeypatch.setattr(minify_static, "ROOT", tmp_path)
     calls = 0
+    failure = failure_type("synthetic publication failure")
     original = {
         "write": Path.write_text,
         "backup": Path.write_bytes,
@@ -68,7 +70,7 @@ def test_minifier_failure_preserves_previous_asset_set(tmp_path, monkeypatch, op
         if calls == failure_call:
             if operation == "replace-after":
                 original(*args, **kwargs)
-            raise OSError("synthetic publication failure")
+            raise failure
         return original(*args, **kwargs)
 
     if operation == "write":
@@ -77,8 +79,9 @@ def test_minifier_failure_preserves_previous_asset_set(tmp_path, monkeypatch, op
         monkeypatch.setattr(Path, "write_bytes", fail)
     else:
         monkeypatch.setattr(os, "replace", fail)
-    with pytest.raises(OSError, match="synthetic publication failure"):
+    with pytest.raises(failure_type) as error:
         minify_static.main()
+    assert error.value is failure
     assert {target: target.read_text() for target in targets} == baseline
     assert set(tmp_path.iterdir()) == set(targets)
 
@@ -95,7 +98,8 @@ def test_minifier_success_publishes_expected_set(tmp_path, monkeypatch):
     assert all(target.stat().st_mode & 0o444 == 0o444 for target in targets)
 
 
-def test_minifier_reports_retained_recovery_copy_if_compensation_fails(tmp_path, monkeypatch):
+@pytest.mark.parametrize("failure_type", [OSError, KeyboardInterrupt, SystemExit])
+def test_minifier_reports_retained_recovery_copy_if_compensation_fails(tmp_path, monkeypatch, failure_type):
     import os
 
     from scripts import minify_static
@@ -106,19 +110,50 @@ def test_minifier_reports_retained_recovery_copy_if_compensation_fails(tmp_path,
     monkeypatch.setattr(minify_static, "minified_assets", lambda: targets)
     original = os.replace
     calls = 0
+    failure = failure_type("synthetic publication failure")
 
     def fail(source, target):
         nonlocal calls
         calls += 1
-        if calls in {2, 4}:
-            raise OSError("synthetic replace failure")
+        if calls == 2:
+            raise failure
+        if calls == 4:
+            raise failure_type("synthetic restore failure")
         return original(source, target)
 
     monkeypatch.setattr(os, "replace", fail)
-    with pytest.raises(OSError) as error:
+    with pytest.raises(failure_type) as error:
         minify_static.main()
+    assert error.value is failure
     retained = set(tmp_path.iterdir()) - set(targets)
     assert len(retained) == 1
     recovery = retained.pop()
     assert recovery.read_bytes() == b"previous\r\n"
     assert str(recovery) in " ".join(error.value.__notes__)
+
+
+def test_minifier_cleanup_failure_does_not_hide_publication_interrupt(tmp_path, monkeypatch):
+    from scripts import minify_static
+
+    target = tmp_path / "asset"
+    target.write_text("previous")
+    monkeypatch.setattr(minify_static, "minified_assets", lambda: {target: "new"})
+    failure = KeyboardInterrupt("synthetic staging interrupt")
+
+    def interrupt_write(path, *args, **kwargs):
+        raise failure
+
+    original = Path.unlink
+
+    def fail_cleanup(path, *args, **kwargs):
+        if path.parent == tmp_path:
+            raise OSError("synthetic cleanup failure")
+        return original(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "write_text", interrupt_write)
+    monkeypatch.setattr(Path, "unlink", fail_cleanup)
+    with pytest.raises(KeyboardInterrupt) as error:
+        minify_static.main()
+    assert error.value is failure
+    assert "synthetic cleanup failure" in " ".join(error.value.__notes__)
+    assert target.read_text() == "previous"

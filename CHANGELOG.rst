@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Restore the previous minified assets after an interrupted publication, and
+  report retained recovery copies and cleanup failures on the original error.
+
 * Count allauth rate limits per client behind Traefik: production and staging
   set ``ALLAUTH_TRUSTED_PROXY_COUNT`` from ``DJANGO_NUM_PROXIES`` (default 1).
   Before, every request counted against Traefik's ``127.0.0.1``, so one client
