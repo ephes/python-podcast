@@ -241,15 +241,18 @@ oracle when Node is installed. It checks streaming rejection and generation
 retirement, including ignored modified/other-owner clicks, without a DOM/browser.
 The real-browser navigation, focus and custom-element tests remain required.
 
-After changing ``persistent-player.js`` run
-``just minify-static``. The minifier stages all three generated assets plus
+After changing ``persistent-player.js`` or ``persistent-player.css``, run
+``just minify-static``. A checkout-local ``.minify-static.lock`` covers source
+reads, publication and recovery. A second invocation exits immediately with an
+error. Retry after the first finishes and leave the lock file in place.
+The minifier stages all three generated assets plus
 byte-exact recovery copies before publishing sibling replacements. On a
 write/replace failure, Ctrl-C or Python exit, it attempts to restore the
 previous set before propagating the original exception. If restoration fails,
 use the recovery paths reported with the exception to restore the corresponding
 assets. Run ``uv run --locked pytest tests/test_performance_assets.py`` before
-committing or deploying. Run one minifier at a time. After a forced process kill
-or power loss, verify the generated assets before relying on them.
+committing or deploying. After a forced process kill or power loss, verify the
+generated assets before relying on them.
 
 ``tests/e2e/test_dock_transitions.py`` exercises queued updates in both orders,
 close during a pending switch, and activation without a transition, for both

@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Allow one minified asset generator per checkout from source reads through
+  recovery. A competing run exits immediately and can be retried.
+
 * Restore the previous minified assets after an interrupted publication, and
   report retained recovery copies and cleanup failures on the original error.
 

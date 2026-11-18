@@ -4,6 +4,7 @@ import os
 import tempfile
 from pathlib import Path
 
+from filelock import FileLock, Timeout
 from rcssmin import cssmin
 from rjsmin import jsmin
 
@@ -33,6 +34,16 @@ def minified_assets() -> dict[Path, str]:
 
 
 def main() -> None:
+    lock = FileLock(ROOT / ".minify-static.lock")
+    try:
+        acquired = lock.acquire(timeout=0)
+    except Timeout:
+        raise SystemExit("Asset generation is already running in this checkout. Retry after it finishes.") from None
+    with acquired:
+        _publish_assets()
+
+
+def _publish_assets() -> None:
     assets = minified_assets()
     temporary: set[Path] = set()
     staged: dict[Path, Path] = {}
