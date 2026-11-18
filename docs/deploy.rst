@@ -81,7 +81,8 @@ and retain a fresh database backup and the previous commit/lock for rollback.
 ``uv.lock`` moves Wagtail from 8.0.1 to 8.1 (``pyproject.toml`` now allows
 ``>=8.1,<8.2``), django-cast ``develop`` from ``c290ec1a`` to ``e0c632ad``
 (release 0.2.68 plus the 0.2.69 version bump, the revision the homepage runs)
-and draftjs-exporter from 7.1.0 to 7.3.1, which Wagtail 8.1 requires.
+and draftjs-exporter from 7.1.0 to 7.3.1 (Wagtail 8.1 requires
+``>=7.3.0,<8.0``).
 django-cast no longer depends on ``python-dateutil`` directly; nothing else in
 the lock changed. Neither package adds migrations in this range: the 196
 numbered migration files of the Wagtail apps this site installs are
@@ -155,8 +156,12 @@ sequence (``python -m pyinfra_support.deploy_lock acquire production`` in
 ops-control, export ``OPS_CONTROL_DEPLOY_LOCK=production=<token>`` so the
 nested ``just deploy-one`` accepts it, release afterwards):
 
-1. Check for ``READY`` or ``RUNNING`` tasks as above, then as root stop
-   ``python-podcast.service`` and ``python-podcast-db-worker.service``.
+1. Note the ``READY`` and ``RUNNING`` task results, then as root stop
+   ``python-podcast.service`` and ``python-podcast-db-worker.service``. A
+   rollback does not wait for an empty queue: ``READY`` rows stay queued and
+   the restarted worker runs them. A row left ``RUNNING`` is not picked up
+   again; report it, do not edit it, and redo its work at the source (an
+   editor restarts the transcript, a Webmention sender retries).
 2. As the ``python-podcast`` user empty
    ``/home/python-podcast/site/staticfiles`` (what ``collectstatic --clear``
    does; it only holds collected files).
