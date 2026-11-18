@@ -156,12 +156,17 @@ sequence (``python -m pyinfra_support.deploy_lock acquire production`` in
 ops-control, export ``OPS_CONTROL_DEPLOY_LOCK=production=<token>`` so the
 nested ``just deploy-one`` accepts it, release afterwards):
 
-1. Note the ``READY`` and ``RUNNING`` task results, then as root stop
-   ``python-podcast.service`` and ``python-podcast-db-worker.service``. A
+1. As root stop ``python-podcast.service`` and
+   ``python-podcast-db-worker.service``, then look at the task results. A
    rollback does not wait for an empty queue: ``READY`` rows stay queued and
-   the restarted worker runs them. A row left ``RUNNING`` is not picked up
-   again; report it, do not edit it, and redo its work at the source (an
-   editor restarts the transcript, a Webmention sender retries).
+   the restarted worker runs them. A task still running when the worker
+   stopped finishes within the 90-second stop timeout or is killed; only a
+   row still ``RUNNING`` after both units stopped was interrupted. It is not
+   picked up again; report it, do not edit it, and redo its work at the
+   source: a Webmention sender retries, and an editor restarts the transcript
+   once the admin shows the generation as interrupted (after
+   ``CAST_VOXHELM_STALE_AFTER``, by default the Voxhelm poll timeout plus a
+   margin).
 2. As the ``python-podcast`` user empty
    ``/home/python-podcast/site/staticfiles`` (what ``collectstatic --clear``
    does; it only holds collected files).
