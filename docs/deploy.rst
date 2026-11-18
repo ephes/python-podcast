@@ -118,8 +118,9 @@ this site:
 * Comment posting only accepts Wagtail page targets unless
   ``CAST_COMMENTS_ALLOWED_TARGET_MODELS`` opts in others. Comments here are on
   episodes and posts, so the setting stays unset.
-* The modal facet counts need PostgreSQL with Wagtail's default database search
-  backend, which the site uses.
+* The modal facet counts need SQLite or PostgreSQL and a search backend that
+  returns a database queryset; production runs PostgreSQL with Wagtail's
+  default database search backend.
 * Galleries are limited to 500 images; the largest gallery here has one.
 * No ``cast/audio``, ``cast/video`` or ``cast/transcript`` ``confirm_delete.html``
   overrides exist, so the new delete confirmation field needs no template
@@ -141,8 +142,19 @@ responses for pages, feeds and the admin. In a browser, the admin page explorer
 loaded its pages from the new endpoint without JavaScript errors or missing
 static files.
 
+The deploy restarts ``python-podcast-db-worker.service``, and a stop kills a
+transcript job after the unit's stop timeout; the next worker does not pick up
+a job left ``RUNNING``. Deploy only while no task is ``RUNNING`` (check the
+``django_tasks_db`` results), and check afterwards that no ``RUNNING`` row
+started before the restart.
+
+If a deploy stops before its end, run it again: the pending markers in
+``/var/lib/ops-deploy/python_podcast/`` make the next run repeat the sync,
+dependency, migration, static and restart steps.
+
 Rollback: redeploy the previous commit with a clean static rebuild; no
-database step is needed. Hold the shared deploy lock on the host for the whole
+database step is needed. It also works after a deploy that stopped early.
+Hold the shared deploy lock on the host for the whole
 sequence (``python -m pyinfra_support.deploy_lock acquire production`` in
 ops-control, export ``OPS_CONTROL_DEPLOY_LOCK=production=<token>`` so the
 nested deploy accepts it, release afterwards):
@@ -154,8 +166,10 @@ nested deploy accepts it, release afterwards):
 3. In ops-control run ``just deploy-one python_podcast production`` with
    ``PROJECTS_ROOT`` set to a directory whose ``python-podcast`` subdirectory is
    a clean checkout of the previous commit. Its ``collectstatic`` fills the
-   empty directory from the old packages, and the deploy starts both units
-   again. Check each unit with its own ``systemctl is-active``.
+   empty directory from the old packages (a missing ``staticfiles.json``
+   forces that step even when the source is unchanged), and the deploy starts
+   both units again. Check each unit with its own ``systemctl is-active`` and
+   look for ``RUNNING`` tasks started before step 1.
 
 The deploy's plain ``collectstatic`` skips a source file that is not newer
 than the collected copy. The virtualenv hardlinks files from the uv cache, so
