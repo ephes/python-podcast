@@ -142,44 +142,44 @@ responses for pages, feeds and the admin. In a browser, the admin page explorer
 loaded its pages from the new endpoint without JavaScript errors or missing
 static files.
 
-The task worker shares one queue between transcript jobs (started by editors)
-and incoming Webmentions (public). On SIGTERM ``db_worker`` exits at once when
-it is idle and finishes the current task otherwise, but systemd kills it after
-the unit's 90-second stop timeout, and the next worker does not pick up a row
-left ``RUNNING``. So stop the worker before the deploy, under the shared deploy
-lock: proceed only while no ``django_tasks_db`` result is ``READY`` or
-``RUNNING``, stop ``python-podcast-db-worker.service`` right away, and check
-that no row became ``RUNNING`` in between (if one did, start the worker again,
-report the row and retry later). Tasks queued while the worker is stopped stay
-``READY`` until the deploy starts it again. A task enqueued and claimed in the
-moment between the check and the stop is detected, not prevented; such a row
-stays ``RUNNING`` and is reported rather than edited, and its work is redone at
-its source (an editor starts the transcript again; a Webmention sender retries).
+Stopping the task worker. ``db_worker`` exits at once on SIGTERM when it is
+idle, but a claim it committed just before has not started its task yet, and
+a running task is killed after the unit's 90-second stop timeout; the next
+worker does not pick up a row left ``RUNNING``. Stop the worker before the
+deploy, under the shared deploy lock, with its claims quiesced: in one
+``psql`` session as ``postgres`` take ``LOCK TABLE
+django_tasks_database_dbtaskresult IN EXCLUSIVE MODE`` (this blocks the
+worker's ``SELECT ... FOR UPDATE`` claim and waits for a claim in flight to
+commit), check that no row is ``RUNNING``, stop
+``python-podcast-db-worker.service`` and only then ``COMMIT``. Reads continue
+while the lock is held; new tasks (transcripts, incoming Webmentions) wait for
+the lock and then stay ``READY`` until the deploy starts the worker again. If a
+row is ``RUNNING``, roll back the lock transaction and deploy later.
 
-If a deploy stops before its end, run it again: the pending markers in
-``/var/lib/ops-deploy/python_podcast/`` make the next run repeat the sync,
-dependency, migration, static and restart steps. If the site's Python cannot
-start any more (for example after an interrupted dependency sync), the task
-check cannot run; use the rollback below, which proceeds without it.
+If a deploy stops before its end, do not simply run it again: an interrupted
+``collectstatic`` can leave a truncated file whose timestamp is newer than its
+source, so a plain retry would keep it. Redeploy cleanly instead (the same
+sequence as a rollback, with the intended commit): it rebuilds the static
+directory from empty. It also works when the site's Python no longer starts.
 
-Rollback: redeploy the previous commit with a clean static rebuild; no
-database step is needed. It also works after a deploy that stopped early.
-Hold the shared deploy lock on the host for the whole
-sequence (``python -m pyinfra_support.deploy_lock acquire production`` in
-ops-control, export ``OPS_CONTROL_DEPLOY_LOCK=production=<token>`` so the
-nested deploy accepts it, release afterwards):
+Rollback (and clean redeploy): no database step is needed. Hold the shared
+deploy lock on the host for the whole sequence (``python -m
+pyinfra_support.deploy_lock acquire production`` in ops-control, export
+``OPS_CONTROL_DEPLOY_LOCK=production=<token>`` so the nested deploy accepts it,
+release afterwards):
 
-1. As root stop ``python-podcast.service`` and
-   ``python-podcast-db-worker.service``.
+1. Stop ``python-podcast-db-worker.service`` as above (in an emergency also
+   with a ``RUNNING`` row; report that row, do not edit it), then
+   ``python-podcast.service``.
 2. As the ``python-podcast`` user empty ``/home/python-podcast/site/staticfiles``
    (what ``collectstatic --clear`` does; it only holds collected files).
 3. In ops-control run ``just deploy-one python_podcast production`` with
    ``PROJECTS_ROOT`` set to a directory whose ``python-podcast`` subdirectory is
-   a clean checkout of the previous commit. Its ``collectstatic`` fills the
-   empty directory from the old packages (a missing ``staticfiles.json``
-   forces that step even when the source is unchanged), and the deploy starts
-   both units again. Check each unit with its own ``systemctl is-active`` and
-   look for ``RUNNING`` tasks started before step 1.
+   a clean checkout of the commit to deploy. Its ``collectstatic`` fills the
+   empty directory (a missing ``staticfiles.json`` forces that step even when
+   the source is unchanged), and the deploy starts both units again. Check each
+   unit with its own ``systemctl is-active`` and look for ``RUNNING`` tasks
+   started before step 1.
 
 The deploy's plain ``collectstatic`` skips a source file that is not newer
 than the collected copy. The virtualenv hardlinks files from the uv cache, so
