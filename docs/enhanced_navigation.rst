@@ -251,8 +251,10 @@ write/replace failure, Ctrl-C or Python exit, it attempts to restore the
 previous set before propagating the original exception. If restoration fails,
 use the recovery paths reported with the exception to restore the corresponding
 assets. Run ``uv run --locked pytest tests/test_performance_assets.py`` before
-committing or deploying. After a forced process kill or power loss, verify the
-generated assets before relying on them.
+committing or deploying. Recovery only covers exceptions raised inside the
+process (including Ctrl-C). After any other termination, such as SIGTERM from
+``timeout`` or a process manager, SIGHUP from a closed terminal, a forced kill
+or power loss, verify the generated assets before relying on them.
 
 ``tests/e2e/test_dock_transitions.py`` exercises queued updates in both orders,
 close during a pending switch, and activation without a transition, for both
