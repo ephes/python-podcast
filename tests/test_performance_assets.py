@@ -111,6 +111,61 @@ def test_minifier_success_publishes_expected_set(asset_dir, monkeypatch):
     assert all(target.stat().st_mode & 0o444 == 0o444 for target in targets)
 
 
+def test_minifier_rejects_symlink_without_reading_referent(asset_dir, monkeypatch):
+    from scripts import minify_static
+
+    normal = [asset_dir / "first", asset_dir / "second"]
+    for path in normal:
+        path.write_bytes(b"previous")
+    original_inodes = [path.stat().st_ino for path in normal]
+    referent = asset_dir.parent / "referent"
+    referent.write_bytes(b"referent")
+    link = asset_dir / "linked"
+    link.symlink_to(referent)
+    targets = (*normal, link)
+    monkeypatch.setattr(minify_static, "_asset_targets", lambda: targets)
+    monkeypatch.setattr(minify_static, "minified_assets", lambda: dict.fromkeys(targets, "new"))
+    read_bytes = Path.read_bytes
+
+    def guard(path):
+        assert path not in (link, referent), "minifier read the link referent"
+        return read_bytes(path)
+
+    with monkeypatch.context() as guarded:
+        guarded.setattr(Path, "read_bytes", guard)
+        with pytest.raises(RuntimeError, match="linked"):
+            minify_static.main()
+    assert link.readlink() == referent
+    assert referent.read_bytes() == b"referent"
+    assert [path.stat().st_ino for path in normal] == original_inodes
+    assert all(path.read_bytes() == b"previous" for path in normal)
+    assert set(asset_dir.iterdir()) == set(targets)
+    assert not (asset_dir.parent / ".minify-static-transaction").exists()
+
+
+def test_minifier_lists_all_unsupported_outputs(asset_dir, monkeypatch):
+    from scripts import minify_static
+
+    broken = asset_dir / "broken"
+    broken.symlink_to(asset_dir / "missing")
+    directory = asset_dir / "directory"
+    directory.mkdir()
+    referent = asset_dir.parent / "referent"
+    referent.write_bytes(b"referent")
+    hardlink = asset_dir / "hardlink"
+    hardlink.hardlink_to(referent)
+    targets = (broken, directory, hardlink)
+    monkeypatch.setattr(minify_static, "_asset_targets", lambda: targets)
+    monkeypatch.setattr(minify_static, "minified_assets", lambda: dict.fromkeys(targets, "new"))
+
+    with pytest.raises(RuntimeError) as error:
+        minify_static.main()
+    assert set(str(error.value).splitlines()[1:]) == {str(target.relative_to(asset_dir.parent)) for target in targets}
+    assert broken.is_symlink()
+    assert directory.is_dir()
+    assert hardlink.samefile(referent)
+
+
 @pytest.mark.parametrize("failure_type", [OSError, KeyboardInterrupt, SystemExit])
 def test_minifier_reports_retained_recovery_copy_if_compensation_fails(asset_dir, monkeypatch, failure_type):
     import os

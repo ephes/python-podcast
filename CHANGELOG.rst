@@ -17,6 +17,9 @@ Unreleased
   The next run restores the previous generation before reading sources, even
   after a forced kill, and can retry recovery if a restore failed.
 
+* Refuse symlinked, hard-linked and other non-regular minified asset outputs,
+  listing all affected paths before recovery or staging.
+
 * Count allauth rate limits per client behind Traefik: production and staging
   set ``ALLAUTH_TRUSTED_PROXY_COUNT`` from ``DJANGO_NUM_PROXIES`` (default 1).
   Before, every request counted against Traefik's ``127.0.0.1``, so one client

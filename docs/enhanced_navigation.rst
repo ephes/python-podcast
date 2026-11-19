@@ -254,6 +254,11 @@ exception. After a forced kill or another process termination, rerun
 before reading the sources. If publication had already completed, it keeps the
 new generation and clears the remaining recovery files.
 
+Before recovery or staging, the command checks all output paths. It lists
+every symlink, hard-linked file or other non-regular output and exits with the
+existing assets untouched. Check the listed paths and retry with ordinary
+files or absent outputs.
+
 If recovery reports an error, keep the journal and the reported copies in place.
 Resolve the underlying filesystem error and retry. After a system or power
 failure, verify the generated assets. Run

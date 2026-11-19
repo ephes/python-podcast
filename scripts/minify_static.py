@@ -54,8 +54,23 @@ def main() -> None:
     with acquired:
         journal = ROOT / ".minify-static-transaction"
         targets = _asset_targets()
+        _check_outputs(targets)
         _recover(journal, targets)
         _publish_assets(journal, targets)
+
+
+def _check_outputs(targets: tuple[Path, ...]) -> None:
+    unsupported = []
+    for target in targets:
+        try:
+            info = target.lstat()
+        except FileNotFoundError:
+            continue
+        if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+            unsupported.append(str(target.relative_to(ROOT)))
+    if unsupported:
+        paths = "\n".join(unsupported)
+        raise RuntimeError(f"Asset outputs must be regular files without links. Check these paths:\n{paths}")
 
 
 def _scratch(target: Path, transaction: Path) -> Path:
