@@ -66,6 +66,7 @@ def test_minifier_failure_preserves_previous_asset_set(asset_dir, monkeypatch, o
     baseline = {target: f"old {number}\n" for number, target in enumerate(targets)}
     for target, content in baseline.items():
         target.write_text(content)
+    monkeypatch.setattr(minify_static, "_asset_targets", lambda: tuple(targets))
     monkeypatch.setattr(minify_static, "minified_assets", lambda: targets)
     calls = 0
     failure = failure_type("synthetic publication failure")
@@ -102,11 +103,67 @@ def test_minifier_success_publishes_expected_set(asset_dir, monkeypatch):
     from scripts import minify_static
 
     targets = {asset_dir / f"asset-{number}": f"new {number}\n" for number in range(3)}
+    monkeypatch.setattr(minify_static, "_asset_targets", lambda: tuple(targets))
     monkeypatch.setattr(minify_static, "minified_assets", lambda: targets)
     minify_static.main()
     assert {target: target.read_text() for target in targets} == targets
     assert set(asset_dir.iterdir()) == set(targets)
     assert all(target.stat().st_mode & 0o444 == 0o444 for target in targets)
+
+
+def test_minifier_rejects_symlink_without_reading_referent(asset_dir, monkeypatch):
+    from scripts import minify_static
+
+    normal = [asset_dir / "first", asset_dir / "second"]
+    for path in normal:
+        path.write_bytes(b"previous")
+    original_inodes = [path.stat().st_ino for path in normal]
+    referent = asset_dir.parent / "referent"
+    referent.write_bytes(b"referent")
+    link = asset_dir / "linked"
+    link.symlink_to(referent)
+    targets = (*normal, link)
+    monkeypatch.setattr(minify_static, "_asset_targets", lambda: targets)
+    monkeypatch.setattr(minify_static, "minified_assets", lambda: dict.fromkeys(targets, "new"))
+    read_bytes = Path.read_bytes
+
+    def guard(path):
+        assert path not in (link, referent), "minifier read the link referent"
+        return read_bytes(path)
+
+    with monkeypatch.context() as guarded:
+        guarded.setattr(Path, "read_bytes", guard)
+        with pytest.raises(RuntimeError, match="linked"):
+            minify_static.main()
+    assert link.readlink() == referent
+    assert referent.read_bytes() == b"referent"
+    assert [path.stat().st_ino for path in normal] == original_inodes
+    assert all(path.read_bytes() == b"previous" for path in normal)
+    assert set(asset_dir.iterdir()) == set(targets)
+    assert not (asset_dir.parent / ".minify-static-transaction").exists()
+
+
+def test_minifier_lists_all_unsupported_outputs(asset_dir, monkeypatch):
+    from scripts import minify_static
+
+    broken = asset_dir / "broken"
+    broken.symlink_to(asset_dir / "missing")
+    directory = asset_dir / "directory"
+    directory.mkdir()
+    referent = asset_dir.parent / "referent"
+    referent.write_bytes(b"referent")
+    hardlink = asset_dir / "hardlink"
+    hardlink.hardlink_to(referent)
+    targets = (broken, directory, hardlink)
+    monkeypatch.setattr(minify_static, "_asset_targets", lambda: targets)
+    monkeypatch.setattr(minify_static, "minified_assets", lambda: dict.fromkeys(targets, "new"))
+
+    with pytest.raises(RuntimeError) as error:
+        minify_static.main()
+    assert set(str(error.value).splitlines()[1:]) == {str(target.relative_to(asset_dir.parent)) for target in targets}
+    assert broken.is_symlink()
+    assert directory.is_dir()
+    assert hardlink.samefile(referent)
 
 
 @pytest.mark.parametrize("failure_type", [OSError, KeyboardInterrupt, SystemExit])
@@ -118,6 +175,7 @@ def test_minifier_reports_retained_recovery_copy_if_compensation_fails(asset_dir
     targets = {asset_dir / f"asset-{number}": f"new {number}\n" for number in range(3)}
     for target in targets:
         target.write_text("previous\r\n", newline="")
+    monkeypatch.setattr(minify_static, "_asset_targets", lambda: tuple(targets))
     monkeypatch.setattr(minify_static, "minified_assets", lambda: targets)
     original = os.replace
     calls = 0
@@ -128,7 +186,7 @@ def test_minifier_reports_retained_recovery_copy_if_compensation_fails(asset_dir
         calls += 1
         if calls == 2:
             raise failure
-        if calls == 4:
+        if calls == 3:
             raise failure_type("synthetic restore failure")
         return original(source, target)
 
@@ -136,11 +194,21 @@ def test_minifier_reports_retained_recovery_copy_if_compensation_fails(asset_dir
     with pytest.raises(failure_type) as error:
         minify_static.main()
     assert error.value is failure
-    retained = set(asset_dir.iterdir()) - set(targets)
-    assert len(retained) == 1
-    recovery = retained.pop()
+    (recovery,) = asset_dir.glob(".asset-0.*/backup")
     assert recovery.read_bytes() == b"previous\r\n"
     assert str(recovery) in " ".join(error.value.__notes__)
+
+    monkeypatch.setattr(os, "replace", original)
+    with monkeypatch.context() as restart:
+
+        def fail_generation():
+            raise RuntimeError("synthetic minifier failure")
+
+        restart.setattr(minify_static, "minified_assets", fail_generation)
+        with pytest.raises(RuntimeError, match="synthetic minifier failure"):
+            minify_static.main()
+    assert all(target.read_bytes() == b"previous\r\n" for target in targets)
+    assert set(asset_dir.iterdir()) == set(targets)
 
 
 def test_minifier_cleanup_failure_does_not_hide_publication_interrupt(asset_dir, monkeypatch):
@@ -148,6 +216,7 @@ def test_minifier_cleanup_failure_does_not_hide_publication_interrupt(asset_dir,
 
     target = asset_dir / "asset"
     target.write_text("previous")
+    monkeypatch.setattr(minify_static, "_asset_targets", lambda: (target,))
     monkeypatch.setattr(minify_static, "minified_assets", lambda: {target: "new"})
     failure = KeyboardInterrupt("synthetic staging interrupt")
 
@@ -157,7 +226,7 @@ def test_minifier_cleanup_failure_does_not_hide_publication_interrupt(asset_dir,
     original = Path.unlink
 
     def fail_cleanup(path, *args, **kwargs):
-        if path.parent == asset_dir:
+        if path.parent.parent == asset_dir:
             raise OSError("synthetic cleanup failure")
         return original(path, *args, **kwargs)
 
@@ -170,7 +239,7 @@ def test_minifier_cleanup_failure_does_not_hide_publication_interrupt(asset_dir,
     assert target.read_text() == "previous"
 
 
-@pytest.mark.parametrize("pause_at", [2, 3], ids=["publish", "restore"])
+@pytest.mark.parametrize("pause_at", [2, 3, "kill", "kill-new"], ids=["publish", "restore", "kill", "kill-new"])
 def test_minifier_excludes_other_process_until_recovery(tmp_path, pause_at):
     css = tmp_path / "python_podcast/static/css/persistent-player.css"
     js = tmp_path / "python_podcast/static/js/persistent-player.js"
@@ -198,6 +267,8 @@ generate = minifier.minified_assets
 
 def tracked_generation():
     (root / f"{role}.captured").touch()
+    if role == "failing":
+        raise RuntimeError("synthetic minifier failure")
     return generate()
 
 minifier.minified_assets = tracked_generation
@@ -208,7 +279,12 @@ if role == "interrupted":
     def replace(source, target):
         global calls
         calls += 1
-        if calls == int(pause_at):
+        if pause_at.startswith("kill") and calls == 1:
+            original(source, target)
+            (root / "ready").touch()
+            sys.stdin.readline()
+            return
+        if not pause_at.startswith("kill") and calls == int(pause_at):
             (root / "ready").touch()
             sys.stdin.readline()
         if calls == 2:
@@ -224,7 +300,10 @@ minifier.main()
 
     write_sources("red")
     subprocess.run(command("baseline"), cwd=ROOT, check=True, capture_output=True, timeout=15)
-    previous = tuple(path.read_bytes() for path in targets)
+    killed = isinstance(pause_at, str)
+    if pause_at == "kill-new":
+        critical.unlink()
+    previous = tuple(path.read_bytes() if path.exists() else None for path in targets)
     write_sources("green")
     with subprocess.Popen(
         command("interrupted"), cwd=ROOT, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
@@ -241,17 +320,26 @@ minifier.main()
             write_sources("blue")
             competing = subprocess.run(command("competing"), cwd=ROOT, capture_output=True, timeout=15)
             captured_while_busy = (tmp_path / "competing.captured").exists()
-            _, error = first.communicate(input=b"\n", timeout=15)
+            if killed:
+                first.kill()
+            _, error = first.communicate(input=None if killed else b"\n", timeout=15)
         finally:
             if first.poll() is None:
                 first.kill()
 
     assert first.returncode != 0
-    assert b"KeyboardInterrupt: synthetic publication interrupt" in error
+    if killed:
+        restart = subprocess.run(command("failing"), cwd=ROOT, capture_output=True, timeout=15)
+        assert restart.returncode != 0
+        assert b"RuntimeError: synthetic minifier failure" in restart.stderr
+    else:
+        assert b"KeyboardInterrupt: synthetic publication interrupt" in error
     assert competing.returncode != 0, "second writer ran while the first still owned publication"
     assert b"already running" in competing.stderr
     assert not captured_while_busy
-    assert tuple(path.read_bytes() for path in targets) == previous
+    assert tuple(path.read_bytes() if path.exists() else None for path in targets) == previous
+    assert all(not list(path.parent.glob(f".{path.name}.*")) for path in targets)
+    assert not (tmp_path / ".minify-static-transaction").exists()
 
     subprocess.run(command("competing"), cwd=ROOT, check=True, capture_output=True, timeout=15)
     assert tuple(path.read_text() for path in targets) == (
