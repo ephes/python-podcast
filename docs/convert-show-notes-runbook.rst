@@ -72,8 +72,10 @@ Safety model
   before going live.
 * ``--publish`` publishes the created revision (implies ``--apply``). It only
   ever puts the conversion live; see `Publish conflicts`_.
-* ``--slug <slug>`` limits the run to one episode; it may be given multiple
-  times.
+* Repeat ``--slug <slug>`` to select episodes. The command resolves the full
+  selection before processing any episode. If a slug is unknown, it lists the
+  missing slugs and exits before creating or publishing any revision. Omit
+  ``--slug`` to process the full archive.
 * ``--force`` re-converts from the original legacy body, ignoring the "already
   converted" guard. Use it to regenerate conversions after the converter has
   been improved. It finds the most recent *unconverted* body — the live body if
@@ -204,9 +206,9 @@ Implementation
 Archive memory
 --------------
 
-Episodes are read with uncached iteration in chunks of 20. Each episode's report
-prints its full ordered before/after block lists; afterwards only compact result
-records (identities, the first warning and revision IDs, no block types) survive
+A full archive run reads episodes with uncached iteration in chunks of 20.
+Each episode's report prints its full ordered before/after block lists;
+afterwards only compact result records (identities, the first warning and revision IDs, no block types) survive
 each episode; full page and revision bodies are not retained by the archive
 queryset.
 Per-episode locking and editor conflict checks still apply.

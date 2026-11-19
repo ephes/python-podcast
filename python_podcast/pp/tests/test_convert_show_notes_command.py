@@ -505,6 +505,22 @@ def test_slug_filter_limits_scope():
     assert other.revisions.count() == 0
 
 
+@pytest.mark.django_db
+@pytest.mark.parametrize("mode", [(), ("--apply",), ("--publish",)])
+def test_unknown_explicit_slugs_refuse_the_entire_selection(mode):
+    episode = _make_episode(slug="selected-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
+
+    output, error = _run_expecting_error("--slug", episode.slug, "--slug", "typo-ep", *mode)
+
+    assert "Unknown episode slug(s): typo-ep" in error
+    assert not output
+    assert episode.revisions.count() == 0
+    assert _detail_types(Episode.objects.get(pk=episode.pk)) == ["paragraph"]
+
+    _run("--slug", episode.slug, "--apply")
+    assert episode.revisions.count() == 1
+
+
 RICH_SHOWNOTE_HTML = (
     "<h2>Shownotes</h2>"
     "<h3>News</h3><ul>"

@@ -131,7 +131,7 @@ class Command(BaseCommand):
             dest="slugs",
             default=[],
             metavar="SLUG",
-            help="Limit conversion to the episode with this slug. May be given multiple times.",
+            help="Limit conversion to these slugs. May be repeated; every slug must match an episode.",
         )
         parser.add_argument(
             "--force",
@@ -150,13 +150,18 @@ class Command(BaseCommand):
         force = options["force"]
         slugs = options["slugs"]
 
-        episodes = Episode.objects.all()
+        episodes = Episode.objects.order_by("pk")
         if slugs:
-            episodes = episodes.filter(slug__in=slugs)
-        episodes = episodes.order_by("pk")
+            selected = list(episodes.filter(slug__in=slugs))
+            missing = sorted(set(slugs) - {episode.slug for episode in selected})
+            if missing:
+                raise CommandError(f"Unknown episode slug(s): {', '.join(missing)}")
+            batch = iter(selected)
+        else:
+            batch = episodes.iterator(chunk_size=20)
 
         results = []
-        for episode in episodes.iterator(chunk_size=20):
+        for episode in batch:
             try:
                 result = self._process_episode(episode, apply=apply, publish=publish, force=force)
             except Exception as exc:
