@@ -13,9 +13,9 @@ Unreleased
 * Allow one minified asset generator per checkout from source reads through
   recovery. A competing run exits immediately and can be retried.
 
-* Restore the previous minified assets when publication is interrupted by an
-  exception or Ctrl-C, and report retained recovery copies and cleanup failures
-  on the original error. Other signals still need a manual asset check.
+* Recover interrupted minified asset publication from a checkout-local journal.
+  The next run restores the previous generation before reading sources, even
+  after a forced kill, and can retry recovery if a restore failed.
 
 * Count allauth rate limits per client behind Traefik: production and staging
   set ``ALLAUTH_TRUSTED_PROXY_COUNT`` from ``DJANGO_NUM_PROXIES`` (default 1).

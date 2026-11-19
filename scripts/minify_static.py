@@ -1,8 +1,11 @@
 """Generate the committed minified persistent-player assets."""
 
 import os
-import tempfile
+import re
+import shutil
+import stat
 from pathlib import Path
+from uuid import uuid4
 
 from filelock import FileLock, Timeout
 from rcssmin import cssmin
@@ -12,6 +15,14 @@ ROOT = Path(__file__).resolve().parents[1]
 PERSISTENT_CSS = ROOT / "python_podcast/static/css/persistent-player.css"
 PERSISTENT_JS = ROOT / "python_podcast/static/js/persistent-player.js"
 DOCK_MARKER = "/* ==========================================================================\n   The dock —"
+
+
+def _asset_targets() -> tuple[Path, ...]:
+    return (
+        ROOT / "python_podcast/templates/cast/_persistent_player_critical.min.css",
+        ROOT / "python_podcast/static/css/persistent-player-dock.min.css",
+        ROOT / "python_podcast/static/js/persistent-player.min.js",
+    )
 
 
 def minified_assets() -> dict[Path, str]:
@@ -26,10 +37,11 @@ def minified_assets() -> dict[Path, str]:
     if not marker:
         raise RuntimeError(f"Dock marker not found in {PERSISTENT_CSS}")
 
+    critical, dock, player = _asset_targets()
     return {
-        ROOT / "python_podcast/templates/cast/_persistent_player_critical.min.css": cssmin(critical_css) + "\n",
-        ROOT / "python_podcast/static/css/persistent-player-dock.min.css": cssmin(marker + dock_css) + "\n",
-        ROOT / "python_podcast/static/js/persistent-player.min.js": jsmin(PERSISTENT_JS.read_text()) + "\n",
+        critical: cssmin(critical_css) + "\n",
+        dock: cssmin(marker + dock_css) + "\n",
+        player: jsmin(PERSISTENT_JS.read_text()) + "\n",
     }
 
 
@@ -40,70 +52,108 @@ def main() -> None:
     except Timeout:
         raise SystemExit("Asset generation is already running in this checkout. Retry after it finishes.") from None
     with acquired:
-        _publish_assets()
+        journal = ROOT / ".minify-static-transaction"
+        targets = _asset_targets()
+        _recover(journal, targets)
+        _publish_assets(journal, targets)
 
 
-def _publish_assets() -> None:
-    assets = minified_assets()
-    temporary: set[Path] = set()
-    staged: dict[Path, Path] = {}
-    backups: dict[Path, Path | None] = {}
-    attempted: list[Path] = []
-    error: BaseException | None = None
+def _scratch(target: Path, transaction: Path) -> Path:
+    # A sibling keeps even a separately mounted output on the same filesystem.
+    return target.with_name(f".{target.name}.{transaction.name}")
 
-    def sibling(target: Path) -> Path:
-        descriptor, name = tempfile.mkstemp(prefix=f".{target.name}.", dir=target.parent)
-        path = Path(name)
-        temporary.add(path)
-        os.close(descriptor)
-        return path
 
+def _recover(journal: Path, targets: tuple[Path, ...]) -> None:
     try:
-        # Generate the entire candidate and recovery set before touching any
-        # published asset. Siblings keep each replace on the same filesystem.
-        for target, content in assets.items():
-            backup = None
+        mode = journal.lstat().st_mode
+    except FileNotFoundError:
+        return
+    if not stat.S_ISDIR(mode):
+        raise RuntimeError(f"Unexpected asset recovery journal: {journal}")
+    entries = list(journal.iterdir())
+    if entries:
+        if len(entries) != 1:
+            raise RuntimeError(f"Unexpected asset recovery journal contents: {journal}")
+        (transaction,) = entries
+        if not re.fullmatch(r"[0-9a-f]{32}", transaction.name) or not stat.S_ISDIR(transaction.lstat().st_mode):
+            raise RuntimeError(f"Unexpected asset recovery transaction: {transaction}")
+        _finish_transaction(transaction, targets)
+    journal.rmdir()
+
+
+def _finish_transaction(transaction: Path, targets: tuple[Path, ...]) -> None:
+    pending = transaction / "pending"
+    if pending.exists():
+        # A missing candidate records a successful replace. Keep each backup
+        # until rollback completes so another interruption can retry the same
+        # rollback even if it occurs just after a restore.
+        for target in reversed(targets):
+            scratch = _scratch(target, transaction)
+            if (scratch / "candidate").exists():
+                continue
+            backup = scratch / "backup"
+            try:
+                if (scratch / "absent").exists():
+                    target.unlink(missing_ok=True)
+                else:
+                    restored = scratch / "restore"
+                    shutil.copy(backup, restored)
+                    os.replace(restored, target)
+            except BaseException as error:
+                error.add_note(f"Could not restore {target}; recovery files retained in {scratch} (backup: {backup})")
+                raise
+        pending.unlink()
+    for target in targets:
+        scratch = _scratch(target, transaction)
+        try:
+            mode = scratch.lstat().st_mode
+        except FileNotFoundError:
+            continue
+        if not stat.S_ISDIR(mode):
+            raise RuntimeError(f"Unexpected asset recovery directory: {scratch}")
+        for name in ("candidate", "backup", "absent", "restore"):
+            (scratch / name).unlink(missing_ok=True)
+        scratch.rmdir()
+    transaction.rmdir()
+
+
+def _publish_assets(journal: Path, targets: tuple[Path, ...]) -> None:
+    assets = minified_assets()
+    journal.mkdir(mode=0o700)
+    transaction = journal / uuid4().hex
+    try:
+        transaction.mkdir(mode=0o700)
+        for target in targets:
+            scratch = _scratch(target, transaction)
+            scratch.mkdir(mode=0o700)
             mode = 0o644
             if target.exists():
                 mode = target.stat().st_mode & 0o777
-                backup = sibling(target)
+                backup = scratch / "backup"
                 backup.write_bytes(target.read_bytes())
                 backup.chmod(mode)
-            backups[target] = backup
-            candidate = sibling(target)
-            candidate.write_text(content, encoding="utf-8")
+            else:
+                (scratch / "absent").touch()
+            candidate = scratch / "candidate"
+            candidate.write_text(assets[target], encoding="utf-8")
             candidate.chmod(mode)
-            staged[target] = candidate
-        for target, candidate in staged.items():
-            attempted.append(target)
-            os.replace(candidate, target)
-    except BaseException as publication_error:
-        error = publication_error
-        for target in reversed(attempted):
-            backup = backups[target]
-            try:
-                if backup is None:
-                    target.unlink(missing_ok=True)
-                else:
-                    os.replace(backup, target)
-            except BaseException as recovery_error:
-                if backup is not None:
-                    temporary.discard(backup)
-                    error.add_note(f"Restore {target} from retained recovery copy {backup}: {recovery_error}")
-                else:
-                    error.add_note(f"Could not remove newly published {target}: {recovery_error}")
+
+        # Only this phase can leave published assets needing a rollback.
+        pending = transaction / "pending"
+        pending.touch()
+        for target in targets:
+            os.replace(_scratch(target, transaction) / "candidate", target)
+        pending.unlink()
+    except BaseException as error:
+        try:
+            _recover(journal, targets)
+        except BaseException as recovery_error:
+            error.add_note(f"Could not finish asset recovery in {journal}: {recovery_error}")
+            for note in getattr(recovery_error, "__notes__", ()):
+                error.add_note(note)
         raise
-    finally:
-        for path in temporary:
-            try:
-                path.unlink(missing_ok=True)
-            except BaseException as cleanup_error:
-                if error is None:
-                    error = cleanup_error
-                error.add_note(f"Could not clean up {path}: {cleanup_error}")
-    if error is not None:
-        raise error
-    for target in assets:
+    _recover(journal, targets)
+    for target in targets:
         print(f"wrote {target.relative_to(ROOT)}")
 
 

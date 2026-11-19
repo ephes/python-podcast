@@ -245,16 +245,20 @@ After changing ``persistent-player.js`` or ``persistent-player.css``, run
 ``just minify-static``. A checkout-local ``.minify-static.lock`` covers source
 reads, publication and recovery. A second invocation exits immediately with an
 error. Retry after the first finishes and leave the lock file in place.
-The minifier stages all three generated assets plus
-byte-exact recovery copies before publishing sibling replacements. On a
-write/replace failure, Ctrl-C or Python exit, it attempts to restore the
-previous set before propagating the original exception. If restoration fails,
-use the recovery paths reported with the exception to restore the corresponding
-assets. Run ``uv run --locked pytest tests/test_performance_assets.py`` before
-committing or deploying. Recovery only covers exceptions raised inside the
-process (including Ctrl-C). After any other termination, such as SIGTERM from
-``timeout`` or a process manager, SIGHUP from a closed terminal, a forced kill
-or power loss, verify the generated assets before relying on them.
+The minifier stages all three generated assets and byte-exact recovery copies
+alongside their destinations. It records the publication in
+``.minify-static-transaction`` before replacing any output. After a write/replace
+failure or Ctrl-C, it attempts recovery before propagating the original
+exception. After a forced kill or another process termination, rerun
+``just minify-static``. Under the lock it restores an interrupted publication
+before reading the sources. If publication had already completed, it keeps the
+new generation and clears the remaining recovery files.
+
+If recovery reports an error, keep the journal and the reported copies in place.
+Resolve the underlying filesystem error and retry. After a system or power
+failure, verify the generated assets. Run
+``uv run --locked pytest tests/test_performance_assets.py`` before committing or
+deploying.
 
 ``tests/e2e/test_dock_transitions.py`` exercises queued updates in both orders,
 close during a pending switch, and activation without a transition, for both
