@@ -253,7 +253,11 @@ class Command(BaseCommand):
                     episode.slug,
                     episode.pk,
                     "failed",
-                    reason=f"legacy revision search limit reached ({LEGACY_REVISION_SEARCH_LIMIT} revisions)",
+                    reason=(
+                        f"legacy revision search limit reached ({LEGACY_REVISION_SEARCH_LIMIT} revisions); "
+                        "save the legacy body (for example from a backup or an older revision) as the live "
+                        "body or a new revision before retrying"
+                    ),
                 )
             if source is None:
                 return EpisodeResult(episode.slug, episode.pk, "skipped", reason="no legacy body to re-convert")

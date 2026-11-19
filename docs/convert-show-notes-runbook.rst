@@ -82,11 +82,13 @@ Safety model
   searches the newest 100 revisions for a detail with no ``show_note_*`` blocks.
   The conversion replaces only the ``detail`` section, keeping the current
   ``overview`` and other body sections. If the history ends without a legacy
-  body, the episode is skipped with "no legacy body to re-convert". If older
-  revisions remain after the search, the episode fails with "legacy revision
-  search limit reached", with no draft created or published. Other episodes
-  still run. A legacy body must be available within the search range before
-  retrying.
+  body, the episode is skipped with "no legacy body to re-convert" (its legacy
+  body was overwritten and never saved as a revision). If older revisions
+  remain after the search, the episode fails with "legacy revision search limit
+  reached", with no draft created or published; other episodes still run.
+  Retrying unchanged fails the same way. In both cases, restore that episode's
+  legacy body first: save it (for example from a backup, or copied from an older
+  revision) as the live body or as a new revision, then re-run ``--force``.
 
 Publish conflicts
 -----------------

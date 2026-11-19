@@ -527,10 +527,20 @@ def test_force_reports_history_beyond_legacy_search_limit():
     assert stored.live_revision_id == stored.latest_revision_id == published.pk
     assert stored.revisions.count() == 101
 
+    legacy_page = legacy.as_object()
     legacy.delete()
     output = _run("--slug", episode.slug, "--force", "--publish")
     assert "skipped: no legacy body to re-convert" in output
     assert stored.revisions.count() == 100
+
+    # The documented recovery: save the legacy body as a new revision.
+    current = Episode.objects.get(pk=episode.pk)
+    current.body = legacy_page.body
+    restored = current.save_revision()
+    output = _run("--slug", episode.slug, "--force", "--apply")
+    assert f"source: revision {restored.pk}" in output
+    stored = Episode.objects.get(pk=episode.pk)
+    assert "show_note_link_list" in _detail_types(stored.get_latest_revision_as_object())
 
 
 @pytest.mark.django_db
