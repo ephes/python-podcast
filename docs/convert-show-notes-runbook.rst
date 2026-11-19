@@ -78,13 +78,15 @@ Safety model
   ``--slug`` to process the full archive.
 * ``--force`` re-converts from the original legacy body, ignoring the "already
   converted" guard. Use it to regenerate conversions after the converter has
-  been improved. It finds the most recent *unconverted* body — the live body if
-  it is still legacy, otherwise the newest revision in history whose detail has
-  no ``show_note_*`` blocks — and only the ``detail`` section is replaced, so the
-  current ``overview`` and other body sections are kept. If an episode has no
-  unconverted version anywhere (its legacy body was overwritten and never saved
-  as a revision), it is skipped with "no legacy body to re-convert"; restore that
-  episode's legacy body from a backup before re-converting.
+  been improved. It uses the live body if it is still legacy. Otherwise it
+  searches the newest 100 revisions for a detail with no ``show_note_*`` blocks.
+  The conversion replaces only the ``detail`` section, keeping the current
+  ``overview`` and other body sections. If the history ends without a legacy
+  body, the episode is skipped with "no legacy body to re-convert". If older
+  revisions remain after the search, the episode fails with "legacy revision
+  search limit reached", with no draft created or published. Other episodes
+  still run. A legacy body must be available within the search range before
+  retrying.
 
 Publish conflicts
 -----------------

@@ -4,6 +4,10 @@ Changelog
 Unreleased
 ----------
 
+* Limit forced show-note conversion to the newest 100 revision bodies per
+  episode when the live body lacks legacy detail. Report a failure if older
+  revisions remain and the search found no legacy detail.
+
 * Refuse an explicit show-note conversion selection if any requested episode
   slug is unknown, before processing or writing revisions.
 

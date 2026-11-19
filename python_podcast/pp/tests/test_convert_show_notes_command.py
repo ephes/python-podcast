@@ -14,7 +14,7 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.db import connection, transaction
 from wagtail.coreutils import get_supported_content_language_variant
-from wagtail.models import Collection, Locale, Page, Site
+from wagtail.models import Collection, Locale, Page, Revision, Site
 
 from python_podcast.users.tests.factories import UserFactory
 
@@ -493,6 +493,44 @@ def test_force_recovers_legacy_body_after_publish():
 
     revised = _latest_revision_object(episode)
     assert "show_note_link_list" in _detail_types(revised)
+
+
+@pytest.mark.django_db
+def test_force_reports_history_beyond_legacy_search_limit():
+    from python_podcast.pp.management.commands.convert_show_notes import Command
+
+    episode = _make_episode(slug="deep-history-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
+    legacy = episode.save_revision()
+    _run("--slug", episode.slug, "--publish")
+    published = Episode.objects.get(pk=episode.pk).live_revision
+    Revision.objects.bulk_create(
+        [
+            Revision(
+                content_type_id=published.content_type_id,
+                base_content_type_id=published.base_content_type_id,
+                object_id=published.object_id,
+                created_at=published.created_at,
+                content=published.content,
+            )
+            for _ in range(99)
+        ]
+    )
+
+    with patch.object(Command, "_already_converted", wraps=Command._already_converted) as inspected:
+        output, error = _run_expecting_error("--slug", episode.slug, "--force", "--publish")
+
+    assert "legacy revision search limit reached (100 revisions)" in output
+    assert "1 failed" in output
+    assert episode.slug in error
+    assert inspected.call_count == 101  # Live body and the 100 allowed revision bodies.
+    stored = Episode.objects.get(pk=episode.pk)
+    assert stored.live_revision_id == stored.latest_revision_id == published.pk
+    assert stored.revisions.count() == 101
+
+    legacy.delete()
+    output = _run("--slug", episode.slug, "--force", "--publish")
+    assert "skipped: no legacy body to re-convert" in output
+    assert stored.revisions.count() == 100
 
 
 @pytest.mark.django_db
