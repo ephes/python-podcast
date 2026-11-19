@@ -72,17 +72,23 @@ Safety model
   before going live.
 * ``--publish`` publishes the created revision (implies ``--apply``). It only
   ever puts the conversion live; see `Publish conflicts`_.
-* ``--slug <slug>`` limits the run to one episode; it may be given multiple
-  times.
+* Repeat ``--slug <slug>`` to select episodes. The command resolves the full
+  selection before processing any episode. If a slug is unknown, it lists the
+  missing slugs and exits before creating or publishing any revision. Omit
+  ``--slug`` to process the full archive.
 * ``--force`` re-converts from the original legacy body, ignoring the "already
   converted" guard. Use it to regenerate conversions after the converter has
-  been improved. It finds the most recent *unconverted* body — the live body if
-  it is still legacy, otherwise the newest revision in history whose detail has
-  no ``show_note_*`` blocks — and only the ``detail`` section is replaced, so the
-  current ``overview`` and other body sections are kept. If an episode has no
-  unconverted version anywhere (its legacy body was overwritten and never saved
-  as a revision), it is skipped with "no legacy body to re-convert"; restore that
-  episode's legacy body from a backup before re-converting.
+  been improved. It uses the live body if it is still legacy. Otherwise it
+  searches the newest 100 revisions for a detail with no ``show_note_*`` blocks.
+  The conversion replaces only the ``detail`` section, keeping the current
+  ``overview`` and other body sections. If the history ends without a legacy
+  body, the episode is skipped with "no legacy body to re-convert" (its legacy
+  body was overwritten and never saved as a revision). If older revisions
+  remain after the search, the episode fails with "legacy revision search limit
+  reached", with no draft created or published; other episodes still run.
+  Retrying unchanged fails the same way. In both cases, restore that episode's
+  legacy body first: save it (for example from a backup, or copied from an older
+  revision) as the live body or as a new revision, then re-run ``--force``.
 
 Publish conflicts
 -----------------
@@ -204,9 +210,9 @@ Implementation
 Archive memory
 --------------
 
-Episodes are read with uncached iteration in chunks of 20. Each episode's report
-prints its full ordered before/after block lists; afterwards only compact result
-records (identities, the first warning and revision IDs, no block types) survive
+A full archive run reads episodes with uncached iteration in chunks of 20.
+Each episode's report prints its full ordered before/after block lists;
+afterwards only compact result records (identities, the first warning and revision IDs, no block types) survive
 each episode; full page and revision bodies are not retained by the archive
 queryset.
 Per-episode locking and editor conflict checks still apply.

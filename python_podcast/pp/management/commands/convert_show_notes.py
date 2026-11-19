@@ -51,6 +51,7 @@ from python_podcast.pp.show_notes.converter import ConvertedBlock, convert_parag
 LOCK_NOT_AVAILABLE = "55P03"
 
 SHOW_NOTE_TYPES = frozenset({"show_note_heading", "show_note_link_list", "show_note_sponsor"})
+LEGACY_REVISION_SEARCH_LIMIT = 100
 
 # Page fields that describe the publication state of the page rather than its
 # content. A revision stores the values from the moment it was saved, so they
@@ -76,6 +77,10 @@ REVISION_BOOKKEEPING_FIELDS = frozenset(
         "wagtail_admin_comments",
     }
 )
+
+
+class LegacyRevisionSearchLimitExceeded(Exception):
+    """The history continues beyond the allowed legacy source search."""
 
 
 @dataclass
@@ -131,14 +136,14 @@ class Command(BaseCommand):
             dest="slugs",
             default=[],
             metavar="SLUG",
-            help="Limit conversion to the episode with this slug. May be given multiple times.",
+            help="Limit conversion to these slugs. May be repeated; every slug must match an episode.",
         )
         parser.add_argument(
             "--force",
             action="store_true",
             help=(
                 "Re-convert from the original legacy body (the most recent "
-                "unconverted version, taken from revision history if needed), "
+                f"unconverted version, searching up to {LEGACY_REVISION_SEARCH_LIMIT} revisions if needed), "
                 "ignoring the 'already converted' guard. Use to regenerate "
                 "conversions after the converter has been improved."
             ),
@@ -150,13 +155,18 @@ class Command(BaseCommand):
         force = options["force"]
         slugs = options["slugs"]
 
-        episodes = Episode.objects.all()
+        episodes = Episode.objects.order_by("pk")
         if slugs:
-            episodes = episodes.filter(slug__in=slugs)
-        episodes = episodes.order_by("pk")
+            selected = list(episodes.filter(slug__in=slugs))
+            missing = sorted(set(slugs) - {episode.slug for episode in selected})
+            if missing:
+                raise CommandError(f"Unknown episode slug(s): {', '.join(missing)}")
+            batch = iter(selected)
+        else:
+            batch = episodes.iterator(chunk_size=20)
 
         results = []
-        for episode in episodes.iterator(chunk_size=20):
+        for episode in batch:
             try:
                 result = self._process_episode(episode, apply=apply, publish=publish, force=force)
             except Exception as exc:
@@ -236,7 +246,19 @@ class Command(BaseCommand):
         source_revision_pk = None
         source_sha256 = ""
         if force:
-            source = self._legacy_raw_top(episode)
+            try:
+                source = self._legacy_raw_top(episode)
+            except LegacyRevisionSearchLimitExceeded:
+                return EpisodeResult(
+                    episode.slug,
+                    episode.pk,
+                    "failed",
+                    reason=(
+                        f"legacy revision search limit reached ({LEGACY_REVISION_SEARCH_LIMIT} revisions); "
+                        "save the legacy body (for example from a backup or an older revision) as the live "
+                        "body or a new revision before retrying"
+                    ),
+                )
             if source is None:
                 return EpisodeResult(episode.slug, episode.pk, "skipped", reason="no legacy body to re-convert")
             raw_top, source_revision_pk = source
@@ -478,15 +500,19 @@ class Command(BaseCommand):
         """Return the most recent body that has not yet been converted.
 
         Prefers the live body when it is still legacy, otherwise scans revisions
-        newest-first for the last version whose detail has no ``show_note_*``
-        blocks. Returns ``None`` if every version is already converted.
+        newest-first for a detail with no ``show_note_*`` blocks. Returns
+        ``None`` when the history ends without a source and raises if the search
+        limit is reached while older revisions remain.
         """
         live = episode.body.raw_data
         live_detail = [block for block in live if block["type"] == "detail"]
         if live_detail and not self._already_converted(live_detail):
             return live, episode.live_revision_id
 
-        for revision in episode.revisions.order_by("-created_at", "-pk").iterator(chunk_size=20):
+        revisions = episode.revisions.order_by("-created_at", "-pk").only("content")
+        limit = LEGACY_REVISION_SEARCH_LIMIT
+        inspected = 0
+        for inspected, revision in enumerate(revisions[:limit].iterator(chunk_size=20), start=1):
             body = revision.content.get("body")
             if body is None:
                 continue
@@ -494,6 +520,10 @@ class Command(BaseCommand):
             detail = [block for block in raw if block["type"] == "detail"]
             if detail and not self._already_converted(detail):
                 return raw, revision.pk
+
+        # Check for more history without loading another revision body.
+        if inspected == limit and revisions[limit:].exists():
+            raise LegacyRevisionSearchLimitExceeded
         return None
 
     def _convert_top(self, raw_top: list[dict]) -> tuple[list[dict], list[str], list[str], bool]:
