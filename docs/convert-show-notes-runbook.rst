@@ -49,7 +49,8 @@ What the command does
     breaks are ignored. A heading that contains an image, SVG, embed, iframe,
     link, ``<code>``, ``<em>``, a comment or a line break between words is
     preserved verbatim, and the list that follows it stays prose with it.
-    Headings with attributes such as ``id``, ``lang`` or ``data-*`` also stay
+    Headings with attributes such as ``id``, ``lang`` or ``data-*``, on the
+    heading itself or on a ``<b>``/``<strong>``/``<br>`` inside it, also stay
     in prose with their lists, preserving fragment targets and metadata;
   - a list item is converted only when its prefix, link titles and note are
     unformatted text. Inline formatting around real text (``<strong>``,

@@ -4,7 +4,8 @@ Changelog
 Unreleased
 ----------
 
-* Keep headings with HTML attributes and their following lists in prose during
+* Keep headings with HTML attributes (on the heading or on a ``<b>``,
+  ``<strong>`` or ``<br>`` inside it) and their following lists in prose during
   show-note conversion, preserving fragment targets and metadata.
 
 * Preserve literal heading text during show-note conversion by recognizing

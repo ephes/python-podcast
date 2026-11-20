@@ -493,6 +493,23 @@ def test_heading_attributes_preserve_fragment_target_and_following_list():
 @pytest.mark.parametrize(
     "heading",
     [
+        '<h2><strong id="news">News</strong></h2>',
+        '<h2><b data-topic="releases">News</b></h2>',
+        '<h2>News<br class="spacer"/></h2>',
+    ],
+)
+def test_attributes_inside_heading_keep_heading_and_list_in_prose(heading):
+    conversion = convert_paragraph_html(heading + LINK_LIST)
+
+    assert _types(conversion) == ["paragraph"]
+    assert conversion.blocks[0].value == heading + LINK_LIST
+    assert len(conversion.warnings) == 1
+    assert "attributes" in conversion.warnings[0]
+
+
+@pytest.mark.parametrize(
+    "heading",
+    [
         '<h2><img alt="" src="meaningful.png"/>Links</h2>',
         '<h2>Links <svg viewbox="0 0 1 1"><title>Icon</title><path d="M0 0"></path></svg></h2>',
         '<h2>Links <embed embedtype="image" format="left" id="7"/></h2>',

@@ -485,8 +485,8 @@ def _plain_heading_text(heading: Tag) -> tuple[str | None, str]:
 
     Otherwise ``(None, description)`` names the markup that would be lost. Text,
     ``<b>``/``<strong>`` wrappers and a leading/trailing ``<br>`` are
-    representable. Attributes on the heading itself, a ``<br>`` between words,
-    comments and every other element are not.
+    representable. Attributes on the heading or on those wrappers and breaks,
+    a ``<br>`` between words, comments and every other element are not.
     """
     if heading.attrs:
         return None, "HTML attributes"
@@ -498,10 +498,13 @@ def _plain_heading_text(heading: Tag) -> tuple[str | None, str]:
         if isinstance(node, NavigableString):
             lines[-1].append(str(node))
         elif isinstance(node, Tag):
+            if node.name != "br" and node.name not in HEADING_TRANSPARENT_TAGS:
+                return None, f"<{node.name}>"
+            if node.attrs:
+                # An id, lang or data-* on a wrapper or break is lost as well.
+                return None, "HTML attributes"
             if node.name == "br":
                 lines.append([])
-            elif node.name not in HEADING_TRANSPARENT_TAGS:
-                return None, f"<{node.name}>"
     # Line breaks at either end carry nothing; one between words is structure.
     text_lines = [text for line in lines if (text := _clean_text("".join(line)))]
     if len(text_lines) > 1:
