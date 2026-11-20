@@ -238,6 +238,11 @@ continue. If a callback raises after the episode's transaction commits, the
 report still gives the committed revision ID and flags the failed follow-up.
 Inspect the callbacks and recover the follow-up separately. The final summary
 and nonzero exit identify failures, failed follow-ups and conflicts.
+The write summary counts newly created revisions and revisions made live
+separately. A new conversion published immediately counts in both totals. An
+existing conversion draft made live counts only as published, and a new draft
+saved despite a publish conflict counts only as created. These totals include
+committed revisions whose post-commit follow-up failed.
 There is no archive-wide rollback: earlier reported revisions remain committed.
 Retrying a normal ``--apply`` skips already converted drafts. Forced retries
 intentionally create new revisions. Keep stdout/stderr in the operation log;

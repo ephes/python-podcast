@@ -3,6 +3,7 @@ from __future__ import annotations
 import inspect
 import json
 import threading
+from datetime import UTC, datetime, timedelta
 from io import StringIO
 from unittest.mock import patch
 
@@ -184,6 +185,7 @@ def test_publish_reports_committed_revision_when_callback_fails(monkeypatch, exi
         assert episode.live_revision_id == existing_revision_id
     assert f"committed (revision {episode.live_revision_id})" in output.getvalue()
     assert "follow-up failed: RuntimeError" in output.getvalue()
+    assert f"Revisions: {int(not existing_draft)} created, 1 published." in output.getvalue()
     assert "private callback detail" not in output.getvalue()
     assert "failed: callback-ep" not in str(error.value)
     assert "follow-up" in str(error.value)
@@ -331,8 +333,70 @@ def test_publish_conflict_does_not_block_other_episodes():
 
     assert _detail_types(Episode.objects.get(pk=conflicted.pk)) == ["paragraph"]
     assert "show_note_link_list" in _detail_types(Episode.objects.get(pk=clean.pk))
-    assert "published only the episodes without a conflict" in output
+    assert "Revisions: 0 created, 1 published." in output
     assert "batch-conflict-ep" in error and "batch-clean-ep" not in error
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("with_conflict", [False, True])
+def test_publish_summary_counts_only_written_drafts_and_publications(monkeypatch, with_conflict):
+    legacy_detail = [{"type": "paragraph", "value": SHOWNOTE_HTML}]
+    fresh = _make_episode(slug="fresh-conversion", detail_children=legacy_detail)
+    existing = _make_episode(slug="existing-conversion", detail_children=legacy_detail)
+    _run("--slug", existing.slug, "--apply")
+    failed = _make_episode(slug="failed-conversion", detail_children=legacy_detail)
+    unchanged = _make_episode(slug="unchanged-conversion", detail_children=None)
+    slugs = [fresh.slug, existing.slug, failed.slug, unchanged.slug]
+    if with_conflict:
+        conflict = _make_episode(slug="conflicted-conversion", detail_children=legacy_detail)
+        conflict.title = "Pending synthetic edit"
+        conflict.save_revision()
+        slugs.append(conflict.slug)
+    original_save = Episode.save_revision
+
+    def save_revision(self, *args, **kwargs):
+        revision = original_save(self, *args, **kwargs)
+        if self.pk == failed.pk:
+            raise RuntimeError("synthetic rollback")
+        return revision
+
+    monkeypatch.setattr(Episode, "save_revision", save_revision)
+    output = StringIO()
+    selectors = [arg for slug in slugs for arg in ("--slug", slug)]
+    with pytest.raises(CommandError, match=r"1 episode\(s\) failed: failed-conversion"):
+        call_command("convert_show_notes", "--publish", *selectors, stdout=output)
+
+    report = output.getvalue()
+    assert f"Revisions: {1 + with_conflict} created, 2 published." in report
+    assert "1 skipped" in report
+    assert "1 failed" in report
+    assert "Applied and published revisions." not in report
+    for episode in (fresh, existing):
+        episode.refresh_from_db()
+        assert episode.revisions.count() == 1
+        assert episode.live_revision_id == episode.latest_revision_id
+    assert failed.revisions.count() == unchanged.revisions.count() == 0
+    if with_conflict:
+        assert "1 not published (conflict)" in report
+        conflict.refresh_from_db()
+        assert conflict.revisions.count() == 2
+        assert conflict.live_revision_id is None
+
+
+@pytest.mark.django_db
+def test_publish_summary_excludes_scheduled_revision():
+    episode = _make_episode(
+        slug="scheduled-conversion", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}]
+    )
+    go_live_at = datetime.now(UTC) + timedelta(days=1)
+    Episode.objects.filter(pk=episode.pk).update(go_live_at=go_live_at, live=False)
+
+    output = _run("--slug", episode.slug, "--publish")
+
+    episode.refresh_from_db()
+    assert episode.live_revision_id is None
+    assert episode.get_latest_revision().approved_go_live_at is not None
+    assert "Revisions: 1 created, 0 published." in output
 
 
 @pytest.mark.django_db

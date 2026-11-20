@@ -93,6 +93,8 @@ class EpisodeResult:
     after_types: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     revision_pk: int | None = None
+    draft_created: bool = False
+    published: bool = False
     source_revision_pk: int | None = None
     source_sha256: str = ""
     # Why --publish was refused: the unrelated parts of the draft that differ from live.
@@ -188,7 +190,7 @@ class Command(BaseCommand):
                 )
             )
 
-        self._report_summary(results, apply=apply, publish=publish)
+        self._report_summary(results, apply=apply)
 
         errors = []
         failed = [result.slug for result in results if result.status == "failed"]
@@ -303,13 +305,17 @@ class Command(BaseCommand):
                     episode.slug,
                     episode.pk,
                     "changed",
-                    reason="published existing converted draft",
                     revision_pk=revision.pk,
                 )
                 with self._write_conversion(episode, snapshot, result) as current:
                     if current is None:
                         return self._edit_conflict(episode)
-                    current.get_latest_revision().publish()
+                    result.published = self._publish_revision(current.get_latest_revision(), episode.pk)
+                    result.reason = (
+                        "published existing converted draft"
+                        if result.published
+                        else "scheduled publication of existing converted draft"
+                    )
                 return result
             return EpisodeResult(episode.slug, episode.pk, "skipped", reason="already converted")
 
@@ -353,12 +359,19 @@ class Command(BaseCommand):
                 target.body = target.body.stream_block.to_python(merged_top)
                 revision = target.save_revision()
                 result.revision_pk = revision.pk
+                result.draft_created = True
                 if unrelated:
                     result.publish_conflict = unrelated
                 elif publish:
-                    revision.publish()
+                    result.published = self._publish_revision(revision, episode.pk)
 
         return result
+
+    @staticmethod
+    def _publish_revision(revision, episode_pk: int) -> bool:
+        revision.publish()
+        # Wagtail can schedule a future revision instead of making it live.
+        return Page.objects.filter(pk=episode_pk, live=True, live_revision_id=revision.pk).exists()
 
     @contextmanager
     def _write_conversion(self, episode: Episode, snapshot: EpisodeSnapshot, result: EpisodeResult):
@@ -639,7 +652,7 @@ class Command(BaseCommand):
         else:
             self.stdout.write("  -> would change (dry run)")
 
-    def _report_summary(self, results: list[EpisodeResult], *, apply: bool, publish: bool) -> None:
+    def _report_summary(self, results: list[EpisodeResult], *, apply: bool) -> None:
         followup_failures = sum(1 for result in results if result.status == "committed_with_followup_failure")
         changed = sum(1 for result in results if result.status == "changed") + followup_failures
         failed = sum(1 for result in results if result.status == "failed")
@@ -661,9 +674,7 @@ class Command(BaseCommand):
         self.stdout.write(summary)
         if not apply:
             self.stdout.write("Dry run: no changes written. Re-run with --apply to create revisions.")
-        elif publish and conflicts:
-            self.stdout.write("Applied revisions; published only the episodes without a conflict.")
-        elif publish:
-            self.stdout.write("Applied and published revisions.")
         else:
-            self.stdout.write("Applied: created draft revisions (not published).")
+            drafts_created = sum(result.draft_created for result in results)
+            published = sum(result.published for result in results)
+            self.stdout.write(f"Revisions: {drafts_created} created, {published} published.")

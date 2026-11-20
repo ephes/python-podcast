@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Count newly created and published show-note revisions separately, including
+  in batches with failures or conflicts.
+
 * Report the committed revision ID when show-note conversion encounters a
   failed post-commit callback, and flag the follow-up for separate recovery.
 
