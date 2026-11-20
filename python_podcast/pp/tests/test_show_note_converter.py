@@ -550,6 +550,20 @@ def test_unrepresentable_heading_does_not_block_other_sections():
     assert conversion.blocks[2].value["heading"] == "Bücher"
 
 
+def test_heading_conversion_distinguishes_literal_marker_from_html_breaks():
+    literal_text = "\x00News\x00and Links\x00"
+    multiline_heading = "<h3>First line<br/>Second line</h3>"
+    html = f"<h3><br/><b>{literal_text}</b><br/></h3>" + LINK_LIST + multiline_heading + LINK_LIST
+
+    conversion = convert_paragraph_html(html)
+
+    assert _types(conversion) == ["show_note_link_list", "paragraph"]
+    assert conversion.blocks[0].value["heading"] == literal_text
+    assert conversion.blocks[1].value == multiline_heading + LINK_LIST
+    assert len(conversion.warnings) == 1
+    assert "line break" in conversion.warnings[0]
+
+
 @pytest.mark.parametrize(
     ("heading", "expected"),
     [

@@ -7,6 +7,9 @@ Unreleased
 * Keep headings with HTML attributes and their following lists in prose during
   show-note conversion, preserving fragment targets and metadata.
 
+* Preserve literal heading text during show-note conversion by recognizing
+  only HTML ``<br>`` elements as line breaks.
+
 * Keep cached episode listings renderable after a page is deleted. Remember
   missing pages for the request and omit their persistent play actions.
 

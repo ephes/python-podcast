@@ -44,12 +44,13 @@ What the command does
   flattened away. The section or item stays original HTML, with a warning:
 
   - a heading without HTML attributes is converted when it consists of text,
-    optionally wrapped in ``<b>``/``<strong>`` (a heading renders bold anyway). A heading that
-    contains an image, SVG, embed, iframe, link, ``<code>``, ``<em>``, a comment
-    or a line break between words is preserved verbatim, and the list that
-    follows it stays prose with it. Headings with attributes such as ``id``,
-    ``lang`` or ``data-*`` also stay in prose with their lists, preserving
-    fragment targets and metadata;
+    optionally wrapped in ``<b>``/``<strong>`` (a heading renders bold anyway).
+    Only actual ``<br>`` elements count as line breaks. Leading and trailing
+    breaks are ignored. A heading that contains an image, SVG, embed, iframe,
+    link, ``<code>``, ``<em>``, a comment or a line break between words is
+    preserved verbatim, and the list that follows it stays prose with it.
+    Headings with attributes such as ``id``, ``lang`` or ``data-*`` also stay
+    in prose with their lists, preserving fragment targets and metadata;
   - a list item is converted only when its prefix, link titles and note are
     unformatted text. Inline formatting around real text (``<strong>``,
     ``<b>``, ``<em>``, ``<i>``, ``<code>``, ``<sub>``, ``<sup>``, ``<small>``,
