@@ -76,10 +76,11 @@ Safety model
   before going live.
 * ``--publish`` publishes the created revision (implies ``--apply``). It only
   ever puts the conversion live; see `Publish conflicts`_.
-* Repeat ``--slug <slug>`` to select episodes. The command resolves the full
-  selection before processing any episode. If a slug is unknown, it lists the
-  missing slugs and exits before creating or publishing any revision. Omit
-  ``--slug`` to process the full archive.
+* Repeat ``--slug <slug>`` to select episodes. Every distinct slug must identify
+  exactly one episode across all podcasts. The command reports unknown slugs and
+  lists candidate page IDs for ambiguous slugs, then rejects the entire
+  selection before processing any episode. Omit ``--slug`` to process the full
+  archive.
 * ``--force`` re-converts from the original legacy body, ignoring the "already
   converted" guard. Use it to regenerate conversions after the converter has
   been improved. It uses the live body if it is still legacy. Otherwise it

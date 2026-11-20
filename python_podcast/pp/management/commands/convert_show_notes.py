@@ -143,7 +143,7 @@ class Command(BaseCommand):
             dest="slugs",
             default=[],
             metavar="SLUG",
-            help="Limit conversion to these slugs. May be repeated; every slug must match an episode.",
+            help="Limit conversion to these slugs. May be repeated; every slug must match exactly one episode.",
         )
         parser.add_argument(
             "--force",
@@ -165,9 +165,21 @@ class Command(BaseCommand):
         episodes = Episode.objects.order_by("pk")
         if slugs:
             selected = list(episodes.filter(slug__in=slugs))
-            missing = sorted(set(slugs) - {episode.slug for episode in selected})
+            ids_by_slug: dict[str, list[int]] = {slug: [] for slug in sorted(set(slugs))}
+            for episode in selected:
+                ids_by_slug[episode.slug].append(episode.pk)
+
+            selection_errors = []
+            missing = [slug for slug, ids in ids_by_slug.items() if not ids]
             if missing:
-                raise CommandError(f"Unknown episode slug(s): {', '.join(missing)}")
+                selection_errors.append(f"Unknown episode slug(s): {', '.join(missing)}")
+            ambiguous = [
+                f"{slug} (IDs: {', '.join(map(str, ids))})" for slug, ids in ids_by_slug.items() if len(ids) > 1
+            ]
+            if ambiguous:
+                selection_errors.append(f"Ambiguous episode slug(s): {', '.join(ambiguous)}")
+            if selection_errors:
+                raise CommandError(". ".join(selection_errors))
             batch = iter(selected)
         else:
             batch = self._archive_episodes(episodes)

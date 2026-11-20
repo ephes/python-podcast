@@ -34,10 +34,10 @@ def _ensure_site():
     return Site.objects.create(hostname="testserver", port=80, root_page=root, is_default_site=True)
 
 
-def _make_episode(*, slug, detail_children, num=1, overview=None):
+def _make_episode(*, slug, detail_children, num=1, overview=None, podcast_slug=None):
     owner = UserFactory()
     site = _ensure_site()
-    podcast = Podcast(title=f"Podcast {num}", slug=f"podcast-{slug}", owner=owner)
+    podcast = Podcast(title=f"Podcast {num}", slug=podcast_slug or f"podcast-{slug}", owner=owner)
     site.root_page.add_child(instance=podcast)
     overview_value = overview if overview is not None else [{"type": "heading", "value": "overview heading"}]
     body = []
@@ -701,6 +701,26 @@ def test_unknown_explicit_slugs_refuse_the_entire_selection(mode):
 
     _run("--slug", episode.slug, "--apply")
     assert episode.revisions.count() == 1
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("mode", [(), ("--apply",), ("--publish",)])
+def test_ambiguous_explicit_slug_refuses_the_entire_selection(mode):
+    children = [{"type": "paragraph", "value": SHOWNOTE_HTML}]
+    unique = _make_episode(slug="unique-ep", detail_children=children)
+    first = _make_episode(slug="shared-ep", detail_children=children)
+    second = _make_episode(slug=first.slug, detail_children=children, podcast_slug="another-podcast")
+
+    output, error = _run_expecting_error("--slug", unique.slug, "--slug", first.slug, *mode)
+
+    assert f"Ambiguous episode slug(s): shared-ep (IDs: {first.pk}, {second.pk})" in error
+    assert not output
+    for episode in (unique, first, second):
+        assert episode.revisions.count() == 0
+
+    # Repeating an unambiguous selector still processes the one matching page once.
+    _run("--slug", unique.slug, "--slug", unique.slug, "--apply")
+    assert unique.revisions.count() == 1
 
 
 RICH_SHOWNOTE_HTML = (
