@@ -1017,7 +1017,7 @@ def test_archive_iteration_keeps_episode_hydration_bounded(monkeypatch):
     import gc
     import weakref
 
-    from python_podcast.pp.management.commands.convert_show_notes import Command, EpisodeResult
+    from python_podcast.pp.management.commands import convert_show_notes
 
     for number in range(8):
         _make_episode(
@@ -1035,12 +1035,57 @@ def test_archive_iteration_keeps_episode_hydration_bounded(monkeypatch):
 
     def process(self, episode, **kwargs):
         gc.collect()
-        assert len(hydrated) <= 2, "archive queryset retained full episode bodies"
-        return EpisodeResult(episode.slug, episode.pk, "skipped")
+        assert len(hydrated) <= 3, "archive queryset retained more than a batch of episode bodies"
+        return convert_show_notes.EpisodeResult(episode.slug, episode.pk, "skipped")
 
     monkeypatch.setattr(Episode, "from_db", classmethod(from_db))
-    monkeypatch.setattr(Command, "_process_episode", process)
+    monkeypatch.setattr(convert_show_notes, "ARCHIVE_BATCH_SIZE", 2)
+    monkeypatch.setattr(convert_show_notes.Command, "_process_episode", process)
     assert "8 skipped" in _run()
+
+
+@pytest.mark.django_db
+def test_archive_selection_closes_each_cursor_and_respects_initial_horizon(monkeypatch):
+    from python_podcast.pp.management.commands import convert_show_notes
+
+    initial_pks = [_make_episode(slug=f"archive-{number}", detail_children=None).pk for number in range(5)]
+    open_cursors = set()
+    selection_queries = []
+    seen_pks = []
+    open_during_conversion = []
+
+    def track_selection(execute, sql, params, many, context):
+        if sql.startswith("SELECT") and f'"{Episode._meta.db_table}"' in sql:
+            cursor = context["cursor"]
+            close_cursor = cursor.close
+            open_cursors.add(cursor)
+            selection_queries.append(sql)
+
+            def close():
+                open_cursors.remove(cursor)
+                return close_cursor()
+
+            cursor.close = close
+        return execute(sql, params, many, context)
+
+    def process(self, episode, **kwargs):
+        seen_pks.append(episode.pk)
+        open_during_conversion.append(len(open_cursors))
+        if len(seen_pks) == 2:
+            selected_before_insert = len(selection_queries)
+            late = _make_episode(slug="archive-late", detail_children=None)
+            assert late.pk > initial_pks[-1]
+            del selection_queries[selected_before_insert:]
+        return convert_show_notes.EpisodeResult(episode.slug, episode.pk, "skipped")
+
+    monkeypatch.setattr(convert_show_notes, "ARCHIVE_BATCH_SIZE", 2)
+    monkeypatch.setattr(convert_show_notes.Command, "_process_episode", process)
+    with connection.execute_wrapper(track_selection):
+        _run()
+
+    assert open_during_conversion == [0] * len(seen_pks)
+    assert seen_pks == initial_pks
+    assert sum("LIMIT 2" in sql for sql in selection_queries) == 3
 
 
 @pytest.mark.django_db

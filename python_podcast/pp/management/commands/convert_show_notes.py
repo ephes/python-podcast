@@ -35,6 +35,7 @@ from __future__ import annotations
 import hashlib
 import json
 import uuid
+from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
 
@@ -42,7 +43,7 @@ from cast.models import Episode
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.management.base import BaseCommand, CommandError
 from django.core.serializers.json import DjangoJSONEncoder
-from django.db import OperationalError, transaction
+from django.db import OperationalError, models, transaction
 from wagtail.models import Page
 
 from python_podcast.pp.show_notes.converter import ConvertedBlock, convert_paragraph_html
@@ -52,6 +53,7 @@ LOCK_NOT_AVAILABLE = "55P03"
 
 SHOW_NOTE_TYPES = frozenset({"show_note_heading", "show_note_link_list", "show_note_sponsor"})
 LEGACY_REVISION_SEARCH_LIMIT = 100
+ARCHIVE_BATCH_SIZE = 20
 
 # Page fields that describe the publication state of the page rather than its
 # content. A revision stores the values from the moment it was saved, so they
@@ -165,7 +167,7 @@ class Command(BaseCommand):
                 raise CommandError(f"Unknown episode slug(s): {', '.join(missing)}")
             batch = iter(selected)
         else:
-            batch = episodes.iterator(chunk_size=20)
+            batch = self._archive_episodes(episodes)
 
         results = []
         for episode in batch:
@@ -223,11 +225,26 @@ class Command(BaseCommand):
         if errors:
             raise CommandError(" ".join(errors))
 
+    @staticmethod
+    def _archive_episodes(episodes: models.QuerySet[Episode]) -> Iterator[Episode]:
+        horizon = episodes.aggregate(horizon=models.Max("pk"))["horizon"]
+        if horizon is None:
+            return
+        episodes = episodes.filter(pk__lte=horizon)
+        page = episodes
+        # Materialize each page so its selection cursor is closed before any writes.
+        while batch := list(page[:ARCHIVE_BATCH_SIZE]):
+            yield from batch
+            last_pk = batch[-1].pk
+            if last_pk == horizon:
+                return
+            page = episodes.filter(pk__gt=last_pk)
+
     # -- per-episode ----------------------------------------------------
     def _process_episode(self, episode: Episode, *, apply: bool, publish: bool, force: bool) -> EpisodeResult:
         """Convert one episode; an episode that disappears meanwhile is an edit conflict.
 
-        ``episode`` was loaded by uncached archive iteration. It, or its current
+        ``episode`` was loaded during selection. It, or its current
         revision, can be deleted before or while it is processed, and then one of the
         reads below fails. That is the same situation as any other edit made
         during the run, so it is reported the same way and the batch goes on.

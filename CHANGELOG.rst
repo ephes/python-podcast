@@ -4,6 +4,10 @@ Changelog
 Unreleased
 ----------
 
+* Convert the show-note archive in bounded primary-key batches. Close each
+  selection cursor before writing revisions and defer newly appended episodes
+  to the next run.
+
 * Count newly created and published show-note revisions separately, including
   in batches with failures or conflicts.
 

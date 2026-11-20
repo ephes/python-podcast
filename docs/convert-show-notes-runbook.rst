@@ -161,8 +161,8 @@ The locks cannot show a new revision that another database transaction has
 inserted but not committed yet. Such a save completes afterwards and remains the
 latest revision, so the edit is kept in that case as well.
 
-An episode that is deleted while the batch runs, at any point, is also reported
-as an edit conflict and does not stop the remaining episodes.
+An episode deleted after selection is reported as an edit conflict. The
+remaining episodes still run.
 
 Usage
 -----
@@ -214,12 +214,15 @@ Implementation
 Archive memory
 --------------
 
-A full archive run reads episodes with uncached iteration in chunks of 20.
-Each episode's report prints its full ordered before/after block lists;
-afterwards only compact result records (identities, the first warning and revision IDs, no block types) survive
-each episode; full page and revision bodies are not retained by the archive
-queryset.
-Per-episode locking and editor conflict checks still apply.
+A full archive run captures the highest episode primary key at the start
+and reads up to 20 episodes at a time in primary-key order. Each batch's
+selection cursor closes before conversion begins. Episodes added above the
+initial maximum are picked up on the next run. Per-episode locking and editor
+conflict checks still apply.
+
+Each episode's report prints its full ordered before/after block lists.
+Only compact result records, including identities, the first warning and
+revision IDs, are kept for the archive summary.
 
 Forced source and progress receipts
 -----------------------------------
