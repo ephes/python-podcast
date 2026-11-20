@@ -8,14 +8,18 @@ builds the sanitized payload + ids so a theme's audio block can PUBLISH them
 """
 
 import math
+from collections import defaultdict
 from types import SimpleNamespace
 from typing import Any
 
+from cast.models import Blog, Post
 from cast.models.pages import PODLOVE_POSTER_RENDITION_SPEC
 from cast.player import build_player_payload
 from django import template
 from django.conf import settings
-from django.db.models import Prefetch, prefetch_related_objects
+from django.contrib.contenttypes.models import ContentType
+from django.db import router
+from django.db.models import Prefetch, QuerySet, prefetch_related_objects
 from django.utils.html import json_script
 from django.utils.safestring import mark_safe
 from django_vite.core.asset_loader import DjangoViteAssetLoader
@@ -28,50 +32,110 @@ register = template.Library()
 CARD_POSTER_RENDITION_SPEC = "max-128x128|format-webp"
 
 
-def _cover_prefetch() -> Prefetch:
-    images = get_image_model().objects.prefetch_renditions(PODLOVE_POSTER_RENDITION_SPEC, CARD_POSTER_RENDITION_SPEC)
+def _cover_prefetch(using: str | None = None) -> Prefetch:
+    image_model = get_image_model()
+    specs = (PODLOVE_POSTER_RENDITION_SPEC, CARD_POSTER_RENDITION_SPEC)
+    images = image_model.objects.all()
+    if using is None:
+        images = images.prefetch_renditions(*specs)
+    else:
+        # Use Wagtail's rendition prefetch attribute with an explicit alias
+        # for both queries. A router can override Django's instance hint.
+        renditions = image_model.get_rendition_model().objects.using(using).filter(filter_spec__in=specs)
+        images = images.using(using).prefetch_related(
+            Prefetch("renditions", queryset=renditions, to_attr="prefetched_renditions")
+        )
     return Prefetch("cover_image", queryset=images)
+
+
+def _page_database(page: Any) -> str | None:
+    return getattr(getattr(page, "_state", None), "db", None)
+
+
+def _routed_card_pages(queryset: QuerySet, using: str) -> dict[int, Page]:
+    # Wagtail's specific() sends its concrete-model queries through unbound
+    # managers, even when the outer Page queryset has an explicit database.
+    ids_by_type = defaultdict(list)
+    for pk, content_type_id in queryset.values_list("pk", "content_type_id"):
+        ids_by_type[content_type_id].append(pk)
+
+    pages = {}
+    content_types = ContentType.objects.db_manager(using)
+    for content_type_id, ids in ids_by_type.items():
+        model = content_types.get_for_id(content_type_id).model_class()
+        if model is not None and issubclass(model, Post):
+            pages.update(model.objects.using(using).prefetch_related(_cover_prefetch(using)).in_bulk(ids))
+    return pages
 
 
 def _payload_post(context: Any, post: Any) -> Any:
     """Resolve only the displayed cached cards, sharing pages within this request."""
     if post is None or not getattr(post, "pk", None):
         return post
+    blog = context.get("blog")
+    page_url = getattr(post, "page_url", None)
+    using = None
+    episode = None
     if getattr(post, "content_type_id", None) is None:
+        posts = context.get("posts", ())
+        owner_database = _page_database(blog) or _page_database(context.get("page"))
+        if owner_database is None and isinstance(posts, QuerySet):
+            owner_database = posts.db
+        using = _page_database(post) or owner_database
         request = context.get("request")
         if request is not None:
             if not hasattr(request, "_pp_player_pages"):
                 request._pp_player_pages = {}
-            pages = request._pp_player_pages
+            by_database = request._pp_player_pages
         else:
-            pages = context.setdefault("_pp_player_pages", {})
+            by_database = context.setdefault("_pp_player_pages", {})
+        pages = by_database.setdefault((using is not None, using or router.db_for_read(Page)), {})
+
         if post.pk not in pages:
-            ids = {card.pk for card in context.get("posts", ()) if getattr(card, "pk", None)}
+            has_audio = getattr(context.get("repository"), "has_audio_by_id", {})
+            ids = {
+                card.pk
+                for card in posts
+                if getattr(card, "pk", None)
+                and getattr(card, "content_type_id", None) is None
+                and has_audio.get(card.pk) is not False
+                and (_page_database(card) or owner_database) == using
+            }
             ids.add(post.pk)
             unresolved = ids - pages.keys()
-            queryset = (
-                Page.objects.filter(pk__in=unresolved)
-                .specific()
-                .prefetch_related(_cover_prefetch(), for_specific_subqueries=True)
-            )
+            queryset = Page.objects.filter(pk__in=unresolved)
             resolved: dict[int, Page | None] = dict.fromkeys(unresolved)
-            resolved.update((page.pk, page) for page in queryset)
+            if using is None:
+                queryset = queryset.specific().prefetch_related(_cover_prefetch(), for_specific_subqueries=True)
+                resolved.update((page.pk, page) for page in queryset)
+            else:
+                resolved.update(_routed_card_pages(queryset.using(using), using))
             pages.update(resolved)
         post = pages[post.pk]
         if post is None:
             return None
+        if using is not None:
+            episode = post
 
-    episode = getattr(post, "specific", post)
-    blog = None
+    if episode is None:
+        episode = getattr(post, "specific", post)
     # The pinned cast payload builder eagerly reads post.blog, even with an
     # explicit episode cover. Supply its public duck-typed context separately
     # from the concrete episode, avoiding ancestor reads and private cast caches.
-    if getattr(episode, "cover_image", None) is None:
-        blog = context.get("blog") or getattr(post, "blog", None)
+    if getattr(episode, "cover_image", None) is not None:
+        blog = None
+    elif using is not None:
+        if not isinstance(blog, Blog) or _page_database(blog) != using:
+            blog = Blog.objects.using(using).parent_of(episode).first()
+        if blog is not None:
+            prefetch_related_objects([blog], _cover_prefetch(using))
+            blog = SimpleNamespace(specific=blog)
+    else:
+        blog = blog or getattr(post, "blog", None)
         blog = getattr(blog, "specific", blog)
         if blog is not None and hasattr(blog, "_meta"):
             prefetch_related_objects([blog], _cover_prefetch())
-    return SimpleNamespace(pk=post.pk, specific=episode, blog=blog)
+    return SimpleNamespace(pk=post.pk, specific=episode, blog=blog, page_url=page_url)
 
 
 def _card_poster_url(post: Any, request: Any, fallback: str) -> str:

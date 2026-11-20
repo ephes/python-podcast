@@ -4,6 +4,12 @@ Changelog
 Unreleased
 ----------
 
+* Resolve persistent play cards and their covers on the database that supplied
+  the card or owns the overview. Keep found and missing card IDs scoped to that
+  database on each request.
+
+* Skip poster prefetches for cached overview cards marked as having no audio.
+
 * Keep an existing Webmention discovery link for the same endpoint and
   preserve the order of the response's other Link values.
 

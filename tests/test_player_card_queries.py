@@ -6,13 +6,13 @@ from datetime import timedelta
 from types import SimpleNamespace
 
 import pytest
-from cast.models import Audio, Episode, Podcast, Transcript
+from cast.models import Audio, Episode, Podcast, Post, Transcript
 from cast.models.pages import PODLOVE_POSTER_RENDITION_SPEC
 from cast.models.repository.serialization import deserialize_post, serialize_post
 from django.contrib.contenttypes.models import ContentType
 from django.core.cache import caches
 from django.template import Context, RequestContext, Template
-from django.test import RequestFactory
+from django.test import RequestFactory, override_settings
 from wagtail.coreutils import get_supported_content_language_variant
 from wagtail.images import get_image_model
 from wagtail.models import Collection, Locale, Page
@@ -91,6 +91,59 @@ def _render(blog, audio, episodes, theme="bootstrap5"):
         "{% endfor %}"
     )
     return template, context
+
+
+@pytest.mark.django_db(databases=["default", "legacy"])
+def test_cached_card_lookup_and_misses_follow_the_overview_database(card_rows, settings, django_assert_num_queries):
+    settings.PYTHON_PODCAST_PERSISTENT_AUDIO_PLAYER = True
+    settings.CAST_AUDIO_PLAYER = "custom"
+    default_blog, audio, (default_episode, default_only, *_) = card_rows
+
+    class SeedLegacyRouter:
+        def db_for_read(self, model, **hints):
+            return "legacy"
+
+        db_for_write = db_for_read
+
+    with override_settings(DATABASE_ROUTERS=[SeedLegacyRouter()]):
+        Locale.objects.get_or_create(language_code=default_blog.locale.language_code)
+        user = UserFactory()
+        root = Page.get_first_root_node() or Page.add_root(title="Root", slug="root")
+        blog = root.add_child(instance=Podcast(title="Routed podcast", slug="routed", owner=user))
+        if Collection.get_first_root_node() is None:
+            Collection.add_root(name="Root")
+        episode = blog.add_child(
+            instance=Episode(
+                post_ptr_id=default_episode.pk,
+                title="Routed episode",
+                slug="routed-episode",
+                owner=user,
+                cover_image=_cover("routed"),
+                body=[],
+            )
+        )
+    assert episode.pk == default_episode.pk
+    template, routed = _render(blog, audio, [episode, default_only])
+    for index, post in enumerate(routed["posts"]):
+        # Older cached projections lack their own alias. The owning page still
+        # identifies the database, including for a stale card.
+        data = serialize_post(post)
+        data.pop("_database")
+        routed["posts"][index] = deserialize_post(data)
+    _, default = _render(default_blog, audio, [default_episode, default_only])
+    default["request"] = routed["request"]
+
+    routed["posts"][0].page_url = "/routed/routed-episode/"
+    with django_assert_num_queries(0, using="default"):
+        html = template.render(routed)
+    assert f"cover-routed.{PLAYER_FILENAME_SPEC}.webp" in html
+    assert '"permalink": "http://testserver/routed/routed-episode/"' in html
+    assert f"cast-player-data-{audio.pk}-post-{default_only.pk}" not in html
+    with django_assert_num_queries(0, using="legacy"):
+        assert template.render(routed) == html
+        html = template.render(default)
+    assert f"cover-0.{PLAYER_FILENAME_SPEC}.webp" in html
+    assert f"cast-player-data-{audio.pk}-post-{default_only.pk}" in html
 
 
 @pytest.mark.parametrize("theme", ["pp", "bootstrap5"])
@@ -181,6 +234,49 @@ def test_cached_card_pages_and_covers_have_fixed_read_budget(
         assert f"http://testserver/media/images/cover-{cover_num}.max-128x128-format-webp.webp" in html
 
 
+@pytest.mark.parametrize("theme", ["pp", "bootstrap5"])
+def test_mixed_cached_cards_only_hydrate_playable_posts(card_rows, settings, django_assert_num_queries, theme):
+    settings.PYTHON_PODCAST_PERSISTENT_AUDIO_PLAYER = True
+    settings.CAST_AUDIO_PLAYER = "custom"
+    blog, audio, (first, second, *_) = card_rows
+    for episode in (first, second):
+        episode.body = [("overview", [("audio", audio.pk)])]
+    article = blog.add_child(
+        instance=Post(
+            title="Synthetic article",
+            slug="article",
+            owner=first.owner,
+            cover_image=_cover("article"),
+            body=[],
+        )
+    )
+    template = Template(
+        "{% for post in posts %}"
+        '{% include "cast/"|add:template_base_dir|add:"/post_body.html" with page=post %}'
+        "{% endfor %}"
+    )
+    repository = SimpleNamespace(
+        audio_by_id={audio.pk: audio},
+        has_audio_by_id={first.pk: True, article.pk: False, second.pk: True},
+    )
+
+    def render_context(posts):
+        _, context = _render(blog, audio, posts)
+        context.update({"repository": repository, "template_base_dir": theme})
+        return context
+
+    playable = template.render(render_context([first, second]))
+    mixed_context = render_context([first, article, second])
+    with django_assert_num_queries(5):
+        mixed = template.render(mixed_context)
+
+    assert "Synthetic article" in mixed
+    for pattern in (r'<script id="[^"]+" type="application/json">.*?</script>', r'data-cast-play="[^"]+"'):
+        expected = re.findall(pattern, playable)
+        assert len(expected) == 2
+        assert re.findall(pattern, mixed) == expected
+
+
 def test_cached_cards_reuse_blog_fallback_renditions(card_rows, settings, django_assert_num_queries):
     settings.PYTHON_PODCAST_PERSISTENT_AUDIO_PLAYER = True
     settings.CAST_AUDIO_PLAYER = "custom"
@@ -191,8 +287,8 @@ def test_cached_cards_reuse_blog_fallback_renditions(card_rows, settings, django
     # A fresh blog's cover relation is cold as well.
     blog = Podcast.objects.get(pk=blog.pk)
     template, context = _render(blog, audio, episodes)
-    # Podcast.specific also resolves its cold content type.
-    with django_assert_num_queries(6):
+    # The already concrete blog needs only its cover and renditions.
+    with django_assert_num_queries(5):
         html = template.render(context)
     assert html.count('src="http://testserver/media/images/cover-0.max-128x128-format-webp.webp"') == 20
 
