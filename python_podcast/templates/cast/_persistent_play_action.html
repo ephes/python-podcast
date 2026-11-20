@@ -6,8 +6,8 @@
 {# playback state back onto the card (data-cast-state="playing"|"paused"): the #}
 {# glyph flips to pause, the duration swaps to a live elapsed/total readout, an #}
 {# equalizer badge pulses on the poster, and clicking again toggles pause/resume #}
-{# instead of restarting. Works on detail pages AND overview/list cards (each #}
-{# card publishes its own payload). #}
+{# instead of restarting. Repeated cards for the same audio and post reference #}
+{# the payload published by the first card in the render. #}
 {# Params: payload (from {% cast_player_payload %}); optional label and #}
 {# card_class ("cast-play-card--compact" for list cards). #}
 {{ payload.player_script }}

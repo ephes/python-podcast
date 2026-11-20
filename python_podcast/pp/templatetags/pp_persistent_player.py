@@ -48,15 +48,18 @@ def _payload_post(context: Any, post: Any) -> Any:
         if post.pk not in pages:
             ids = {card.pk for card in context.get("posts", ()) if getattr(card, "pk", None)}
             ids.add(post.pk)
+            unresolved = ids - pages.keys()
             queryset = (
-                Page.objects.filter(pk__in=ids - pages.keys())
+                Page.objects.filter(pk__in=unresolved)
                 .specific()
                 .prefetch_related(_cover_prefetch(), for_specific_subqueries=True)
             )
-            pages.update((page.pk, page) for page in queryset)
-        if post.pk not in pages:
-            raise Page.DoesNotExist(f"Player post {post.pk} no longer exists")
+            resolved: dict[int, Page | None] = dict.fromkeys(unresolved)
+            resolved.update((page.pk, page) for page in queryset)
+            pages.update(resolved)
         post = pages[post.pk]
+        if post is None:
+            return None
 
     episode = getattr(post, "specific", post)
     blog = None
@@ -152,7 +155,7 @@ def _payload_identity(audio: Any, post: Any) -> str:
 
 
 @register.simple_tag(takes_context=True)
-def cast_player_payload(context: dict[str, Any], audio: Any, post: Any) -> dict[str, Any]:
+def cast_player_payload(context: dict[str, Any], audio: Any, post: Any) -> dict[str, Any] | None:
     """Return the sanitized custom-player payload + ids for ``audio``.
 
     Use as ``{% cast_player_payload value page as payload %}``; the theme then
@@ -168,14 +171,23 @@ def cast_player_payload(context: dict[str, Any], audio: Any, post: Any) -> dict[
     list card, which is what lets a card mirror the playing dock after
     navigation. Without a saved post the audio-only django-cast id
     ``cast-player-data-<audio pk>`` is kept.
+    A cached post whose page has been deleted has no playable payload.
+    Repeated blocks in one render reuse the card data with an empty script.
     """
     request = context.get("request")
-    post = _payload_post(context, post)
-    payload = build_player_payload(audio, post=post, request=request)
+    resolved_post = _payload_post(context, post)
+    if resolved_post is None and post is not None:
+        return None
+    post = resolved_post
     identity = _payload_identity(audio, post)
+    rendered = context.get("_pp_player_payloads")
+    if rendered is not None and identity in rendered:
+        return rendered[identity]
+
+    payload = build_player_payload(audio, post=post, request=request)
     payload_id = f"cast-player-data-{identity}"
     poster = payload.get("poster", "")
-    return {
+    card = {
         "player_script": json_script(payload, payload_id),
         "payload_id": payload_id,
         "player_id": f"cast-player-{identity}",
@@ -187,3 +199,6 @@ def cast_player_payload(context: dict[str, Any], audio: Any, post: Any) -> dict[
         "card_poster": _card_poster_url(post, request, poster) if poster else "",
         "duration_display": _format_duration(payload.get("duration")),
     }
+    if rendered is not None:
+        rendered[identity] = {**card, "player_script": ""}
+    return card

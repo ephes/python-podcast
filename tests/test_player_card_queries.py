@@ -11,7 +11,7 @@ from cast.models.pages import PODLOVE_POSTER_RENDITION_SPEC
 from cast.models.repository.serialization import deserialize_post, serialize_post
 from django.contrib.contenttypes.models import ContentType
 from django.core.cache import caches
-from django.template import Context, Template
+from django.template import Context, RequestContext, Template
 from django.test import RequestFactory
 from wagtail.coreutils import get_supported_content_language_variant
 from wagtail.images import get_image_model
@@ -86,10 +86,68 @@ def _render(blog, audio, episodes, theme="bootstrap5"):
     )
     template = Template(
         "{% load pp_persistent_player %}{% for post in posts %}"
+        '<a href="/{{ blog.slug }}/{{ post.slug }}/">{{ post.title }}</a>'
         '{% include "cast/"|add:theme|add:"/audio.html" with page=post value=audio %}'
         "{% endfor %}"
     )
     return template, context
+
+
+@pytest.mark.parametrize("theme", ["pp", "bootstrap5"])
+def test_deleted_cached_card_keeps_episode_link_without_player(card_rows, settings, django_assert_num_queries, theme):
+    settings.PYTHON_PODCAST_PERSISTENT_AUDIO_PLAYER = True
+    settings.CAST_AUDIO_PLAYER = "custom"
+    blog, audio, (stale, first, second, *_) = card_rows
+    template, context = _render(blog, audio, [stale, first, stale, second], theme)
+    stale_id = stale.pk
+    stale.delete()
+    ContentType.objects.clear_cache()
+
+    # The stale ID is absent from the same five-query batch as the healthy IDs.
+    with django_assert_num_queries(5):
+        html = template.render(context)
+
+    assert f'href="/{blog.slug}/{stale.slug}/"' in html
+    assert f"cast-player-data-{audio.pk}-post-{stale_id}" not in html
+    assert re.findall(r'data-cast-play="([^"]+)"', html) == [
+        f"cast-player-data-{audio.pk}-post-{first.pk}",
+        f"cast-player-data-{audio.pk}-post-{second.pk}",
+    ]
+
+
+@pytest.mark.parametrize("theme", ["pp", "bootstrap5"])
+def test_repeated_audio_blocks_share_one_payload_per_post(card_rows, settings, theme):
+    settings.PYTHON_PODCAST_PERSISTENT_AUDIO_PLAYER = True
+    settings.CAST_AUDIO_PLAYER = "custom"
+    blog, audio, (first, second, *_) = card_rows
+    first.body = [("overview", [("audio", audio.pk)]), ("detail", [("audio", audio.pk)])]
+    second.body = [("overview", [("audio", audio.pk)])]
+    context = RequestContext(RequestFactory().get("/"))
+    context.push(
+        {
+            "posts": [first, second],
+            "blog": blog,
+            "repository": SimpleNamespace(audio_by_id={audio.pk: audio}),
+            "template_base_dir": theme,
+            "render_detail": True,
+        },
+    )
+    template = Template(
+        "{% for post in posts %}"
+        '{% include "cast/"|add:template_base_dir|add:"/post_body.html" with page=post %}'
+        "{% endfor %}"
+    )
+    first_id = f"cast-player-data-{audio.pk}-post-{first.pk}"
+    second_id = f"cast-player-data-{audio.pk}-post-{second.pk}"
+
+    # A new render of the same context must publish complete markup again.
+    for _ in range(2):
+        html = template.render(context)
+        scripts = re.findall(r'<script id="([^"]+)" type="application/json">(.*?)</script>', html)
+        assert [identity for identity, _ in scripts] == [first_id, second_id]
+        assert re.findall(r'data-cast-play="([^"]+)"', html) == [first_id, first_id, second_id]
+        for (_, raw_payload), episode in zip(scripts, [first, second]):
+            assert json.loads(raw_payload)["transcript"]["url"].endswith(f"?post_id={episode.pk}")
 
 
 @pytest.mark.parametrize("theme", ["pp", "bootstrap5"])
