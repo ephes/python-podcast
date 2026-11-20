@@ -722,7 +722,9 @@ available, its timestamp; it does not disclose submitted URLs or content.
 
 Live, public cast blog, post and episode pages advertise the endpoint through
 an HTTP ``Link: <…/indieweb/webmention/>; rel="webmention"`` header, across all
-themes. Drafts, previews, restricted pages (including ancestor restrictions),
+themes. The middleware preserves existing Link values in order and appends
+the discovery link only when the same endpoint and relation are absent.
+Drafts, previews, restricted pages (including ancestor restrictions),
 account/admin pages and error responses do not advertise it. The receiver
 accepts HTTP(S) targets on the current Django Sites domain; discovery is limited
 to public cast content. No custom target resolver or comment adapter is enabled.

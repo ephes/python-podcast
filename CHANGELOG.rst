@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Keep an existing Webmention discovery link for the same endpoint and
+  preserve the order of the response's other Link values.
+
 * Convert the show-note archive in bounded primary-key batches. Close each
   selection cursor before writing revisions and defer newly appended episodes
   to the next run.

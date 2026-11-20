@@ -32,6 +32,34 @@ def test_discovery_only_for_live_public_cast_pages(page_type, excluded):
 
 
 @pytest.mark.parametrize(
+    "existing_relation",
+    ['rel="webmention"', "rel=webmention", 'title="with commas, and semicolons;"; rel="alternate Webmention"', None],
+)
+def test_discovery_preserves_existing_links_and_is_idempotent(existing_relation):
+    page = Post(live=True, content_type_id=1, locale_id=1)
+    page.get_view_restrictions = Mock()
+    page.get_view_restrictions.return_value.exists.return_value = False
+    request = RequestFactory().get("/show/content/")
+    response = TemplateResponse(request, "unused.html", {"page": page})
+    endpoint = "<http://testserver/indieweb/webmention/>"
+    discovery = f'{endpoint}; rel="webmention"'
+    links = [
+        rf'<http://testserver/show/content/>; rel=self; title="example, {endpoint}; rel=\"webmention\""',
+        f"{endpoint}; rel=alternate",
+        "<https://example.org/mentions/>; rel=webmention",
+    ]
+    if existing_relation:
+        links.insert(1, f"{endpoint}; {existing_relation}")
+    response["Link"] = ", ".join(links)
+    expected = response["Link"] if existing_relation else f'{response["Link"]}, {discovery}'
+    middleware = WebmentionDiscoveryMiddleware(lambda r: response)
+
+    for _ in range(2):
+        middleware.process_template_response(request, response)
+        assert response["Link"] == expected
+
+
+@pytest.mark.parametrize(
     "context",
     [
         {},
