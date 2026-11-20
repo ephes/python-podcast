@@ -52,8 +52,6 @@ _WEB_SCHEMES = ("http://", "https://")
 # heading is rendered bold anyway. Everything else (images, embeds, code,
 # emphasis, ...) keeps the heading as original HTML.
 HEADING_TRANSPARENT_TAGS = {"b", "strong"}
-# Stand-in for a <br> while a heading's text is collected (never valid in HTML).
-_LINE_BREAK = "\x00"
 
 # Largest "topic label + sub-links" group we will flatten into a single link
 # item. Bigger groups are preserved as prose to avoid an unreadable link row.
@@ -487,27 +485,31 @@ def _plain_heading_text(heading: Tag) -> tuple[str | None, str]:
 
     Otherwise ``(None, description)`` names the markup that would be lost. Text,
     ``<b>``/``<strong>`` wrappers and a leading/trailing ``<br>`` are
-    representable; a ``<br>`` between words, comments and every other element
-    are not.
+    representable. Attributes on the heading or on those wrappers and breaks,
+    a ``<br>`` between words, comments and every other element are not.
     """
-    parts: list[str] = []
+    if heading.attrs:
+        return None, "HTML attributes"
+
+    lines: list[list[str]] = [[]]
     for node in heading.descendants:
         if isinstance(node, PreformattedString):
             return None, "a comment or other non-text markup"
         if isinstance(node, NavigableString):
-            parts.append(str(node))
+            lines[-1].append(str(node))
         elif isinstance(node, Tag):
-            if node.name == "br":
-                parts.append(_LINE_BREAK)
-            elif node.name not in HEADING_TRANSPARENT_TAGS:
+            if node.name != "br" and node.name not in HEADING_TRANSPARENT_TAGS:
                 return None, f"<{node.name}>"
+            if node.attrs:
+                # An id, lang or data-* on a wrapper or break is lost as well.
+                return None, "HTML attributes"
+            if node.name == "br":
+                lines.append([])
     # Line breaks at either end carry nothing; one between words is structure.
-    text = _clean_text("".join(parts).replace(_LINE_BREAK, f" {_LINE_BREAK} "))
-    while text.startswith(_LINE_BREAK) or text.endswith(_LINE_BREAK):
-        text = text.strip(_LINE_BREAK).strip()
-    if _LINE_BREAK in text:
+    text_lines = [text for line in lines if (text := _clean_text("".join(line)))]
+    if len(text_lines) > 1:
         return None, "a line break"
-    return text, ""
+    return "".join(text_lines), ""
 
 
 def _next_meaningful_index(nodes: list[object], start: int) -> int | None:
