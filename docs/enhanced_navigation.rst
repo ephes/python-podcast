@@ -199,6 +199,9 @@ Overview query budgets
 Wagtail's specific-page queryset and keeps that mapping on the current request.
 The mapping is reused across audio-block includes; it never loads other result
 pages and does not change the cached repository or django-cast's public API.
+If a cached card's Wagtail page has been deleted, the request remembers the
+missing ID along with the pages it found. Both themes omit that card's play
+action and leave its ordinary episode link and the other cards in place.
 Detail pages keep their already concrete page. Payload identity and transcript
 context still belong to each post, including when posts share an audio.
 

@@ -10,9 +10,9 @@
 {# through to the upstream block unchanged. #}
 {% if persistent_audio_player and audio_player_mode == "custom" and not render_for_feed and page.pk %}
   {% cast_player_payload value page as payload %}
-  {% if render_detail %}
+  {% if payload and render_detail %}
     {% include "cast/_persistent_play_action.html" with payload=payload label="Play this episode" %}
-  {% else %}
+  {% elif payload %}
     {% include "cast/_persistent_play_action.html" with payload=payload label="Play episode" card_class="cast-play-card--compact" %}
   {% endif %}
 {% else %}

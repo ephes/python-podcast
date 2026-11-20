@@ -86,10 +86,33 @@ def _render(blog, audio, episodes, theme="bootstrap5"):
     )
     template = Template(
         "{% load pp_persistent_player %}{% for post in posts %}"
+        '<a href="/{{ blog.slug }}/{{ post.slug }}/">{{ post.title }}</a>'
         '{% include "cast/"|add:theme|add:"/audio.html" with page=post value=audio %}'
         "{% endfor %}"
     )
     return template, context
+
+
+@pytest.mark.parametrize("theme", ["pp", "bootstrap5"])
+def test_deleted_cached_card_keeps_episode_link_without_player(card_rows, settings, django_assert_num_queries, theme):
+    settings.PYTHON_PODCAST_PERSISTENT_AUDIO_PLAYER = True
+    settings.CAST_AUDIO_PLAYER = "custom"
+    blog, audio, (stale, first, second, *_) = card_rows
+    template, context = _render(blog, audio, [stale, first, stale, second], theme)
+    stale_id = stale.pk
+    stale.delete()
+    ContentType.objects.clear_cache()
+
+    # The stale ID is absent from the same five-query batch as the healthy IDs.
+    with django_assert_num_queries(5):
+        html = template.render(context)
+
+    assert f'href="/{blog.slug}/{stale.slug}/"' in html
+    assert f"cast-player-data-{audio.pk}-post-{stale_id}" not in html
+    assert re.findall(r'data-cast-play="([^"]+)"', html) == [
+        f"cast-player-data-{audio.pk}-post-{first.pk}",
+        f"cast-player-data-{audio.pk}-post-{second.pk}",
+    ]
 
 
 @pytest.mark.parametrize("theme", ["pp", "bootstrap5"])
