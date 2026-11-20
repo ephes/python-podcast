@@ -92,10 +92,14 @@ def _payload_post(context: Any, post: Any) -> Any:
         pages = by_database.setdefault((using is not None, using or router.db_for_read(Page)), {})
 
         if post.pk not in pages:
+            has_audio = getattr(context.get("repository"), "has_audio_by_id", {})
             ids = {
                 card.pk
                 for card in posts
-                if getattr(card, "pk", None) and (_page_database(card) or owner_database) == using
+                if getattr(card, "pk", None)
+                and getattr(card, "content_type_id", None) is None
+                and has_audio.get(card.pk) is not False
+                and (_page_database(card) or owner_database) == using
             }
             ids.add(post.pk)
             unresolved = ids - pages.keys()

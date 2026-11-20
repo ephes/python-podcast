@@ -6,7 +6,7 @@ from datetime import timedelta
 from types import SimpleNamespace
 
 import pytest
-from cast.models import Audio, Episode, Podcast, Transcript
+from cast.models import Audio, Episode, Podcast, Post, Transcript
 from cast.models.pages import PODLOVE_POSTER_RENDITION_SPEC
 from cast.models.repository.serialization import deserialize_post, serialize_post
 from django.contrib.contenttypes.models import ContentType
@@ -232,6 +232,49 @@ def test_cached_card_pages_and_covers_have_fixed_read_budget(
         assert payload["transcript"]["url"].endswith(f"?post_id={episode.pk}")
         assert payload["poster"] == f"http://testserver/media/images/cover-{cover_num}.{PLAYER_FILENAME_SPEC}.webp"
         assert f"http://testserver/media/images/cover-{cover_num}.max-128x128-format-webp.webp" in html
+
+
+@pytest.mark.parametrize("theme", ["pp", "bootstrap5"])
+def test_mixed_cached_cards_only_hydrate_playable_posts(card_rows, settings, django_assert_num_queries, theme):
+    settings.PYTHON_PODCAST_PERSISTENT_AUDIO_PLAYER = True
+    settings.CAST_AUDIO_PLAYER = "custom"
+    blog, audio, (first, second, *_) = card_rows
+    for episode in (first, second):
+        episode.body = [("overview", [("audio", audio.pk)])]
+    article = blog.add_child(
+        instance=Post(
+            title="Synthetic article",
+            slug="article",
+            owner=first.owner,
+            cover_image=_cover("article"),
+            body=[],
+        )
+    )
+    template = Template(
+        "{% for post in posts %}"
+        '{% include "cast/"|add:template_base_dir|add:"/post_body.html" with page=post %}'
+        "{% endfor %}"
+    )
+    repository = SimpleNamespace(
+        audio_by_id={audio.pk: audio},
+        has_audio_by_id={first.pk: True, article.pk: False, second.pk: True},
+    )
+
+    def render_context(posts):
+        _, context = _render(blog, audio, posts)
+        context.update({"repository": repository, "template_base_dir": theme})
+        return context
+
+    playable = template.render(render_context([first, second]))
+    mixed_context = render_context([first, article, second])
+    with django_assert_num_queries(5):
+        mixed = template.render(mixed_context)
+
+    assert "Synthetic article" in mixed
+    for pattern in (r'<script id="[^"]+" type="application/json">.*?</script>', r'data-cast-play="[^"]+"'):
+        expected = re.findall(pattern, playable)
+        assert len(expected) == 2
+        assert re.findall(pattern, mixed) == expected
 
 
 def test_cached_cards_reuse_blog_fallback_renditions(card_rows, settings, django_assert_num_queries):

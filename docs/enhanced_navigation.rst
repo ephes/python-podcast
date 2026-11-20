@@ -204,6 +204,9 @@ page or queryset supplies the alias. The base pages, concrete posts, covers
 and existing renditions are read on that alias. Without an explicit owner,
 the Wagtail specific-page queryset uses normal Django routing. Found and
 missing IDs are memoized separately by database authority.
+The batch omits cards the repository marks as having no audio. Cards without
+eligibility metadata remain candidates, and the card requesting a payload is
+always included.
 If a cached card's Wagtail page has been deleted, the request remembers the
 missing ID along with the pages it found. Both themes omit that card's play
 action and leave its ordinary episode link and the other cards in place.
@@ -234,8 +237,10 @@ or distinct covers (content type, base pages, concrete episodes, images,
 renditions). The shared blog fallback also uses five queries when the
 context already has the concrete blog. The routed overview regression renders
 same-ID episodes with distinct covers on two databases and checks that a
-missing card on one database still renders on the other. Audio metadata is preloaded to
-isolate this page/cover budget from upstream audio chapter queries. New
+missing card on one database still renders on the other. Mixed overviews in
+both themes publish the same payloads within the five-query budget even when
+they also display an article with its own cover. Audio metadata is preloaded
+to isolate this page/cover budget from upstream audio chapter queries. New
 rendition generation may require additional reads and writes.
 The same tests cover stale cached pages and repeated audio blocks in both
 themes, including a fresh script on each render and distinct post transcripts.
