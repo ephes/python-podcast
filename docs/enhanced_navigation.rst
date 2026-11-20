@@ -173,10 +173,12 @@ alert. ``Retry playback`` builds a fresh activation; ``Close`` dismisses it.
 Payload identity
 ----------------
 
-Every play card publishes its player payload as a ``json_script`` and points
-to it by id (``data-cast-play`` and ``data-cast-episode-payload``); the script
-looks the payload up with ``getElementById``. The payload depends on the post
-(cover poster, transcript link), so the id names the audio and the post:
+The first play card for each audio/post pair publishes its player payload as a
+``json_script``. Every card for that pair points to the same script id
+(``data-cast-play`` and ``data-cast-episode-payload``), which the player looks up
+with ``getElementById``. A new page render publishes its own payload scripts.
+The payload depends on the post's cover poster and transcript link, so the id
+names the audio and the post:
 ``cast-player-data-<audio pk>-post-<post pk>``, with the matching
 ``cast-player-<audio pk>-post-<post pk>`` in ``data-cast-player-id``.
 
@@ -230,6 +232,8 @@ renditions). The shared blog fallback uses six queries, including its cold
 content type. Audio metadata is preloaded to
 isolate this page/cover budget from upstream audio chapter queries. New
 rendition generation may require additional reads and writes.
+The same tests cover stale cached pages and repeated audio blocks in both
+themes, including a fresh script on each render and distinct post transcripts.
 
 ``tests/e2e/test_enhanced_navigation.py`` runs the source file and the
 committed minified build in a real browser against a small fixture server. The

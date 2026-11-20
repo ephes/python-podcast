@@ -172,17 +172,22 @@ def cast_player_payload(context: dict[str, Any], audio: Any, post: Any) -> dict[
     navigation. Without a saved post the audio-only django-cast id
     ``cast-player-data-<audio pk>`` is kept.
     A cached post whose page has been deleted has no playable payload.
+    Repeated blocks in one render reuse the card data with an empty script.
     """
     request = context.get("request")
     resolved_post = _payload_post(context, post)
     if resolved_post is None and post is not None:
         return None
     post = resolved_post
-    payload = build_player_payload(audio, post=post, request=request)
     identity = _payload_identity(audio, post)
+    rendered = context.get("_pp_player_payloads")
+    if rendered is not None and identity in rendered:
+        return rendered[identity]
+
+    payload = build_player_payload(audio, post=post, request=request)
     payload_id = f"cast-player-data-{identity}"
     poster = payload.get("poster", "")
-    return {
+    card = {
         "player_script": json_script(payload, payload_id),
         "payload_id": payload_id,
         "player_id": f"cast-player-{identity}",
@@ -194,3 +199,6 @@ def cast_player_payload(context: dict[str, Any], audio: Any, post: Any) -> dict[
         "card_poster": _card_poster_url(post, request, poster) if poster else "",
         "duration_display": _format_duration(payload.get("duration")),
     }
+    if rendered is not None:
+        rendered[identity] = {**card, "player_script": ""}
+    return card

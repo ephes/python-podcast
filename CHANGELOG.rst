@@ -7,6 +7,9 @@ Unreleased
 * Keep cached episode listings renderable after a page is deleted. Remember
   missing pages for the request and omit their persistent play actions.
 
+* Publish one persistent player payload per audio and post in a page render.
+  Repeated blocks keep their play controls and share that payload.
+
 * Limit forced show-note conversion to the newest 100 revision bodies per
   episode when the live body lacks legacy detail. Report a failure if older
   revisions remain and the search found no legacy detail.

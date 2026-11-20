@@ -31,4 +31,7 @@ def persistent_audio_player(request) -> dict:
     return {
         "persistent_audio_player": bool(getattr(settings, "PYTHON_PODCAST_PERSISTENT_AUDIO_PLAYER", False)),
         "cast_session_base_template": f"cast/{template_base_dir}/base.html",
+        # Wagtail copies the template variables when rendering each StreamField
+        # block. The blocks share this mapping for this render only.
+        "_pp_player_payloads": {},
     }
