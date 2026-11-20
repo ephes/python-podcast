@@ -475,6 +475,21 @@ def test_empty_html_is_unchanged():
 LINK_LIST = '<ul><li><a href="https://example.com/a">A</a></li></ul>'
 
 
+def test_heading_attributes_preserve_fragment_target_and_following_list():
+    intro = '<p><a href="#news">Go to news</a></p>'
+    heading = '<h2 data-topic="releases" id="news" lang="en">News</h2>'
+
+    conversion = convert_paragraph_html(intro + heading + LINK_LIST + "<h2>Books</h2>" + LINK_LIST)
+
+    assert conversion.changed
+    assert _types(conversion) == ["paragraph", "paragraph", "show_note_link_list"]
+    assert conversion.blocks[0].value == intro
+    assert conversion.blocks[1].value == heading + LINK_LIST
+    assert conversion.blocks[2].value["heading"] == "Books"
+    assert len(conversion.warnings) == 1
+    assert "attributes" in conversion.warnings[0]
+
+
 @pytest.mark.parametrize(
     "heading",
     [

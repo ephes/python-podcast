@@ -487,9 +487,12 @@ def _plain_heading_text(heading: Tag) -> tuple[str | None, str]:
 
     Otherwise ``(None, description)`` names the markup that would be lost. Text,
     ``<b>``/``<strong>`` wrappers and a leading/trailing ``<br>`` are
-    representable; a ``<br>`` between words, comments and every other element
-    are not.
+    representable. Attributes on the heading itself, a ``<br>`` between words,
+    comments and every other element are not.
     """
+    if heading.attrs:
+        return None, "HTML attributes"
+
     parts: list[str] = []
     for node in heading.descendants:
         if isinstance(node, PreformattedString):
