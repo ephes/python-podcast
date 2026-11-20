@@ -197,10 +197,13 @@ take all three attributes from that payload and not build ids themselves.
 Overview query budgets
 ----------------------
 
-``cast_player_payload`` resolves the displayed ``posts`` IDs together using
-Wagtail's specific-page queryset and keeps that mapping on the current request.
-The mapping is reused across audio-block includes; it never loads other result
-pages and does not change the cached repository or django-cast's public API.
+``cast_player_payload`` resolves the displayed ``posts`` IDs together and
+reuses the result across audio-block includes on the current request. Cached
+projections use their source database when available, otherwise the owning
+page or queryset supplies the alias. The base pages, concrete posts, covers
+and existing renditions are read on that alias. Without an explicit owner,
+the Wagtail specific-page queryset uses normal Django routing. Found and
+missing IDs are memoized separately by database authority.
 If a cached card's Wagtail page has been deleted, the request remembers the
 missing ID along with the pages it found. Both themes omit that card's play
 action and leave its ordinary episode link and the other cards in place.
@@ -228,8 +231,10 @@ Tests
 and payload builder with synthetic ORM pages, covers and existing renditions.
 It freezes a five-query cold-cache budget for one and twenty cards with shared
 or distinct covers (content type, base pages, concrete episodes, images,
-renditions). The shared blog fallback uses six queries, including its cold
-content type. Audio metadata is preloaded to
+renditions). The shared blog fallback also uses five queries when the
+context already has the concrete blog. The routed overview regression renders
+same-ID episodes with distinct covers on two databases and checks that a
+missing card on one database still renders on the other. Audio metadata is preloaded to
 isolate this page/cover budget from upstream audio chapter queries. New
 rendition generation may require additional reads and writes.
 The same tests cover stale cached pages and repeated audio blocks in both
