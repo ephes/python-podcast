@@ -240,8 +240,7 @@ including the created revision ID. A handled per-episode exception reports its
 identity and exception class without exception text; independent later episodes
 continue. If a callback raises after the episode's transaction commits, the
 episode's report keeps its usual details (block lists, warnings, conflicts) and
-adds the committed revision ID, whether it was published, scheduled or kept as
-a draft, and the failed follow-up.
+adds the committed revision ID, the publication outcome and the failed follow-up.
 Inspect the callbacks and recover the follow-up separately. The final summary
 and nonzero exit identify failures, failed follow-ups and conflicts.
 The write summary counts newly created revisions and revisions made live
@@ -249,6 +248,15 @@ separately. A new conversion published immediately counts in both totals. An
 existing conversion draft made live counts only as published, and a new draft
 saved despite a publish conflict counts only as created. These totals include
 committed revisions whose post-commit follow-up failed.
+
+After ``--publish``, the command checks whether the submitted revision is the
+episode's current live revision, then checks that revision's Wagtail scheduling
+marker if needed. The summary counts scheduled revisions separately.
+If neither check confirms publication, the command reports
+``publication unconfirmed`` with the revision ID and keeps the revision.
+Other episodes still run, and the command exits nonzero. Check the listed
+revisions in the Wagtail admin before retrying.
+
 There is no archive-wide rollback: earlier reported revisions remain committed.
 Retrying a normal ``--apply`` skips already converted drafts. Forced retries
 intentionally create new revisions. Keep stdout/stderr in the operation log;

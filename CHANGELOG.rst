@@ -7,6 +7,9 @@ Unreleased
 * Reject ambiguous show-note conversion slugs before processing the selection
   and report the matching episode IDs.
 
+* Confirm the submitted show-note revision is live or scheduled before
+  reporting publication, and flag unconfirmed attempts with their revision IDs.
+
 * Resolve persistent play cards and their covers on the database that supplied
   the card or owns the overview. Keep found and missing card IDs scoped to that
   database on each request.

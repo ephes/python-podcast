@@ -44,7 +44,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.core.management.base import BaseCommand, CommandError
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import OperationalError, models, transaction
-from wagtail.models import Page
+from wagtail.models import Page, Revision
 
 from python_podcast.pp.show_notes.converter import ConvertedBlock, convert_paragraph_html
 
@@ -98,6 +98,7 @@ class EpisodeResult:
     draft_created: bool = False
     published: bool = False
     publication_scheduled: bool = False
+    publication_unconfirmed: bool = False
     # Exception class of a callback that failed after the episode's transaction committed.
     followup_error: str = ""
     source_revision_pk: int | None = None
@@ -230,6 +231,12 @@ class Command(BaseCommand):
                 f"unpublished changes: {', '.join(conflicts)}. Nothing was published for them and their pending "
                 "edits are kept; review and publish the drafts in the Wagtail admin."
             )
+        unconfirmed = [result.slug for result in results if result.publication_unconfirmed]
+        if unconfirmed:
+            errors.append(
+                f"For {len(unconfirmed)} episode(s), publication could not be confirmed: {', '.join(unconfirmed)}. "
+                "Inspect the reported revisions in the Wagtail admin before retrying."
+            )
         edit_conflicts = [result.slug for result in results if result.edit_conflict]
         if edit_conflicts:
             errors.append(
@@ -343,11 +350,12 @@ class Command(BaseCommand):
                     if current is None:
                         return self._edit_conflict(episode)
                     self._publish_revision(current.get_latest_revision(), episode.pk, result)
-                    result.reason = (
-                        "published existing converted draft"
-                        if result.published
-                        else "scheduled publication of existing converted draft"
-                    )
+                    if result.published:
+                        result.reason = "published existing converted draft"
+                    elif result.publication_scheduled:
+                        result.reason = "scheduled publication of existing converted draft"
+                    else:
+                        result.reason = "publication unconfirmed for existing converted draft"
                 return result
             return EpisodeResult(episode.slug, episode.pk, "skipped", reason="already converted")
 
@@ -400,11 +408,14 @@ class Command(BaseCommand):
         return result
 
     @staticmethod
-    def _publish_revision(revision, episode_pk: int, result: EpisodeResult) -> None:
+    def _publish_revision(revision: Revision, episode_pk: int, result: EpisodeResult) -> None:
         revision.publish()
-        # Wagtail can schedule a future revision instead of making it live.
         result.published = Page.objects.filter(pk=episode_pk, live=True, live_revision_id=revision.pk).exists()
-        result.publication_scheduled = not result.published
+        if not result.published:
+            result.publication_scheduled = Revision.objects.filter(
+                pk=revision.pk, approved_go_live_at__isnull=False
+            ).exists()
+            result.publication_unconfirmed = not result.publication_scheduled
 
     @contextmanager
     def _write_conversion(self, episode: Episode, snapshot: EpisodeSnapshot, result: EpisodeResult):
@@ -650,6 +661,8 @@ class Command(BaseCommand):
                 state = "published"
             elif result.publication_scheduled:
                 state = "publication scheduled"
+            elif result.publication_unconfirmed:
+                state = "publication unconfirmed"
             else:
                 state = "draft, not published"
             self.stdout.write(
@@ -691,7 +704,11 @@ class Command(BaseCommand):
         self.stdout.write(f"  after:  {', '.join(result.after_types) or '(empty)'}")
         for warning in result.warnings:
             self.stdout.write(f"  warning: {warning}")
-        if result.revision_pk is not None:
+        if result.publication_scheduled:
+            self.stdout.write(f"  -> changed (revision {result.revision_pk}, publication scheduled)")
+        elif result.publication_unconfirmed:
+            self.stdout.write(f"  -> changed (revision {result.revision_pk}, publication unconfirmed)")
+        elif result.revision_pk is not None:
             self.stdout.write(f"  -> changed (revision {result.revision_pk})")
         else:
             self.stdout.write("  -> would change (dry run)")
@@ -704,6 +721,8 @@ class Command(BaseCommand):
         with_warnings = sum(1 for result in results if result.warnings)
         conflicts = sum(1 for result in results if result.publish_conflict)
         edit_conflicts = sum(1 for result in results if result.edit_conflict)
+        scheduled = sum(result.publication_scheduled for result in results)
+        unconfirmed = sum(result.publication_unconfirmed for result in results)
 
         self.stdout.write("")
         summary = f"Summary: {changed} changed, {skipped} skipped, {with_warnings} with warnings"
@@ -715,6 +734,10 @@ class Command(BaseCommand):
             summary += f", {conflicts} not published (conflict)"
         if edit_conflicts:
             summary += f", {edit_conflicts} changed during the run (conflict)"
+        if scheduled:
+            summary += f", {scheduled} scheduled"
+        if unconfirmed:
+            summary += f", {unconfirmed} publication unconfirmed"
         self.stdout.write(summary)
         if not apply:
             self.stdout.write("Dry run: no changes written. Re-run with --apply to create revisions.")

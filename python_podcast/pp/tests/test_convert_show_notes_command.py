@@ -392,6 +392,43 @@ def test_publish_summary_counts_only_written_drafts_and_publications(monkeypatch
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("existing_draft", [False, True])
+@pytest.mark.parametrize("outcome", ["published", "scheduled", "unconfirmed"])
+def test_publish_receipt_requires_revision_state(monkeypatch, existing_draft, outcome):
+    episode = _make_episode(slug="publish-receipt-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
+    other_revision = episode.save_revision()
+    scheduled_at = datetime.now(UTC) + timedelta(days=1)
+    Revision.objects.filter(pk=other_revision.pk).update(approved_go_live_at=scheduled_at)
+    if existing_draft:
+        _run("--slug", episode.slug, "--apply")
+    episode.refresh_from_db()
+    revision_count = episode.revisions.count()
+    submitted = []
+
+    def publish(revision):
+        submitted.append(revision.pk)
+        if outcome == "published":
+            Page.objects.filter(pk=episode.pk).update(live=True, live_revision_id=revision.pk)
+        if outcome == "scheduled":
+            Revision.objects.filter(pk=revision.pk).update(approved_go_live_at=scheduled_at)
+
+    monkeypatch.setattr(Revision, "publish", publish)
+    if outcome == "unconfirmed":
+        output, error = _run_expecting_error("--slug", episode.slug, "--publish")
+        assert f"publication could not be confirmed: {episode.slug}" in error
+    else:
+        output = _run("--slug", episode.slug, "--publish")
+
+    episode.refresh_from_db()
+    assert submitted == [episode.latest_revision_id]
+    assert episode.revisions.count() == revision_count + int(not existing_draft)
+    assert f"revision {episode.latest_revision_id}" in output
+    assert f"Revisions: {int(not existing_draft)} created, {int(outcome == 'published')} published." in output
+    assert ("1 scheduled" in output) == (outcome == "scheduled")
+    assert ("publication unconfirmed" in output) == (outcome == "unconfirmed")
+
+
+@pytest.mark.django_db
 def test_publish_summary_excludes_scheduled_revision():
     episode = _make_episode(
         slug="scheduled-conversion", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}]
