@@ -161,8 +161,8 @@ The locks cannot show a new revision that another database transaction has
 inserted but not committed yet. Such a save completes afterwards and remains the
 latest revision, so the edit is kept in that case as well.
 
-An episode that is deleted while the batch runs, at any point, is also reported
-as an edit conflict and does not stop the remaining episodes.
+An episode deleted after selection is reported as an edit conflict. The
+remaining episodes still run.
 
 Usage
 -----
@@ -214,12 +214,15 @@ Implementation
 Archive memory
 --------------
 
-A full archive run reads episodes with uncached iteration in chunks of 20.
-Each episode's report prints its full ordered before/after block lists;
-afterwards only compact result records (identities, the first warning and revision IDs, no block types) survive
-each episode; full page and revision bodies are not retained by the archive
-queryset.
-Per-episode locking and editor conflict checks still apply.
+A full archive run captures the highest episode primary key at the start
+and reads up to 20 episodes at a time in primary-key order. Each batch's
+selection cursor closes before conversion begins. Episodes added above the
+initial maximum are picked up on the next run. Per-episode locking and editor
+conflict checks still apply.
+
+Each episode's report prints its full ordered before/after block lists.
+Only compact result records, including identities, the first warning and
+revision IDs, are kept for the archive summary.
 
 Forced source and progress receipts
 -----------------------------------
@@ -234,7 +237,17 @@ operator's command log; it identifies the input used, not a new publication.
 Each episode's result is emitted immediately after its transaction finishes,
 including the created revision ID. A handled per-episode exception reports its
 identity and exception class without exception text; independent later episodes
-continue. The final summary and nonzero exit identify failures and conflicts.
+continue. If a callback raises after the episode's transaction commits, the
+episode's report keeps its usual details (block lists, warnings, conflicts) and
+adds the committed revision ID, whether it was published, scheduled or kept as
+a draft, and the failed follow-up.
+Inspect the callbacks and recover the follow-up separately. The final summary
+and nonzero exit identify failures, failed follow-ups and conflicts.
+The write summary counts newly created revisions and revisions made live
+separately. A new conversion published immediately counts in both totals. An
+existing conversion draft made live counts only as published, and a new draft
+saved despite a publish conflict counts only as created. These totals include
+committed revisions whose post-commit follow-up failed.
 There is no archive-wide rollback: earlier reported revisions remain committed.
 Retrying a normal ``--apply`` skips already converted drafts. Forced retries
 intentionally create new revisions. Keep stdout/stderr in the operation log;

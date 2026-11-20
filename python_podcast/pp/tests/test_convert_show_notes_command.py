@@ -3,6 +3,7 @@ from __future__ import annotations
 import inspect
 import json
 import threading
+from datetime import UTC, datetime, timedelta
 from io import StringIO
 from unittest.mock import patch
 
@@ -154,6 +155,51 @@ def test_publish_after_apply_publishes_existing_draft():
     assert "publish" in output.lower()
 
 
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize("existing_draft", [False, True])
+def test_publish_reports_committed_revision_when_callback_fails(monkeypatch, existing_draft):
+    episode = _make_episode(slug="callback-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
+    if existing_draft:
+        _run("--slug", episode.slug, "--apply")
+        episode.refresh_from_db()
+    existing_revision_id = episode.latest_revision_id
+    original_publish = Revision.publish
+
+    def fail_after_commit():
+        raise RuntimeError("synthetic private callback detail")
+
+    def publish(self, *args, **kwargs):
+        transaction.on_commit(fail_after_commit)
+        return original_publish(self, *args, **kwargs)
+
+    monkeypatch.setattr(Revision, "publish", publish)
+    output = StringIO()
+    with pytest.raises(CommandError) as error:
+        call_command("convert_show_notes", "--slug", episode.slug, "--publish", stdout=output)
+
+    episode.refresh_from_db()
+    assert "show_note_link_list" in _detail_types(episode)
+    assert episode.live_revision_id == episode.latest_revision_id
+    assert episode.revisions.count() == 1
+    if existing_draft:
+        assert episode.live_revision_id == existing_revision_id
+    assert f"committed (revision {episode.live_revision_id}, published)" in output.getvalue()
+    assert "follow-up failed: RuntimeError" in output.getvalue()
+    if existing_draft:
+        assert f"-> published existing converted draft (revision {existing_revision_id})" in output.getvalue()
+    else:
+        # The committed conversion keeps its full per-episode report.
+        assert "  before: " in output.getvalue()
+        assert "  after:  " in output.getvalue()
+        assert "show_note_link_list" in output.getvalue()
+        assert f"-> changed (revision {episode.live_revision_id})" in output.getvalue()
+    assert f"Revisions: {int(not existing_draft)} created, 1 published." in output.getvalue()
+    assert "private callback detail" not in output.getvalue()
+    assert "failed: callback-ep" not in str(error.value)
+    assert "follow-up" in str(error.value)
+    assert episode.slug in str(error.value)
+
+
 @pytest.mark.django_db
 def test_publish_does_not_publish_unrelated_draft():
     episode = _make_episode(
@@ -295,8 +341,96 @@ def test_publish_conflict_does_not_block_other_episodes():
 
     assert _detail_types(Episode.objects.get(pk=conflicted.pk)) == ["paragraph"]
     assert "show_note_link_list" in _detail_types(Episode.objects.get(pk=clean.pk))
-    assert "published only the episodes without a conflict" in output
+    assert "Revisions: 0 created, 1 published." in output
     assert "batch-conflict-ep" in error and "batch-clean-ep" not in error
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("with_conflict", [False, True])
+def test_publish_summary_counts_only_written_drafts_and_publications(monkeypatch, with_conflict):
+    legacy_detail = [{"type": "paragraph", "value": SHOWNOTE_HTML}]
+    fresh = _make_episode(slug="fresh-conversion", detail_children=legacy_detail)
+    existing = _make_episode(slug="existing-conversion", detail_children=legacy_detail)
+    _run("--slug", existing.slug, "--apply")
+    failed = _make_episode(slug="failed-conversion", detail_children=legacy_detail)
+    unchanged = _make_episode(slug="unchanged-conversion", detail_children=None)
+    slugs = [fresh.slug, existing.slug, failed.slug, unchanged.slug]
+    if with_conflict:
+        conflict = _make_episode(slug="conflicted-conversion", detail_children=legacy_detail)
+        conflict.title = "Pending synthetic edit"
+        conflict.save_revision()
+        slugs.append(conflict.slug)
+    original_save = Episode.save_revision
+
+    def save_revision(self, *args, **kwargs):
+        revision = original_save(self, *args, **kwargs)
+        if self.pk == failed.pk:
+            raise RuntimeError("synthetic rollback")
+        return revision
+
+    monkeypatch.setattr(Episode, "save_revision", save_revision)
+    output = StringIO()
+    selectors = [arg for slug in slugs for arg in ("--slug", slug)]
+    with pytest.raises(CommandError, match=r"1 episode\(s\) failed: failed-conversion"):
+        call_command("convert_show_notes", "--publish", *selectors, stdout=output)
+
+    report = output.getvalue()
+    assert f"Revisions: {1 + with_conflict} created, 2 published." in report
+    assert "1 skipped" in report
+    assert "1 failed" in report
+    assert "Applied and published revisions." not in report
+    for episode in (fresh, existing):
+        episode.refresh_from_db()
+        assert episode.revisions.count() == 1
+        assert episode.live_revision_id == episode.latest_revision_id
+    assert failed.revisions.count() == unchanged.revisions.count() == 0
+    if with_conflict:
+        assert "1 not published (conflict)" in report
+        conflict.refresh_from_db()
+        assert conflict.revisions.count() == 2
+        assert conflict.live_revision_id is None
+
+
+@pytest.mark.django_db
+def test_publish_summary_excludes_scheduled_revision():
+    episode = _make_episode(
+        slug="scheduled-conversion", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}]
+    )
+    go_live_at = datetime.now(UTC) + timedelta(days=1)
+    Episode.objects.filter(pk=episode.pk).update(go_live_at=go_live_at, live=False)
+
+    output = _run("--slug", episode.slug, "--publish")
+
+    episode.refresh_from_db()
+    assert episode.live_revision_id is None
+    assert episode.get_latest_revision().approved_go_live_at is not None
+    assert "Revisions: 1 created, 0 published." in output
+
+
+@pytest.mark.django_db(transaction=True)
+def test_followup_failure_reports_scheduled_publication(monkeypatch):
+    episode = _make_episode(
+        slug="scheduled-callback-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}]
+    )
+    Episode.objects.filter(pk=episode.pk).update(go_live_at=datetime.now(UTC) + timedelta(days=1), live=False)
+    original_publish = Revision.publish
+
+    def fail_after_commit():
+        raise RuntimeError("synthetic private callback detail")
+
+    def publish(self, *args, **kwargs):
+        transaction.on_commit(fail_after_commit)
+        return original_publish(self, *args, **kwargs)
+
+    monkeypatch.setattr(Revision, "publish", publish)
+    output = StringIO()
+    with pytest.raises(CommandError):
+        call_command("convert_show_notes", "--slug", episode.slug, "--publish", stdout=output)
+
+    episode.refresh_from_db()
+    assert episode.live_revision_id is None
+    assert f"committed (revision {episode.latest_revision_id}, publication scheduled)" in output.getvalue()
+    assert "Revisions: 1 created, 0 published." in output.getvalue()
 
 
 @pytest.mark.django_db
@@ -917,7 +1051,7 @@ def test_archive_iteration_keeps_episode_hydration_bounded(monkeypatch):
     import gc
     import weakref
 
-    from python_podcast.pp.management.commands.convert_show_notes import Command, EpisodeResult
+    from python_podcast.pp.management.commands import convert_show_notes
 
     for number in range(8):
         _make_episode(
@@ -935,12 +1069,57 @@ def test_archive_iteration_keeps_episode_hydration_bounded(monkeypatch):
 
     def process(self, episode, **kwargs):
         gc.collect()
-        assert len(hydrated) <= 2, "archive queryset retained full episode bodies"
-        return EpisodeResult(episode.slug, episode.pk, "skipped")
+        assert len(hydrated) <= 3, "archive queryset retained more than a batch of episode bodies"
+        return convert_show_notes.EpisodeResult(episode.slug, episode.pk, "skipped")
 
     monkeypatch.setattr(Episode, "from_db", classmethod(from_db))
-    monkeypatch.setattr(Command, "_process_episode", process)
+    monkeypatch.setattr(convert_show_notes, "ARCHIVE_BATCH_SIZE", 2)
+    monkeypatch.setattr(convert_show_notes.Command, "_process_episode", process)
     assert "8 skipped" in _run()
+
+
+@pytest.mark.django_db
+def test_archive_selection_closes_each_cursor_and_respects_initial_horizon(monkeypatch):
+    from python_podcast.pp.management.commands import convert_show_notes
+
+    initial_pks = [_make_episode(slug=f"archive-{number}", detail_children=None).pk for number in range(5)]
+    open_cursors = set()
+    selection_queries = []
+    seen_pks = []
+    open_during_conversion = []
+
+    def track_selection(execute, sql, params, many, context):
+        if sql.startswith("SELECT") and f'"{Episode._meta.db_table}"' in sql:
+            cursor = context["cursor"]
+            close_cursor = cursor.close
+            open_cursors.add(cursor)
+            selection_queries.append(sql)
+
+            def close():
+                open_cursors.remove(cursor)
+                return close_cursor()
+
+            cursor.close = close
+        return execute(sql, params, many, context)
+
+    def process(self, episode, **kwargs):
+        seen_pks.append(episode.pk)
+        open_during_conversion.append(len(open_cursors))
+        if len(seen_pks) == 2:
+            selected_before_insert = len(selection_queries)
+            late = _make_episode(slug="archive-late", detail_children=None)
+            assert late.pk > initial_pks[-1]
+            del selection_queries[selected_before_insert:]
+        return convert_show_notes.EpisodeResult(episode.slug, episode.pk, "skipped")
+
+    monkeypatch.setattr(convert_show_notes, "ARCHIVE_BATCH_SIZE", 2)
+    monkeypatch.setattr(convert_show_notes.Command, "_process_episode", process)
+    with connection.execute_wrapper(track_selection):
+        _run()
+
+    assert open_during_conversion == [0] * len(seen_pks)
+    assert seen_pks == initial_pks
+    assert sum("LIMIT 2" in sql for sql in selection_queries) == 3
 
 
 @pytest.mark.django_db

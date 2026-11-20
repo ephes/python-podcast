@@ -4,6 +4,19 @@ Changelog
 Unreleased
 ----------
 
+* Keep an existing Webmention discovery link for the same endpoint and
+  preserve the order of the response's other Link values.
+
+* Convert the show-note archive in bounded primary-key batches. Close each
+  selection cursor before writing revisions and defer newly appended episodes
+  to the next run.
+
+* Count newly created and published show-note revisions separately, including
+  in batches with failures or conflicts.
+
+* Report the committed revision ID when show-note conversion encounters a
+  failed post-commit callback, and flag the follow-up for separate recovery.
+
 * Keep headings with HTML attributes (on the heading or on a ``<b>``,
   ``<strong>`` or ``<br>`` inside it) and their following lists in prose during
   show-note conversion, preserving fragment targets and metadata.

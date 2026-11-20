@@ -35,6 +35,7 @@ from __future__ import annotations
 import hashlib
 import json
 import uuid
+from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
 
@@ -42,7 +43,7 @@ from cast.models import Episode
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.management.base import BaseCommand, CommandError
 from django.core.serializers.json import DjangoJSONEncoder
-from django.db import OperationalError, transaction
+from django.db import OperationalError, models, transaction
 from wagtail.models import Page
 
 from python_podcast.pp.show_notes.converter import ConvertedBlock, convert_paragraph_html
@@ -52,6 +53,7 @@ LOCK_NOT_AVAILABLE = "55P03"
 
 SHOW_NOTE_TYPES = frozenset({"show_note_heading", "show_note_link_list", "show_note_sponsor"})
 LEGACY_REVISION_SEARCH_LIMIT = 100
+ARCHIVE_BATCH_SIZE = 20
 
 # Page fields that describe the publication state of the page rather than its
 # content. A revision stores the values from the moment it was saved, so they
@@ -87,12 +89,17 @@ class LegacyRevisionSearchLimitExceeded(Exception):
 class EpisodeResult:
     slug: str
     pk: int
-    status: str  # "changed" | "skipped" | "failed"
+    status: str  # "changed" | "skipped" | "failed" | "committed_with_followup_failure"
     reason: str = ""
     before_types: list[str] = field(default_factory=list)
     after_types: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     revision_pk: int | None = None
+    draft_created: bool = False
+    published: bool = False
+    publication_scheduled: bool = False
+    # Exception class of a callback that failed after the episode's transaction committed.
+    followup_error: str = ""
     source_revision_pk: int | None = None
     source_sha256: str = ""
     # Why --publish was refused: the unrelated parts of the draft that differ from live.
@@ -163,7 +170,7 @@ class Command(BaseCommand):
                 raise CommandError(f"Unknown episode slug(s): {', '.join(missing)}")
             batch = iter(selected)
         else:
-            batch = episodes.iterator(chunk_size=20)
+            batch = self._archive_episodes(episodes)
 
         results = []
         for episode in batch:
@@ -188,7 +195,7 @@ class Command(BaseCommand):
                 )
             )
 
-        self._report_summary(results, apply=apply, publish=publish)
+        self._report_summary(results, apply=apply)
 
         errors = []
         failed = [result.slug for result in results if result.status == "failed"]
@@ -197,6 +204,12 @@ class Command(BaseCommand):
                 f"{len(failed)} episode(s) failed: {', '.join(failed)}. "
                 "Earlier reported revisions remain committed; independent episodes were continued. "
                 "Inspect the failed episodes and retry; already converted drafts are skipped."
+            )
+        followup_failures = [result.slug for result in results if result.status == "committed_with_followup_failure"]
+        if followup_failures:
+            errors.append(
+                f"{len(followup_failures)} episode(s) committed with failed follow-up: {', '.join(followup_failures)}. "
+                "Inspect the post-commit callbacks and recover the follow-up separately."
             )
         conflicts = [result.slug for result in results if result.publish_conflict]
         if conflicts:
@@ -215,11 +228,26 @@ class Command(BaseCommand):
         if errors:
             raise CommandError(" ".join(errors))
 
+    @staticmethod
+    def _archive_episodes(episodes: models.QuerySet[Episode]) -> Iterator[Episode]:
+        horizon = episodes.aggregate(horizon=models.Max("pk"))["horizon"]
+        if horizon is None:
+            return
+        episodes = episodes.filter(pk__lte=horizon)
+        page = episodes
+        # Materialize each page so its selection cursor is closed before any writes.
+        while batch := list(page[:ARCHIVE_BATCH_SIZE]):
+            yield from batch
+            last_pk = batch[-1].pk
+            if last_pk == horizon:
+                return
+            page = episodes.filter(pk__gt=last_pk)
+
     # -- per-episode ----------------------------------------------------
     def _process_episode(self, episode: Episode, *, apply: bool, publish: bool, force: bool) -> EpisodeResult:
         """Convert one episode; an episode that disappears meanwhile is an edit conflict.
 
-        ``episode`` was loaded by uncached archive iteration. It, or its current
+        ``episode`` was loaded during selection. It, or its current
         revision, can be deleted before or while it is processed, and then one of the
         reads below fails. That is the same situation as any other edit made
         during the run, so it is reported the same way and the batch goes on.
@@ -278,7 +306,7 @@ class Command(BaseCommand):
             # pending change really is our conversion and not an unrelated draft.
             live_detail = [block for block in episode.body.raw_data if block["type"] == "detail"]
             live_converted = bool(live_detail) and self._already_converted(live_detail)
-            if publish and episode.has_unpublished_changes and not live_converted:
+            if snapshot is not None and publish and episode.has_unpublished_changes and not live_converted:
                 revision = episode.get_latest_revision()
                 unrelated = self._unrelated_draft_changes(episode, revision.as_object())
                 if unrelated:
@@ -293,17 +321,22 @@ class Command(BaseCommand):
                         revision_pk=revision.pk,
                         publish_conflict=unrelated,
                     )
-                with self._locked_unchanged(episode, snapshot) as current:
-                    if current is None:
-                        return self._edit_conflict(episode)
-                    current.get_latest_revision().publish()
-                return EpisodeResult(
+                result = EpisodeResult(
                     episode.slug,
                     episode.pk,
                     "changed",
-                    reason="published existing converted draft",
                     revision_pk=revision.pk,
                 )
+                with self._write_conversion(episode, snapshot, result) as current:
+                    if current is None:
+                        return self._edit_conflict(episode)
+                    self._publish_revision(current.get_latest_revision(), episode.pk, result)
+                    result.reason = (
+                        "published existing converted draft"
+                        if result.published
+                        else "scheduled publication of existing converted draft"
+                    )
+                return result
             return EpisodeResult(episode.slug, episode.pk, "skipped", reason="already converted")
 
         # Full ordered lists for the per-episode review; handle() drops them
@@ -325,7 +358,7 @@ class Command(BaseCommand):
             source_sha256=source_sha256,
         )
 
-        if apply:
+        if snapshot is not None:
             # Always edit the latest-revision object so other unpublished draft
             # changes (overview edits, page fields) are preserved. Only the
             # detail section is swapped in -- with --force the converted detail
@@ -335,7 +368,7 @@ class Command(BaseCommand):
             # the episode, read again under its row lock, is still in that state:
             # a detail edit saved in the meantime is never replaced by the older
             # conversion, and nothing is merged into or recomputed from it here.
-            with self._locked_unchanged(episode, snapshot) as current:
+            with self._write_conversion(episode, snapshot, result) as current:
                 if current is None:
                     return self._edit_conflict(episode)
                 target = current.get_latest_revision_as_object()
@@ -346,12 +379,40 @@ class Command(BaseCommand):
                 target.body = target.body.stream_block.to_python(merged_top)
                 revision = target.save_revision()
                 result.revision_pk = revision.pk
+                result.draft_created = True
                 if unrelated:
                     result.publish_conflict = unrelated
                 elif publish:
-                    revision.publish()
+                    self._publish_revision(revision, episode.pk, result)
 
         return result
+
+    @staticmethod
+    def _publish_revision(revision, episode_pk: int, result: EpisodeResult) -> None:
+        revision.publish()
+        # Wagtail can schedule a future revision instead of making it live.
+        result.published = Page.objects.filter(pk=episode_pk, live=True, live_revision_id=revision.pk).exists()
+        result.publication_scheduled = not result.published
+
+    @contextmanager
+    def _write_conversion(self, episode: Episode, snapshot: EpisodeSnapshot, result: EpisodeResult):
+        committed = False
+
+        def record_commit():
+            nonlocal committed
+            committed = True
+
+        try:
+            with self._locked_unchanged(episode, snapshot) as current:
+                if current is not None:
+                    # Run before callbacks registered by saving or publishing the revision.
+                    transaction.on_commit(record_commit)
+                yield current
+        except Exception as exc:
+            if not committed:
+                raise
+            result.status = "committed_with_followup_failure"
+            result.followup_error = type(exc).__name__
 
     # -- concurrent edits -----------------------------------------------
     @staticmethod
@@ -571,6 +632,20 @@ class Command(BaseCommand):
         if result.status == "failed":
             self.stdout.write(f"  -> failed: {result.reason}; inspect and retry this episode")
             return
+        self._report_outcome(result)
+        if result.status == "committed_with_followup_failure":
+            if result.published:
+                state = "published"
+            elif result.publication_scheduled:
+                state = "publication scheduled"
+            else:
+                state = "draft, not published"
+            self.stdout.write(
+                f"  -> committed (revision {result.revision_pk}, {state}), "
+                f"follow-up failed: {result.followup_error}; recover the follow-up separately"
+            )
+
+    def _report_outcome(self, result: EpisodeResult) -> None:
         if result.publish_conflict:
             if result.before_types:
                 self.stdout.write(f"  before: {', '.join(result.before_types) or '(empty)'}")
@@ -609,8 +684,9 @@ class Command(BaseCommand):
         else:
             self.stdout.write("  -> would change (dry run)")
 
-    def _report_summary(self, results: list[EpisodeResult], *, apply: bool, publish: bool) -> None:
-        changed = sum(1 for result in results if result.status == "changed")
+    def _report_summary(self, results: list[EpisodeResult], *, apply: bool) -> None:
+        followup_failures = sum(1 for result in results if result.status == "committed_with_followup_failure")
+        changed = sum(1 for result in results if result.status == "changed") + followup_failures
         failed = sum(1 for result in results if result.status == "failed")
         skipped = sum(1 for result in results if result.status == "skipped")
         with_warnings = sum(1 for result in results if result.warnings)
@@ -621,6 +697,8 @@ class Command(BaseCommand):
         summary = f"Summary: {changed} changed, {skipped} skipped, {with_warnings} with warnings"
         if failed:
             summary += f", {failed} failed"
+        if followup_failures:
+            summary += f", {followup_failures} committed with failed follow-up"
         if conflicts:
             summary += f", {conflicts} not published (conflict)"
         if edit_conflicts:
@@ -628,9 +706,7 @@ class Command(BaseCommand):
         self.stdout.write(summary)
         if not apply:
             self.stdout.write("Dry run: no changes written. Re-run with --apply to create revisions.")
-        elif publish and conflicts:
-            self.stdout.write("Applied revisions; published only the episodes without a conflict.")
-        elif publish:
-            self.stdout.write("Applied and published revisions.")
         else:
-            self.stdout.write("Applied: created draft revisions (not published).")
+            drafts_created = sum(result.draft_created for result in results)
+            published = sum(result.published for result in results)
+            self.stdout.write(f"Revisions: {drafts_created} created, {published} published.")
