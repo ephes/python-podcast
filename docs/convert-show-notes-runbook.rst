@@ -234,7 +234,10 @@ operator's command log; it identifies the input used, not a new publication.
 Each episode's result is emitted immediately after its transaction finishes,
 including the created revision ID. A handled per-episode exception reports its
 identity and exception class without exception text; independent later episodes
-continue. The final summary and nonzero exit identify failures and conflicts.
+continue. If a callback raises after the episode's transaction commits, the
+report still gives the committed revision ID and flags the failed follow-up.
+Inspect the callbacks and recover the follow-up separately. The final summary
+and nonzero exit identify failures, failed follow-ups and conflicts.
 There is no archive-wide rollback: earlier reported revisions remain committed.
 Retrying a normal ``--apply`` skips already converted drafts. Forced retries
 intentionally create new revisions. Keep stdout/stderr in the operation log;

@@ -154,6 +154,42 @@ def test_publish_after_apply_publishes_existing_draft():
     assert "publish" in output.lower()
 
 
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize("existing_draft", [False, True])
+def test_publish_reports_committed_revision_when_callback_fails(monkeypatch, existing_draft):
+    episode = _make_episode(slug="callback-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
+    if existing_draft:
+        _run("--slug", episode.slug, "--apply")
+        episode.refresh_from_db()
+    existing_revision_id = episode.latest_revision_id
+    original_publish = Revision.publish
+
+    def fail_after_commit():
+        raise RuntimeError("synthetic private callback detail")
+
+    def publish(self, *args, **kwargs):
+        transaction.on_commit(fail_after_commit)
+        return original_publish(self, *args, **kwargs)
+
+    monkeypatch.setattr(Revision, "publish", publish)
+    output = StringIO()
+    with pytest.raises(CommandError) as error:
+        call_command("convert_show_notes", "--slug", episode.slug, "--publish", stdout=output)
+
+    episode.refresh_from_db()
+    assert "show_note_link_list" in _detail_types(episode)
+    assert episode.live_revision_id == episode.latest_revision_id
+    assert episode.revisions.count() == 1
+    if existing_draft:
+        assert episode.live_revision_id == existing_revision_id
+    assert f"committed (revision {episode.live_revision_id})" in output.getvalue()
+    assert "follow-up failed: RuntimeError" in output.getvalue()
+    assert "private callback detail" not in output.getvalue()
+    assert "failed: callback-ep" not in str(error.value)
+    assert "follow-up" in str(error.value)
+    assert episode.slug in str(error.value)
+
+
 @pytest.mark.django_db
 def test_publish_does_not_publish_unrelated_draft():
     episode = _make_episode(

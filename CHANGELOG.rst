@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Report the committed revision ID when show-note conversion encounters a
+  failed post-commit callback, and flag the follow-up for separate recovery.
+
 * Keep headings with HTML attributes (on the heading or on a ``<b>``,
   ``<strong>`` or ``<br>`` inside it) and their following lists in prose during
   show-note conversion, preserving fragment targets and metadata.

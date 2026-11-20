@@ -87,7 +87,7 @@ class LegacyRevisionSearchLimitExceeded(Exception):
 class EpisodeResult:
     slug: str
     pk: int
-    status: str  # "changed" | "skipped" | "failed"
+    status: str  # "changed" | "skipped" | "failed" | "committed_with_followup_failure"
     reason: str = ""
     before_types: list[str] = field(default_factory=list)
     after_types: list[str] = field(default_factory=list)
@@ -198,6 +198,12 @@ class Command(BaseCommand):
                 "Earlier reported revisions remain committed; independent episodes were continued. "
                 "Inspect the failed episodes and retry; already converted drafts are skipped."
             )
+        followup_failures = [result.slug for result in results if result.status == "committed_with_followup_failure"]
+        if followup_failures:
+            errors.append(
+                f"{len(followup_failures)} episode(s) committed with failed follow-up: {', '.join(followup_failures)}. "
+                "Inspect the post-commit callbacks and recover the follow-up separately."
+            )
         conflicts = [result.slug for result in results if result.publish_conflict]
         if conflicts:
             errors.append(
@@ -278,7 +284,7 @@ class Command(BaseCommand):
             # pending change really is our conversion and not an unrelated draft.
             live_detail = [block for block in episode.body.raw_data if block["type"] == "detail"]
             live_converted = bool(live_detail) and self._already_converted(live_detail)
-            if publish and episode.has_unpublished_changes and not live_converted:
+            if snapshot is not None and publish and episode.has_unpublished_changes and not live_converted:
                 revision = episode.get_latest_revision()
                 unrelated = self._unrelated_draft_changes(episode, revision.as_object())
                 if unrelated:
@@ -293,17 +299,18 @@ class Command(BaseCommand):
                         revision_pk=revision.pk,
                         publish_conflict=unrelated,
                     )
-                with self._locked_unchanged(episode, snapshot) as current:
-                    if current is None:
-                        return self._edit_conflict(episode)
-                    current.get_latest_revision().publish()
-                return EpisodeResult(
+                result = EpisodeResult(
                     episode.slug,
                     episode.pk,
                     "changed",
                     reason="published existing converted draft",
                     revision_pk=revision.pk,
                 )
+                with self._write_conversion(episode, snapshot, result) as current:
+                    if current is None:
+                        return self._edit_conflict(episode)
+                    current.get_latest_revision().publish()
+                return result
             return EpisodeResult(episode.slug, episode.pk, "skipped", reason="already converted")
 
         # Full ordered lists for the per-episode review; handle() drops them
@@ -325,7 +332,7 @@ class Command(BaseCommand):
             source_sha256=source_sha256,
         )
 
-        if apply:
+        if snapshot is not None:
             # Always edit the latest-revision object so other unpublished draft
             # changes (overview edits, page fields) are preserved. Only the
             # detail section is swapped in -- with --force the converted detail
@@ -335,7 +342,7 @@ class Command(BaseCommand):
             # the episode, read again under its row lock, is still in that state:
             # a detail edit saved in the meantime is never replaced by the older
             # conversion, and nothing is merged into or recomputed from it here.
-            with self._locked_unchanged(episode, snapshot) as current:
+            with self._write_conversion(episode, snapshot, result) as current:
                 if current is None:
                     return self._edit_conflict(episode)
                 target = current.get_latest_revision_as_object()
@@ -352,6 +359,26 @@ class Command(BaseCommand):
                     revision.publish()
 
         return result
+
+    @contextmanager
+    def _write_conversion(self, episode: Episode, snapshot: EpisodeSnapshot, result: EpisodeResult):
+        committed = False
+
+        def record_commit():
+            nonlocal committed
+            committed = True
+
+        try:
+            with self._locked_unchanged(episode, snapshot) as current:
+                if current is not None:
+                    # Run before callbacks registered by saving or publishing the revision.
+                    transaction.on_commit(record_commit)
+                yield current
+        except Exception as exc:
+            if not committed:
+                raise
+            result.status = "committed_with_followup_failure"
+            result.reason = type(exc).__name__
 
     # -- concurrent edits -----------------------------------------------
     @staticmethod
@@ -571,6 +598,9 @@ class Command(BaseCommand):
         if result.status == "failed":
             self.stdout.write(f"  -> failed: {result.reason}; inspect and retry this episode")
             return
+        if result.status == "committed_with_followup_failure":
+            self.stdout.write(f"  -> committed (revision {result.revision_pk}), follow-up failed: {result.reason}")
+            return
         if result.publish_conflict:
             if result.before_types:
                 self.stdout.write(f"  before: {', '.join(result.before_types) or '(empty)'}")
@@ -610,7 +640,8 @@ class Command(BaseCommand):
             self.stdout.write("  -> would change (dry run)")
 
     def _report_summary(self, results: list[EpisodeResult], *, apply: bool, publish: bool) -> None:
-        changed = sum(1 for result in results if result.status == "changed")
+        followup_failures = sum(1 for result in results if result.status == "committed_with_followup_failure")
+        changed = sum(1 for result in results if result.status == "changed") + followup_failures
         failed = sum(1 for result in results if result.status == "failed")
         skipped = sum(1 for result in results if result.status == "skipped")
         with_warnings = sum(1 for result in results if result.warnings)
@@ -621,6 +652,8 @@ class Command(BaseCommand):
         summary = f"Summary: {changed} changed, {skipped} skipped, {with_warnings} with warnings"
         if failed:
             summary += f", {failed} failed"
+        if followup_failures:
+            summary += f", {followup_failures} committed with failed follow-up"
         if conflicts:
             summary += f", {conflicts} not published (conflict)"
         if edit_conflicts:
