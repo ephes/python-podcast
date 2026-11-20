@@ -97,6 +97,9 @@ class EpisodeResult:
     revision_pk: int | None = None
     draft_created: bool = False
     published: bool = False
+    publication_scheduled: bool = False
+    # Exception class of a callback that failed after the episode's transaction committed.
+    followup_error: str = ""
     source_revision_pk: int | None = None
     source_sha256: str = ""
     # Why --publish was refused: the unrelated parts of the draft that differ from live.
@@ -327,7 +330,7 @@ class Command(BaseCommand):
                 with self._write_conversion(episode, snapshot, result) as current:
                     if current is None:
                         return self._edit_conflict(episode)
-                    result.published = self._publish_revision(current.get_latest_revision(), episode.pk)
+                    self._publish_revision(current.get_latest_revision(), episode.pk, result)
                     result.reason = (
                         "published existing converted draft"
                         if result.published
@@ -380,15 +383,16 @@ class Command(BaseCommand):
                 if unrelated:
                     result.publish_conflict = unrelated
                 elif publish:
-                    result.published = self._publish_revision(revision, episode.pk)
+                    self._publish_revision(revision, episode.pk, result)
 
         return result
 
     @staticmethod
-    def _publish_revision(revision, episode_pk: int) -> bool:
+    def _publish_revision(revision, episode_pk: int, result: EpisodeResult) -> None:
         revision.publish()
         # Wagtail can schedule a future revision instead of making it live.
-        return Page.objects.filter(pk=episode_pk, live=True, live_revision_id=revision.pk).exists()
+        result.published = Page.objects.filter(pk=episode_pk, live=True, live_revision_id=revision.pk).exists()
+        result.publication_scheduled = not result.published
 
     @contextmanager
     def _write_conversion(self, episode: Episode, snapshot: EpisodeSnapshot, result: EpisodeResult):
@@ -408,7 +412,7 @@ class Command(BaseCommand):
             if not committed:
                 raise
             result.status = "committed_with_followup_failure"
-            result.reason = type(exc).__name__
+            result.followup_error = type(exc).__name__
 
     # -- concurrent edits -----------------------------------------------
     @staticmethod
@@ -628,9 +632,20 @@ class Command(BaseCommand):
         if result.status == "failed":
             self.stdout.write(f"  -> failed: {result.reason}; inspect and retry this episode")
             return
+        self._report_outcome(result)
         if result.status == "committed_with_followup_failure":
-            self.stdout.write(f"  -> committed (revision {result.revision_pk}), follow-up failed: {result.reason}")
-            return
+            if result.published:
+                state = "published"
+            elif result.publication_scheduled:
+                state = "publication scheduled"
+            else:
+                state = "draft, not published"
+            self.stdout.write(
+                f"  -> committed (revision {result.revision_pk}, {state}), "
+                f"follow-up failed: {result.followup_error}; recover the follow-up separately"
+            )
+
+    def _report_outcome(self, result: EpisodeResult) -> None:
         if result.publish_conflict:
             if result.before_types:
                 self.stdout.write(f"  before: {', '.join(result.before_types) or '(empty)'}")

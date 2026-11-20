@@ -183,8 +183,16 @@ def test_publish_reports_committed_revision_when_callback_fails(monkeypatch, exi
     assert episode.revisions.count() == 1
     if existing_draft:
         assert episode.live_revision_id == existing_revision_id
-    assert f"committed (revision {episode.live_revision_id})" in output.getvalue()
+    assert f"committed (revision {episode.live_revision_id}, published)" in output.getvalue()
     assert "follow-up failed: RuntimeError" in output.getvalue()
+    if existing_draft:
+        assert f"-> published existing converted draft (revision {existing_revision_id})" in output.getvalue()
+    else:
+        # The committed conversion keeps its full per-episode report.
+        assert "  before: " in output.getvalue()
+        assert "  after:  " in output.getvalue()
+        assert "show_note_link_list" in output.getvalue()
+        assert f"-> changed (revision {episode.live_revision_id})" in output.getvalue()
     assert f"Revisions: {int(not existing_draft)} created, 1 published." in output.getvalue()
     assert "private callback detail" not in output.getvalue()
     assert "failed: callback-ep" not in str(error.value)
@@ -397,6 +405,32 @@ def test_publish_summary_excludes_scheduled_revision():
     assert episode.live_revision_id is None
     assert episode.get_latest_revision().approved_go_live_at is not None
     assert "Revisions: 1 created, 0 published." in output
+
+
+@pytest.mark.django_db(transaction=True)
+def test_followup_failure_reports_scheduled_publication(monkeypatch):
+    episode = _make_episode(
+        slug="scheduled-callback-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}]
+    )
+    Episode.objects.filter(pk=episode.pk).update(go_live_at=datetime.now(UTC) + timedelta(days=1), live=False)
+    original_publish = Revision.publish
+
+    def fail_after_commit():
+        raise RuntimeError("synthetic private callback detail")
+
+    def publish(self, *args, **kwargs):
+        transaction.on_commit(fail_after_commit)
+        return original_publish(self, *args, **kwargs)
+
+    monkeypatch.setattr(Revision, "publish", publish)
+    output = StringIO()
+    with pytest.raises(CommandError):
+        call_command("convert_show_notes", "--slug", episode.slug, "--publish", stdout=output)
+
+    episode.refresh_from_db()
+    assert episode.live_revision_id is None
+    assert f"committed (revision {episode.latest_revision_id}, publication scheduled)" in output.getvalue()
+    assert "Revisions: 1 created, 0 published." in output.getvalue()
 
 
 @pytest.mark.django_db

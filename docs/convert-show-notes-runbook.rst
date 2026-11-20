@@ -238,7 +238,9 @@ Each episode's result is emitted immediately after its transaction finishes,
 including the created revision ID. A handled per-episode exception reports its
 identity and exception class without exception text; independent later episodes
 continue. If a callback raises after the episode's transaction commits, the
-report still gives the committed revision ID and flags the failed follow-up.
+episode's report keeps its usual details (block lists, warnings, conflicts) and
+adds the committed revision ID, whether it was published, scheduled or kept as
+a draft, and the failed follow-up.
 Inspect the callbacks and recover the follow-up separately. The final summary
 and nonzero exit identify failures, failed follow-ups and conflicts.
 The write summary counts newly created revisions and revisions made live
