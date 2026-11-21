@@ -1,5 +1,7 @@
 """Generate the committed minified persistent-player assets."""
 
+import errno
+import fcntl
 import os
 import re
 import shutil
@@ -78,6 +80,33 @@ def _scratch(target: Path, transaction: Path) -> Path:
     return target.with_name(f".{target.name}.{transaction.name}")
 
 
+_FULL_FSYNC_UNSUPPORTED = frozenset({errno.ENOTSUP, errno.EOPNOTSUPP, errno.EINVAL, errno.ENOTTY})
+
+
+def _flush(fd: int) -> None:
+    # On macOS fsync(2) does not flush the drive's write cache; F_FULLFSYNC does.
+    full_fsync = getattr(fcntl, "F_FULLFSYNC", None)
+    if full_fsync is not None:
+        try:
+            fcntl.fcntl(fd, full_fsync)
+        except OSError as error:
+            # Only fall back where the filesystem lacks F_FULLFSYNC; a write-back
+            # error must not be masked by a later fsync that no longer reports it.
+            if error.errno not in _FULL_FSYNC_UNSUPPORTED:
+                raise
+        else:
+            return
+    os.fsync(fd)
+
+
+def _sync(path: Path) -> None:
+    fd = os.open(path, os.O_RDONLY)
+    try:
+        _flush(fd)
+    finally:
+        os.close(fd)
+
+
 def _recover(journal: Path, targets: tuple[Path, ...]) -> None:
     try:
         mode = journal.lstat().st_mode
@@ -93,42 +122,54 @@ def _recover(journal: Path, targets: tuple[Path, ...]) -> None:
         if not re.fullmatch(r"[0-9a-f]{32}", transaction.name) or not stat.S_ISDIR(transaction.lstat().st_mode):
             raise RuntimeError(f"Unexpected asset recovery transaction: {transaction}")
         _finish_transaction(transaction, targets)
+    _sync(journal)
     journal.rmdir()
+    _sync(journal.parent)
 
 
 def _finish_transaction(transaction: Path, targets: tuple[Path, ...]) -> None:
     pending = transaction / "pending"
-    if pending.exists():
-        # A missing candidate records a successful replace. Keep each backup
-        # until rollback completes so another interruption can retry the same
-        # rollback even if it occurs just after a restore.
+    if pending.name in os.listdir(transaction):
+        # Replay every backup: after a power loss the candidate can still exist
+        # even when the target entry was replaced. Keep the backups for retries.
         for target in reversed(targets):
             scratch = _scratch(target, transaction)
-            if (scratch / "candidate").exists():
-                continue
             backup = scratch / "backup"
             try:
                 if (scratch / "absent").exists():
                     target.unlink(missing_ok=True)
                 else:
                     restored = scratch / "restore"
+                    restored.unlink(missing_ok=True)
                     shutil.copy(backup, restored)
                     os.replace(restored, target)
+                    _sync(target)
+                _sync(target.parent)
             except BaseException as error:
                 error.add_note(f"Could not restore {target}; recovery files retained in {scratch} (backup: {backup})")
                 raise
         pending.unlink()
+
+    # Recheck durability even when a previous invocation already unlinked
+    # pending: an interrupted or failed sync may still leave the unlink visible.
+    _sync(transaction)
     for target in targets:
         scratch = _scratch(target, transaction)
         try:
             mode = scratch.lstat().st_mode
         except FileNotFoundError:
-            continue
-        if not stat.S_ISDIR(mode):
-            raise RuntimeError(f"Unexpected asset recovery directory: {scratch}")
-        for name in ("candidate", "backup", "absent", "restore"):
-            (scratch / name).unlink(missing_ok=True)
-        scratch.rmdir()
+            try:
+                target.parent.stat()
+            except FileNotFoundError:
+                continue
+        else:
+            if not stat.S_ISDIR(mode):
+                raise RuntimeError(f"Unexpected asset recovery directory: {scratch}")
+            for name in ("candidate", "backup", "absent", "restore"):
+                (scratch / name).unlink(missing_ok=True)
+            scratch.rmdir()
+        # A previous attempt may already have removed the directory.
+        _sync(target.parent)
     transaction.rmdir()
 
 
@@ -137,7 +178,9 @@ def _publish_assets(journal: Path, targets: tuple[Path, ...]) -> None:
     journal.mkdir(mode=0o700)
     transaction = journal / uuid4().hex
     try:
+        _sync(journal.parent)
         transaction.mkdir(mode=0o700)
+        _sync(journal)
         for target in targets:
             scratch = _scratch(target, transaction)
             scratch.mkdir(mode=0o700)
@@ -147,17 +190,27 @@ def _publish_assets(journal: Path, targets: tuple[Path, ...]) -> None:
                 backup = scratch / "backup"
                 backup.write_bytes(target.read_bytes())
                 backup.chmod(mode)
+                _sync(backup)
             else:
-                (scratch / "absent").touch()
+                absent = scratch / "absent"
+                absent.touch()
+                _sync(absent)
             candidate = scratch / "candidate"
             candidate.write_text(assets[target], encoding="utf-8")
             candidate.chmod(mode)
+            _sync(candidate)
+            _sync(scratch)
+            _sync(target.parent)
 
         # Only this phase can leave published assets needing a rollback.
         pending = transaction / "pending"
         pending.touch()
+        _sync(pending)
+        _sync(transaction)
         for target in targets:
             os.replace(_scratch(target, transaction) / "candidate", target)
+            _sync(target)
+            _sync(target.parent)
         pending.unlink()
     except BaseException as error:
         try:

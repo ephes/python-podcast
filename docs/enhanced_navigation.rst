@@ -263,13 +263,21 @@ After changing ``persistent-player.js`` or ``persistent-player.css``, run
 reads, publication and recovery. A second invocation exits immediately with an
 error. Retry after the first finishes and leave the lock file in place.
 The minifier stages all three generated assets and byte-exact recovery copies
-alongside their destinations. It records the publication in
-``.minify-static-transaction`` before replacing any output. After a write/replace
-failure or Ctrl-C, it attempts recovery before propagating the original
-exception. After a forced kill or another process termination, rerun
-``just minify-static``. Under the lock it restores an interrupted publication
-before reading the sources. If publication had already completed, it keeps the
-new generation and clears the remaining recovery files.
+alongside their destinations. Before replacing any output, it syncs the
+staged files, their directories and the pending publication recorded in
+``.minify-static-transaction``. This ordering relies on local POSIX filesystems
+and storage that honor file and directory ``fsync``. On macOS each sync uses
+``F_FULLFSYNC`` to flush the drive cache and falls back to ``fsync`` where the
+filesystem does not support it. If staging or replacement
+fails or is interrupted by Ctrl-C, the command attempts recovery before
+propagating the original exception. After a forced kill or a cleanup error, rerun
+``just minify-static``. Under the lock it restores the whole previous generation
+for a pending publication before reading the sources, including deleting outputs
+that were previously absent. Publication and rollback both sync the resulting
+files and their parent directories before removing the pending marker. Recovery
+files remain available until the marker removal itself has been synced. If the
+marker is gone on restart, the minifier keeps the current generation and syncs
+the journal before clearing the remaining recovery files.
 
 Before recovery or staging, the command checks all output paths. It lists
 every symlink, hard-linked file or other non-regular output and exits with the

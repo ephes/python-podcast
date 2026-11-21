@@ -1,5 +1,6 @@
 """Cheap regression checks for the mobile performance asset cleanup."""
 
+import errno
 import subprocess
 import sys
 import time
@@ -111,6 +112,270 @@ def test_minifier_success_publishes_expected_set(asset_dir, monkeypatch):
     assert all(target.stat().st_mode & 0o444 == 0o444 for target in targets)
 
 
+def test_minifier_syncs_staged_journal_before_any_replacement(asset_dir, monkeypatch):
+    import os
+
+    from scripts import minify_static
+
+    existing = asset_dir / "existing"
+    existing.write_text("previous")
+    absent = asset_dir / "absent"
+    targets = (existing, absent)
+    monkeypatch.setattr(minify_static, "_asset_targets", lambda: targets)
+    monkeypatch.setattr(minify_static, "minified_assets", lambda: dict.fromkeys(targets, "new"))
+    flush = minify_static._flush
+    replace = os.replace
+    synced = set()
+    replaced = []
+
+    def track_sync(fd):
+        flush(fd)
+        info = os.fstat(fd)
+        synced.add((info.st_dev, info.st_ino))
+
+    def check_replace(source, target):
+        if source.name == "candidate":
+            journal = asset_dir.parent / ".minify-static-transaction"
+            (transaction,) = journal.iterdir()
+            existing_scratch = minify_static._scratch(existing, transaction)
+            absent_scratch = minify_static._scratch(absent, transaction)
+            paths = [
+                journal.parent,
+                journal,
+                transaction,
+                transaction / "pending",
+                asset_dir,
+                existing_scratch,
+                existing_scratch / "backup",
+                absent_scratch,
+                absent_scratch / "absent",
+            ]
+            next_target = len(replaced)
+            remaining = targets[next_target:]
+            paths.extend(minify_static._scratch(path, transaction) / "candidate" for path in remaining)
+            for path in paths:
+                info = path.stat()
+                assert (info.st_dev, info.st_ino) in synced, f"{path} was not synced before replacing {target}"
+            replaced.append(target)
+        replace(source, target)
+
+    monkeypatch.setattr(minify_static, "_flush", track_sync)
+    monkeypatch.setattr(os, "replace", check_replace)
+    minify_static.main()
+    assert tuple(replaced) == targets
+
+
+@pytest.mark.parametrize("full_fsync_error", [None, OSError(errno.ENOTSUP, "unsupported")])
+def test_minifier_sync_prefers_full_fsync(tmp_path, monkeypatch, full_fsync_error):
+    import fcntl
+    import os
+
+    from scripts import minify_static
+
+    calls = []
+
+    def fake_fcntl(fd, command, *args):
+        calls.append(("fcntl", command))
+        if full_fsync_error is not None:
+            raise full_fsync_error
+        return 0
+
+    monkeypatch.setattr(fcntl, "F_FULLFSYNC", 51, raising=False)
+    monkeypatch.setattr(fcntl, "fcntl", fake_fcntl)
+    monkeypatch.setattr(os, "fsync", lambda fd: calls.append(("fsync", None)))
+    minify_static._sync(tmp_path)
+    expected = [("fcntl", 51)] if full_fsync_error is None else [("fcntl", 51), ("fsync", None)]
+    assert calls == expected
+
+
+def test_minifier_sync_propagates_full_fsync_write_error(tmp_path, monkeypatch):
+    import fcntl
+    import os
+
+    from scripts import minify_static
+
+    calls = []
+
+    def failing_fcntl(fd, command, *args):
+        raise OSError(errno.EIO, "synthetic write-back failure")
+
+    monkeypatch.setattr(fcntl, "F_FULLFSYNC", 51, raising=False)
+    monkeypatch.setattr(fcntl, "fcntl", failing_fcntl)
+    monkeypatch.setattr(os, "fsync", lambda fd: calls.append("fsync"))
+    with pytest.raises(OSError, match="write-back failure"):
+        minify_static._sync(tmp_path)
+    assert calls == []
+
+
+def test_minifier_rolls_back_when_pending_retirement_fails(asset_dir, monkeypatch):
+    from scripts import minify_static
+
+    target = asset_dir / "asset"
+    target.write_text("previous")
+    journal = asset_dir.parent / ".minify-static-transaction"
+    monkeypatch.setattr(minify_static, "_asset_targets", lambda: (target,))
+    monkeypatch.setattr(minify_static, "minified_assets", lambda: {target: "new"})
+    unlink = Path.unlink
+    interrupted = []
+
+    def interrupt_first_pending_unlink(path, *args, **kwargs):
+        if path.name == "pending" and not interrupted:
+            interrupted.append(path)
+            raise KeyboardInterrupt
+        unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "unlink", interrupt_first_pending_unlink)
+    with pytest.raises(KeyboardInterrupt) as error:
+        minify_static.main()
+    # The in-process recovery rolled back the generation and retired the journal.
+    assert not getattr(error.value, "__notes__", ())
+    assert interrupted
+    assert target.read_text() == "previous"
+    assert not journal.exists()
+    assert set(asset_dir.iterdir()) == {target}
+
+
+def test_minifier_sync_uses_fsync_without_full_fsync(tmp_path, monkeypatch):
+    import fcntl
+    import os
+
+    from scripts import minify_static
+
+    calls = []
+    monkeypatch.delattr(fcntl, "F_FULLFSYNC", raising=False)
+    monkeypatch.setattr(os, "fsync", lambda fd: calls.append("fsync"))
+    minify_static._sync(tmp_path)
+    assert calls == ["fsync"]
+
+
+@pytest.mark.parametrize("fail_retirement", [False, True])
+def test_minifier_syncs_published_outputs_before_retiring_journal(asset_dir, monkeypatch, fail_retirement):
+    import os
+
+    from scripts import minify_static
+
+    target = asset_dir / "asset"
+    target.write_text("previous")
+    journal = asset_dir.parent / ".minify-static-transaction"
+    monkeypatch.setattr(minify_static, "_asset_targets", lambda: (target,))
+    monkeypatch.setattr(minify_static, "minified_assets", lambda: {target: "new"})
+    sync = minify_static._sync
+    unlink = Path.unlink
+    replace = os.replace
+    events = []
+
+    def track_sync(path):
+        events.append(("sync", path))
+        if fail_retirement and path.parent == journal and not (path / "pending").exists():
+            raise OSError("synthetic journal retirement sync failure")
+        sync(path)
+
+    def track_unlink(path, *args, **kwargs):
+        events.append(("unlink", path))
+        unlink(path, *args, **kwargs)
+
+    def track_replace(source, destination):
+        replace(source, destination)
+        events.append(("replace", destination))
+
+    monkeypatch.setattr(minify_static, "_sync", track_sync)
+    monkeypatch.setattr(Path, "unlink", track_unlink)
+    monkeypatch.setattr(os, "replace", track_replace)
+    if fail_retirement:
+        with pytest.raises(OSError, match="journal retirement sync failure"):
+            minify_static.main()
+    else:
+        minify_static.main()
+
+    [(retirement, pending)] = [
+        (index, path)
+        for index, (operation, path) in enumerate(events)
+        if operation == "unlink" and path.name == "pending"
+    ]
+    start, end = retirement - 3, retirement + 2
+    assert events[start:end] == [
+        ("replace", target),
+        ("sync", target),
+        ("sync", target.parent),
+        ("unlink", pending),
+        ("sync", pending.parent),
+    ]
+    assert target.read_text() == "new"
+    if fail_retirement:
+        backup = minify_static._scratch(target, pending.parent) / "backup"
+        assert backup.read_text() == "previous"
+        monkeypatch.setattr(minify_static, "_sync", sync)
+
+        def stop_after_recovery():
+            raise RuntimeError("stop after recovery")
+
+        monkeypatch.setattr(minify_static, "minified_assets", stop_after_recovery)
+        with pytest.raises(RuntimeError, match="stop after recovery"):
+            minify_static.main()
+        assert target.read_text() == "new"
+    assert set(asset_dir.iterdir()) == {target}
+    assert not journal.exists()
+
+
+def test_minifier_retries_rollback_after_output_parent_sync_fails(asset_dir, monkeypatch):
+    import os
+
+    from scripts import minify_static
+
+    existing = asset_dir / "existing"
+    existing.write_text("previous")
+    absent_parent = asset_dir.parent / "other-assets"
+    absent_parent.mkdir()
+    absent = absent_parent / "absent"
+    targets = (existing, absent)
+    journal = asset_dir.parent / ".minify-static-transaction"
+    monkeypatch.setattr(minify_static, "_asset_targets", lambda: targets)
+    monkeypatch.setattr(minify_static, "minified_assets", lambda: dict.fromkeys(targets, "new"))
+    replace = os.replace
+    sync = minify_static._sync
+    rolling_back = False
+    parent_syncs = []
+
+    def fail_publication(source, target):
+        nonlocal rolling_back
+        replace(source, target)
+        if source.name == "candidate" and target == existing:
+            # A power loss can leave both names visible after a cross-directory rename.
+            source.write_text("new")
+        if source.name == "candidate" and target == absent:
+            rolling_back = True
+            raise OSError("synthetic publication failure")
+
+    def fail_first_rollback_parent_sync(path):
+        if rolling_back and path in (absent_parent, asset_dir):
+            parent_syncs.append(path)
+            if path == asset_dir and parent_syncs.count(path) == 1:
+                raise OSError("synthetic rollback sync failure")
+        sync(path)
+
+    monkeypatch.setattr(os, "replace", fail_publication)
+    monkeypatch.setattr(minify_static, "_sync", fail_first_rollback_parent_sync)
+    with pytest.raises(OSError, match="publication failure") as error:
+        minify_static.main()
+    assert "synthetic rollback sync failure" in " ".join(getattr(error.value, "__notes__", ()))
+    (transaction,) = journal.iterdir()
+    assert (transaction / "pending").exists()
+    assert (minify_static._scratch(existing, transaction) / "backup").read_text() == "previous"
+    assert (minify_static._scratch(absent, transaction) / "absent").exists()
+
+    def stop_after_recovery():
+        raise RuntimeError("stop after recovery")
+
+    monkeypatch.setattr(minify_static, "minified_assets", stop_after_recovery)
+    with pytest.raises(RuntimeError, match="stop after recovery"):
+        minify_static.main()
+    assert parent_syncs[:4] == [absent_parent, asset_dir, absent_parent, asset_dir]
+    assert existing.read_text() == "previous"
+    assert not journal.exists()
+    assert set(asset_dir.iterdir()) == {existing}
+    assert list(absent_parent.iterdir()) == []
+
+
 def test_minifier_rejects_symlink_without_reading_referent(asset_dir, monkeypatch):
     from scripts import minify_static
 
@@ -178,15 +443,13 @@ def test_minifier_reports_retained_recovery_copy_if_compensation_fails(asset_dir
     monkeypatch.setattr(minify_static, "_asset_targets", lambda: tuple(targets))
     monkeypatch.setattr(minify_static, "minified_assets", lambda: targets)
     original = os.replace
-    calls = 0
     failure = failure_type("synthetic publication failure")
+    first, second, _ = targets
 
     def fail(source, target):
-        nonlocal calls
-        calls += 1
-        if calls == 2:
+        if source.name == "candidate" and target == second:
             raise failure
-        if calls == 3:
+        if source.name == "restore" and target == first:
             raise failure_type("synthetic restore failure")
         return original(source, target)
 
