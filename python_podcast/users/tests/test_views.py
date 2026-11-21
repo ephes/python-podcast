@@ -1,8 +1,10 @@
 import pytest
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
+from django.template import Engine
 from django.test import RequestFactory
 from django.urls import reverse
 
@@ -86,6 +88,23 @@ class TestUserDirectoryAccess:
         response = user_list_view(self._get(request_factory, "/users/", staff))
         assert response.status_code == 200
         assert list(response.context_data["object_list"]) == [other, staff]
+
+    def test_staff_directory_paginates_in_username_order(self, request_factory, staff):
+        user_model = get_user_model()
+        usernames = [f"member-{index:02d}" for index in range(51)]
+        user_model.objects.bulk_create(user_model(username=username) for username in reversed(usernames))
+
+        first = user_list_view(self._get(request_factory, "/users/", staff))
+        second = user_list_view(self._get(request_factory, "/users/?page=2", staff))
+
+        assert [user.username for user in first.context_data["user_list"]] == usernames[:50]
+        assert [user.username for user in second.context_data["user_list"]] == [usernames[50], staff.username]
+
+        base_template = Engine.get_default().from_string("{% block content %}{% endblock %}")
+        first.context_data["cast_base_template"] = base_template
+        second.context_data["cast_base_template"] = base_template
+        assert 'href="?page=2"' in first.rendered_content
+        assert 'href="?page=1"' in second.rendered_content
 
     def test_detail_redirects_anonymous_to_login(self, request_factory, other):
         path = f"/users/{other.username}/"

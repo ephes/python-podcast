@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Paginate the staff account directory in username order, with 50 accounts
+  per page and Previous and Next links.
+
 * Stop Webmention Link discovery at the first matching advertisement and
   preserve existing headers over 8,192 characters without scanning them.
 

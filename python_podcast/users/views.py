@@ -28,7 +28,7 @@ user_detail_view = UserDetailView.as_view()
 
 
 class UserListView(UserPassesTestMixin, ListView):
-    """List all accounts. Staff only.
+    """List accounts in pages. Staff only.
 
     Anonymous visitors are redirected to the login page; logged-in non-staff
     users get a 403.
@@ -36,6 +36,7 @@ class UserListView(UserPassesTestMixin, ListView):
 
     model = User
     ordering = "username"
+    paginate_by = 50
 
     def test_func(self):
         return self.request.user.is_staff
