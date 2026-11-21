@@ -263,8 +263,10 @@ After changing ``persistent-player.js`` or ``persistent-player.css``, run
 reads, publication and recovery. A second invocation exits immediately with an
 error. Retry after the first finishes and leave the lock file in place.
 The minifier stages all three generated assets and byte-exact recovery copies
-alongside their destinations. It records the publication in
-``.minify-static-transaction`` before replacing any output. After a write/replace
+alongside their destinations. Before replacing any output, it syncs the
+staged files, their directories and the pending publication recorded in
+``.minify-static-transaction``. This ordering relies on local POSIX filesystems
+and storage that honor file and directory ``fsync``. After a write/replace
 failure or Ctrl-C, it attempts recovery before propagating the original
 exception. After a forced kill or another process termination, rerun
 ``just minify-static``. Under the lock it restores an interrupted publication

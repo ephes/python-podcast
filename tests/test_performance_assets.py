@@ -111,6 +111,59 @@ def test_minifier_success_publishes_expected_set(asset_dir, monkeypatch):
     assert all(target.stat().st_mode & 0o444 == 0o444 for target in targets)
 
 
+def test_minifier_syncs_staged_journal_before_any_replacement(asset_dir, monkeypatch):
+    import os
+
+    from scripts import minify_static
+
+    existing = asset_dir / "existing"
+    existing.write_text("previous")
+    absent = asset_dir / "absent"
+    targets = (existing, absent)
+    monkeypatch.setattr(minify_static, "_asset_targets", lambda: targets)
+    monkeypatch.setattr(minify_static, "minified_assets", lambda: dict.fromkeys(targets, "new"))
+    fsync = os.fsync
+    replace = os.replace
+    synced = set()
+    replaced = []
+
+    def track_sync(fd):
+        fsync(fd)
+        info = os.fstat(fd)
+        synced.add((info.st_dev, info.st_ino))
+
+    def check_replace(source, target):
+        if source.name == "candidate":
+            journal = asset_dir.parent / ".minify-static-transaction"
+            (transaction,) = journal.iterdir()
+            existing_scratch = minify_static._scratch(existing, transaction)
+            absent_scratch = minify_static._scratch(absent, transaction)
+            paths = [
+                journal.parent,
+                journal,
+                transaction,
+                transaction / "pending",
+                asset_dir,
+                existing_scratch,
+                existing_scratch / "backup",
+                absent_scratch,
+                absent_scratch / "absent",
+            ]
+            next_target = len(replaced)
+            remaining = targets[next_target:]
+            paths.extend(minify_static._scratch(path, transaction) / "candidate" for path in remaining)
+            for path in paths:
+                info = path.stat()
+                assert (info.st_dev, info.st_ino) in synced, f"{path} was not synced before replacing {target}"
+            replaced.append(target)
+        replace(source, target)
+
+    monkeypatch.setattr(os, "fsync", track_sync)
+    monkeypatch.setattr(os, "replace", check_replace)
+    minify_static.main()
+    assert tuple(replaced) == targets
+
+
 def test_minifier_rejects_symlink_without_reading_referent(asset_dir, monkeypatch):
     from scripts import minify_static
 

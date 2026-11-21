@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Sync staged assets, recovery copies and the pending minifier journal before
+  replacing any generated asset.
+
 * Reject ambiguous show-note conversion slugs before processing the selection
   and report the matching episode IDs.
 

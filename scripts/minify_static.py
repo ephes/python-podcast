@@ -78,6 +78,14 @@ def _scratch(target: Path, transaction: Path) -> Path:
     return target.with_name(f".{target.name}.{transaction.name}")
 
 
+def _sync(path: Path) -> None:
+    fd = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
 def _recover(journal: Path, targets: tuple[Path, ...]) -> None:
     try:
         mode = journal.lstat().st_mode
@@ -137,7 +145,9 @@ def _publish_assets(journal: Path, targets: tuple[Path, ...]) -> None:
     journal.mkdir(mode=0o700)
     transaction = journal / uuid4().hex
     try:
+        _sync(journal.parent)
         transaction.mkdir(mode=0o700)
+        _sync(journal)
         for target in targets:
             scratch = _scratch(target, transaction)
             scratch.mkdir(mode=0o700)
@@ -147,15 +157,23 @@ def _publish_assets(journal: Path, targets: tuple[Path, ...]) -> None:
                 backup = scratch / "backup"
                 backup.write_bytes(target.read_bytes())
                 backup.chmod(mode)
+                _sync(backup)
             else:
-                (scratch / "absent").touch()
+                absent = scratch / "absent"
+                absent.touch()
+                _sync(absent)
             candidate = scratch / "candidate"
             candidate.write_text(assets[target], encoding="utf-8")
             candidate.chmod(mode)
+            _sync(candidate)
+            _sync(scratch)
+            _sync(target.parent)
 
         # Only this phase can leave published assets needing a rollback.
         pending = transaction / "pending"
         pending.touch()
+        _sync(pending)
+        _sync(transaction)
         for target in targets:
             os.replace(_scratch(target, transaction) / "candidate", target)
         pending.unlink()
