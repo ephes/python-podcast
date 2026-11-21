@@ -1,5 +1,7 @@
 """Generate the committed minified persistent-player assets."""
 
+import errno
+import fcntl
 import os
 import re
 import shutil
@@ -78,10 +80,29 @@ def _scratch(target: Path, transaction: Path) -> Path:
     return target.with_name(f".{target.name}.{transaction.name}")
 
 
+_FULL_FSYNC_UNSUPPORTED = frozenset({errno.ENOTSUP, errno.EOPNOTSUPP, errno.EINVAL, errno.ENOTTY})
+
+
+def _flush(fd: int) -> None:
+    # On macOS fsync(2) does not flush the drive's write cache; F_FULLFSYNC does.
+    full_fsync = getattr(fcntl, "F_FULLFSYNC", None)
+    if full_fsync is not None:
+        try:
+            fcntl.fcntl(fd, full_fsync)
+        except OSError as error:
+            # Only fall back where the filesystem lacks F_FULLFSYNC; a write-back
+            # error must not be masked by a later fsync that no longer reports it.
+            if error.errno not in _FULL_FSYNC_UNSUPPORTED:
+                raise
+        else:
+            return
+    os.fsync(fd)
+
+
 def _sync(path: Path) -> None:
     fd = os.open(path, os.O_RDONLY)
     try:
-        os.fsync(fd)
+        _flush(fd)
     finally:
         os.close(fd)
 
@@ -190,6 +211,7 @@ def _publish_assets(journal: Path, targets: tuple[Path, ...]) -> None:
             os.replace(_scratch(target, transaction) / "candidate", target)
             _sync(target)
             _sync(target.parent)
+        pending.unlink()
     except BaseException as error:
         try:
             _recover(journal, targets)
@@ -198,7 +220,6 @@ def _publish_assets(journal: Path, targets: tuple[Path, ...]) -> None:
             for note in getattr(recovery_error, "__notes__", ()):
                 error.add_note(note)
         raise
-    pending.unlink()
     _recover(journal, targets)
     for target in targets:
         print(f"wrote {target.relative_to(ROOT)}")

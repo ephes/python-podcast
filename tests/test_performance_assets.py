@@ -1,5 +1,6 @@
 """Cheap regression checks for the mobile performance asset cleanup."""
 
+import errno
 import subprocess
 import sys
 import time
@@ -122,13 +123,13 @@ def test_minifier_syncs_staged_journal_before_any_replacement(asset_dir, monkeyp
     targets = (existing, absent)
     monkeypatch.setattr(minify_static, "_asset_targets", lambda: targets)
     monkeypatch.setattr(minify_static, "minified_assets", lambda: dict.fromkeys(targets, "new"))
-    fsync = os.fsync
+    flush = minify_static._flush
     replace = os.replace
     synced = set()
     replaced = []
 
     def track_sync(fd):
-        fsync(fd)
+        flush(fd)
         info = os.fstat(fd)
         synced.add((info.st_dev, info.st_ino))
 
@@ -158,10 +159,93 @@ def test_minifier_syncs_staged_journal_before_any_replacement(asset_dir, monkeyp
             replaced.append(target)
         replace(source, target)
 
-    monkeypatch.setattr(os, "fsync", track_sync)
+    monkeypatch.setattr(minify_static, "_flush", track_sync)
     monkeypatch.setattr(os, "replace", check_replace)
     minify_static.main()
     assert tuple(replaced) == targets
+
+
+@pytest.mark.parametrize("full_fsync_error", [None, OSError(errno.ENOTSUP, "unsupported")])
+def test_minifier_sync_prefers_full_fsync(tmp_path, monkeypatch, full_fsync_error):
+    import fcntl
+    import os
+
+    from scripts import minify_static
+
+    calls = []
+
+    def fake_fcntl(fd, command, *args):
+        calls.append(("fcntl", command))
+        if full_fsync_error is not None:
+            raise full_fsync_error
+        return 0
+
+    monkeypatch.setattr(fcntl, "F_FULLFSYNC", 51, raising=False)
+    monkeypatch.setattr(fcntl, "fcntl", fake_fcntl)
+    monkeypatch.setattr(os, "fsync", lambda fd: calls.append(("fsync", None)))
+    minify_static._sync(tmp_path)
+    expected = [("fcntl", 51)] if full_fsync_error is None else [("fcntl", 51), ("fsync", None)]
+    assert calls == expected
+
+
+def test_minifier_sync_propagates_full_fsync_write_error(tmp_path, monkeypatch):
+    import fcntl
+    import os
+
+    from scripts import minify_static
+
+    calls = []
+
+    def failing_fcntl(fd, command, *args):
+        raise OSError(errno.EIO, "synthetic write-back failure")
+
+    monkeypatch.setattr(fcntl, "F_FULLFSYNC", 51, raising=False)
+    monkeypatch.setattr(fcntl, "fcntl", failing_fcntl)
+    monkeypatch.setattr(os, "fsync", lambda fd: calls.append("fsync"))
+    with pytest.raises(OSError, match="write-back failure"):
+        minify_static._sync(tmp_path)
+    assert calls == []
+
+
+def test_minifier_rolls_back_when_pending_retirement_fails(asset_dir, monkeypatch):
+    from scripts import minify_static
+
+    target = asset_dir / "asset"
+    target.write_text("previous")
+    journal = asset_dir.parent / ".minify-static-transaction"
+    monkeypatch.setattr(minify_static, "_asset_targets", lambda: (target,))
+    monkeypatch.setattr(minify_static, "minified_assets", lambda: {target: "new"})
+    unlink = Path.unlink
+    interrupted = []
+
+    def interrupt_first_pending_unlink(path, *args, **kwargs):
+        if path.name == "pending" and not interrupted:
+            interrupted.append(path)
+            raise KeyboardInterrupt
+        unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "unlink", interrupt_first_pending_unlink)
+    with pytest.raises(KeyboardInterrupt) as error:
+        minify_static.main()
+    # The in-process recovery rolled back the generation and retired the journal.
+    assert not getattr(error.value, "__notes__", ())
+    assert interrupted
+    assert target.read_text() == "previous"
+    assert not journal.exists()
+    assert set(asset_dir.iterdir()) == {target}
+
+
+def test_minifier_sync_uses_fsync_without_full_fsync(tmp_path, monkeypatch):
+    import fcntl
+    import os
+
+    from scripts import minify_static
+
+    calls = []
+    monkeypatch.delattr(fcntl, "F_FULLFSYNC", raising=False)
+    monkeypatch.setattr(os, "fsync", lambda fd: calls.append("fsync"))
+    minify_static._sync(tmp_path)
+    assert calls == ["fsync"]
 
 
 @pytest.mark.parametrize("fail_retirement", [False, True])

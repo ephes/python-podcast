@@ -266,7 +266,9 @@ The minifier stages all three generated assets and byte-exact recovery copies
 alongside their destinations. Before replacing any output, it syncs the
 staged files, their directories and the pending publication recorded in
 ``.minify-static-transaction``. This ordering relies on local POSIX filesystems
-and storage that honor file and directory ``fsync``. If staging or replacement
+and storage that honor file and directory ``fsync``. On macOS each sync uses
+``F_FULLFSYNC`` to flush the drive cache and falls back to ``fsync`` where the
+filesystem does not support it. If staging or replacement
 fails or is interrupted by Ctrl-C, the command attempts recovery before
 propagating the original exception. After a forced kill or a cleanup error, rerun
 ``just minify-static``. Under the lock it restores the whole previous generation

@@ -5,7 +5,7 @@ Unreleased
 ----------
 
 * Sync staged assets, recovery copies and the pending minifier journal before
-  replacing any generated asset.
+  replacing any generated asset. On macOS the syncs use ``F_FULLFSYNC``.
 
 * Sync the published or restored generation before retiring the minifier
   journal, and preserve recovery copies until that retirement is durable.
