@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Resolve relative Webmention discovery targets against the request URI before
+  checking for an existing link to the endpoint.
+
 * Skip cached play cards whose content type disappears during a routed
   lookup, keeping the other cards playable.
 
