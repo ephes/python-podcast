@@ -7,6 +7,9 @@ Unreleased
 * Sync staged assets, recovery copies and the pending minifier journal before
   replacing any generated asset.
 
+* Sync the published or restored generation before retiring the minifier
+  journal, and preserve recovery copies until that retirement is durable.
+
 * Reject ambiguous show-note conversion slugs before processing the selection
   and report the matching episode IDs.
 
