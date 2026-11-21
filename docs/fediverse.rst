@@ -43,7 +43,9 @@ domain while the actual server runs at ``https://fedi.python-podcast.de``. Since
    * Timeouts: 3 s per TCP connect attempt, 10 s per socket read and a hard
      10 s overall deadline that also bounds DNS resolution (done in a helper
      thread), every connect attempt and the TLS handshake; when it passes, the
-     upstream socket is shut down. Mastodon gives up on a lookup after about
+     upstream socket is shut down. The proxy checks the monotonic deadline
+     before returning upstream data or classifying a failure, even if the
+     socket shutdown timer is delayed. Mastodon gives up on a lookup after about
      10 s without response headers, so a longer deadline would only hold a
      gunicorn worker. A timeout returns ``504``; any other
      connection or protocol error, a truncated body, a body larger than
