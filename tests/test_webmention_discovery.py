@@ -5,12 +5,14 @@ from unittest.mock import Mock
 import pytest
 from cast.models import Blog, Episode, Post
 from django.contrib.auth.models import Group
-from django.template.response import TemplateResponse
+from django.template import engines
+from django.template.response import SimpleTemplateResponse, TemplateResponse
 from django.test import RequestFactory
 from indieweb.models import Webmention
 from wagtail.coreutils import get_supported_content_language_variant
 from wagtail.models import Collection, Locale, Page, PageViewRestriction, Site
 
+from python_podcast.core import webmention_discovery
 from python_podcast.core.webmention_discovery import WebmentionDiscoveryMiddleware
 from python_podcast.users.tests.factories import UserFactory
 
@@ -57,6 +59,51 @@ def test_discovery_preserves_existing_links_and_is_idempotent(existing_relation)
     for _ in range(2):
         middleware.process_template_response(request, response)
         assert response["Link"] == expected
+
+
+def test_discovery_stops_scanning_after_the_first_matching_link(monkeypatch):
+    request_uri = "http://testserver/show/content/"
+    endpoint = "http://testserver/indieweb/webmention/"
+    header = '</indieweb/webmention/>; title="commas, and semicolons;"; rel="Webmention"'
+    header += ", <https://example.org/feed>; rel=alternate" * 100
+    pattern = webmention_discovery.LINK_VALUE
+    matches_scanned = []
+
+    def track_matches(*args, **kwargs):
+        for match in pattern.finditer(*args, **kwargs):
+            matches_scanned.append(match)
+            yield match
+
+    pattern_spy = Mock(wraps=pattern)
+    pattern_spy.finditer.side_effect = track_matches
+    monkeypatch.setattr(webmention_discovery, "LINK_VALUE", pattern_spy)
+    parser = Mock(wraps=webmention_discovery.Message)
+    monkeypatch.setattr(webmention_discovery, "Message", parser)
+
+    assert webmention_discovery._has_webmention_link(header, endpoint, request_uri)
+    assert len(matches_scanned) == 1
+    parser.assert_called_once_with()
+
+
+@pytest.mark.parametrize("advertised", [False, True])
+def test_discovery_preserves_an_over_budget_header(monkeypatch, advertised):
+    page = Post(live=True, content_type_id=1, locale_id=1)
+    page.get_view_restrictions = Mock()
+    page.get_view_restrictions.return_value.exists.return_value = False
+    request = RequestFactory().get("/show/content/")
+    response = TemplateResponse(request, "unused.html", {"page": page})
+    existing = '<https://example.org/feed>; rel=alternate; title="' + ("x" * 8192) + '"'
+    if advertised:
+        existing += ', </indieweb/webmention/>; rel="webmention"'
+    response["Link"] = existing
+    pattern_spy = Mock(wraps=webmention_discovery.LINK_VALUE)
+    monkeypatch.setattr(webmention_discovery, "LINK_VALUE", pattern_spy)
+    middleware = WebmentionDiscoveryMiddleware(lambda r: response)
+
+    for _ in range(2):
+        middleware.process_template_response(request, response)
+        assert response["Link"] == existing
+    assert not pattern_spy.mock_calls
 
 
 @pytest.mark.parametrize(
@@ -130,6 +177,23 @@ def test_discovery_omitted_from_non_content_and_preview_responses(context):
     response = TemplateResponse(request, "unused.html", context)
     WebmentionDiscoveryMiddleware(lambda r: response).process_template_response(request, response)
     assert "Link" not in response
+
+
+def test_discovery_preserves_rendering_with_nonmapping_context():
+    class PairsTemplateResponse(SimpleTemplateResponse):
+        def resolve_context(self, context):
+            return dict(context)
+
+    request = RequestFactory().get("/custom/")
+    template = engines["django"].from_string("{{ message }}")
+    response = PairsTemplateResponse(template, [("message", "Synthetic response")])
+    existing = '<https://example.org/feed/>; rel="alternate"'
+    response["Link"] = existing
+    middleware = WebmentionDiscoveryMiddleware(lambda r: response)
+
+    assert middleware.process_template_response(request, response) is response
+    assert response.render().content == b"Synthetic response"
+    assert response["Link"] == existing
 
 
 @pytest.mark.django_db
