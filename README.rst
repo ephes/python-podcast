@@ -50,6 +50,10 @@ Setting Up Your Users
   ``/users/<username>/`` is shown to its owner and to staff; anyone else gets
   a 404, so the page does not reveal whether a username exists.
 
+* When creating a user in Django admin, usernames that differ only in case
+  are treated as duplicates and show the localized message
+  “This username has already been taken.”
+
 For convenience, you can keep your normal user logged in on Chrome and your superuser logged in on Firefox (or similar), so that you can see how the site behaves for both kinds of users.
 
 Type checks

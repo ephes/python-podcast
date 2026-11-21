@@ -7,6 +7,9 @@ Unreleased
 * Paginate the staff account directory in username order, with 50 accounts
   per page and Previous and Next links.
 
+* Keep the localized duplicate-username message scoped to the admin account
+  creation form and use Django's case-insensitive duplicate check.
+
 * Stop Webmention Link discovery at the first matching advertisement and
   preserve existing headers over 8,192 characters without scanning them.
 
