@@ -2,6 +2,7 @@
 
 import re
 from email.message import Message
+from urllib.parse import urljoin
 
 from cast.models import Blog, Post
 from django.urls import reverse
@@ -11,14 +12,21 @@ from django.utils.deprecation import MiddlewareMixin
 LINK_VALUE = re.compile(r'(?:^|,)[ \t]*<([^>]*)>((?:[^",]|"(?:[^"\\]|\\.)*")*)')
 
 
-def _has_webmention_link(header: str, endpoint: str) -> bool:
+def _has_webmention_link(header: str, endpoint: str, request_uri: str) -> bool:
     for target, parameters in LINK_VALUE.findall(header):
-        if target == endpoint:
-            link = Message()
-            link["Link"] = f"link{parameters}"
-            relation = link.get_param("rel", header="Link", failobj="")
-            if isinstance(relation, str) and "webmention" in relation.lower().split():
+        link = Message()
+        link["Link"] = f"link{parameters}"
+        relation = link.get_param("rel", header="Link", failobj="")
+        if not isinstance(relation, str) or "webmention" not in relation.lower().split():
+            continue
+        anchor = link.get_param("anchor", header="Link", failobj="")
+        if not isinstance(anchor, str):
+            continue
+        try:
+            if urljoin(request_uri, target) == endpoint and urljoin(request_uri, anchor) == request_uri:
                 return True
+        except ValueError:
+            continue
     return False
 
 
@@ -37,6 +45,6 @@ class WebmentionDiscoveryMiddleware(MiddlewareMixin):
             endpoint = request.build_absolute_uri(reverse("indieweb:webmention"))
             link = f'<{endpoint}>; rel="webmention"'
             existing = response.get("Link", "")
-            if not _has_webmention_link(existing, endpoint):
+            if not _has_webmention_link(existing, endpoint, request.build_absolute_uri()):
                 response["Link"] = f"{existing}, {link}" if existing else link
         return response
