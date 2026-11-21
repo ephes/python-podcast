@@ -62,7 +62,11 @@ def _routed_card_pages(queryset: QuerySet, using: str) -> dict[int, Page]:
     pages = {}
     content_types = ContentType.objects.db_manager(using)
     for content_type_id, ids in ids_by_type.items():
-        model = content_types.get_for_id(content_type_id).model_class()
+        try:
+            content_type = content_types.get_for_id(content_type_id)
+        except ContentType.DoesNotExist:
+            continue
+        model = content_type.model_class()
         if model is not None and issubclass(model, Post):
             pages.update(model.objects.using(using).prefetch_related(_cover_prefetch(using)).in_bulk(ids))
     return pages
@@ -125,7 +129,7 @@ def _payload_post(context: Any, post: Any) -> Any:
     if getattr(episode, "cover_image", None) is not None:
         blog = None
     elif using is not None:
-        if not isinstance(blog, Blog) or _page_database(blog) != using:
+        if not isinstance(blog, Blog) or _page_database(blog) != using or not episode.is_child_of(blog):
             blog = Blog.objects.using(using).parent_of(episode).first()
         if blog is not None:
             prefetch_related_objects([blog], _cover_prefetch(using))

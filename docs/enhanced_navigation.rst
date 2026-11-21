@@ -207,8 +207,9 @@ missing IDs are memoized separately by database authority.
 The batch omits cards the repository marks as having no audio. Cards without
 eligibility metadata remain candidates, and the card requesting a payload is
 always included.
-If a cached card's Wagtail page has been deleted, the request remembers the
-missing ID along with the pages it found. Both themes omit that card's play
+If a cached card's Wagtail page has been deleted or its content type has
+disappeared during a routed batch, the request remembers the unavailable ID
+along with the pages it found. Both themes omit that card's play
 action and leave its ordinary episode link and the other cards in place.
 Detail pages keep their already concrete page. Payload identity and transcript
 context still belong to each post, including when posts share an audio.
@@ -218,9 +219,11 @@ Card artwork
 
 Play cards prefer an episode's explicit cover before looking up any fallback
 blog data. For cached overview cards, cover images and existing renditions for
-both sizes are prefetched together. The current context's blog cover supplies
-fallback artwork, with its renditions reused across cards. The player payload
-retains its 512 px poster; compact cards request a separate 128 px WebP rendition.
+both sizes are prefetched together. Routed cards reuse the supplied blog and
+its renditions when the hydrated episode is still its child. After an episode
+moves, its new parent supplies fallback artwork on the same database alias.
+The player payload retains its 512 px poster. Compact cards request a separate
+128 px WebP rendition.
 If its original file is unavailable (``FileNotFoundError`` or Wagtail's
 ``SourceImageIOError``), the card uses the player poster already present in the
 payload, which may be a cached rendition. This keeps the card renderable when
