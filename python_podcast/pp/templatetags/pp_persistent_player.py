@@ -129,7 +129,7 @@ def _payload_post(context: Any, post: Any) -> Any:
     if getattr(episode, "cover_image", None) is not None:
         blog = None
     elif using is not None:
-        if not isinstance(blog, Blog) or _page_database(blog) != using:
+        if not isinstance(blog, Blog) or _page_database(blog) != using or not episode.is_child_of(blog):
             blog = Blog.objects.using(using).parent_of(episode).first()
         if blog is not None:
             prefetch_related_objects([blog], _cover_prefetch(using))

@@ -219,9 +219,11 @@ Card artwork
 
 Play cards prefer an episode's explicit cover before looking up any fallback
 blog data. For cached overview cards, cover images and existing renditions for
-both sizes are prefetched together. The current context's blog cover supplies
-fallback artwork, with its renditions reused across cards. The player payload
-retains its 512 px poster; compact cards request a separate 128 px WebP rendition.
+both sizes are prefetched together. Routed cards reuse the supplied blog and
+its renditions when the hydrated episode is still its child. After an episode
+moves, its new parent supplies fallback artwork on the same database alias.
+The player payload retains its 512 px poster. Compact cards request a separate
+128 px WebP rendition.
 If its original file is unavailable (``FileNotFoundError`` or Wagtail's
 ``SourceImageIOError``), the card uses the player poster already present in the
 payload, which may be a cached rendition. This keeps the card renderable when

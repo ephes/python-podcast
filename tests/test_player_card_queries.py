@@ -330,6 +330,31 @@ def test_cached_cards_reuse_blog_fallback_renditions(card_rows, settings, django
     assert html.count('src="http://testserver/media/images/cover-0.max-128x128-format-webp.webp"') == 20
 
 
+def test_moved_cached_card_uses_current_blog_cover(card_rows, settings):
+    settings.PYTHON_PODCAST_PERSISTENT_AUDIO_PLAYER = True
+    settings.CAST_AUDIO_PLAYER = "custom"
+    blog, audio, (episode, sibling, *_) = card_rows
+    blog.cover_image = episode.cover_image
+    blog.save(update_fields=["cover_image"])
+    destination = blog.get_parent().add_child(
+        instance=Podcast(
+            title="Destination podcast",
+            slug="destination",
+            owner=episode.owner,
+            cover_image=sibling.cover_image,
+        )
+    )
+    episode.cover_image = None
+    episode.save(update_fields=["cover_image"])
+    template, context = _render(blog, audio, [episode])
+    episode.move(destination, pos="last-child")
+
+    html = template.render(context)
+
+    assert f'"poster": "http://testserver/media/images/cover-1.{PLAYER_FILENAME_SPEC}.webp"' in html
+    assert 'src="http://testserver/media/images/cover-1.max-128x128-format-webp.webp"' in html
+
+
 def test_cached_card_missing_small_rendition_retains_player_poster(card_rows, settings):
     settings.PYTHON_PODCAST_PERSISTENT_AUDIO_PLAYER = True
     settings.CAST_AUDIO_PLAYER = "custom"
