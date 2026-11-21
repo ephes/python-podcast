@@ -730,6 +730,11 @@ preserved alongside the page's discovery link. Newly added discovery links use
 an absolute endpoint URI. The scan stops at the first match. If the existing
 Link header exceeds 8,192 characters, the middleware leaves it as supplied to
 avoid adding a potentially duplicate advertisement. See `RFC 8288 <https://www.rfc-editor.org/rfc/rfc8288.html#section-3>`_.
+
+Discovery reads page metadata from mapping template contexts. Custom template
+responses with other context types keep their supplied Link headers as they
+render.
+
 Drafts, previews, restricted pages (including ancestor restrictions),
 account/admin pages and error responses do not advertise it. The receiver
 accepts HTTP(S) targets on the current Django Sites domain; discovery is limited

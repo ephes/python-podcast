@@ -1,6 +1,7 @@
 """Advertise receiving Webmentions on public cast content pages only."""
 
 import re
+from collections.abc import Mapping
 from email.message import Message
 from urllib.parse import urljoin
 
@@ -34,7 +35,9 @@ def _has_webmention_link(header: str, endpoint: str, request_uri: str) -> bool:
 
 class WebmentionDiscoveryMiddleware(MiddlewareMixin):
     def process_template_response(self, request, response):
-        context = response.context_data or {}
+        context = response.context_data
+        if not isinstance(context, Mapping):
+            return response
         page = context.get("page")
         if (
             response.status_code == 200

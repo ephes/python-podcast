@@ -5,7 +5,8 @@ from unittest.mock import Mock
 import pytest
 from cast.models import Blog, Episode, Post
 from django.contrib.auth.models import Group
-from django.template.response import TemplateResponse
+from django.template import engines
+from django.template.response import SimpleTemplateResponse, TemplateResponse
 from django.test import RequestFactory
 from indieweb.models import Webmention
 from wagtail.coreutils import get_supported_content_language_variant
@@ -176,6 +177,23 @@ def test_discovery_omitted_from_non_content_and_preview_responses(context):
     response = TemplateResponse(request, "unused.html", context)
     WebmentionDiscoveryMiddleware(lambda r: response).process_template_response(request, response)
     assert "Link" not in response
+
+
+def test_discovery_preserves_rendering_with_nonmapping_context():
+    class PairsTemplateResponse(SimpleTemplateResponse):
+        def resolve_context(self, context):
+            return dict(context)
+
+    request = RequestFactory().get("/custom/")
+    template = engines["django"].from_string("{{ message }}")
+    response = PairsTemplateResponse(template, [("message", "Synthetic response")])
+    existing = '<https://example.org/feed/>; rel="alternate"'
+    response["Link"] = existing
+    middleware = WebmentionDiscoveryMiddleware(lambda r: response)
+
+    assert middleware.process_template_response(request, response) is response
+    assert response.render().content == b"Synthetic response"
+    assert response["Link"] == existing
 
 
 @pytest.mark.django_db
