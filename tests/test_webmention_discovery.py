@@ -88,6 +88,36 @@ def test_discovery_resolves_relative_targets_against_the_request(target, same_en
 
 
 @pytest.mark.parametrize(
+    ("anchor", "same_context"),
+    [
+        ("http://testserver/show/content/?view=full", True),
+        ("?view=full", True),
+        ("", True),
+        ("../other/", False),
+        ("?view=summary", False),
+        ("#section", False),
+        ("https://remote.example/show/content/?view=full", False),
+        ("http://[invalid/", False),
+    ],
+)
+def test_discovery_preserves_anchored_links_and_matches_the_request_context(anchor, same_context):
+    page = Post(live=True, content_type_id=1, locale_id=1)
+    page.get_view_restrictions = Mock()
+    page.get_view_restrictions.return_value.exists.return_value = False
+    request = RequestFactory().get("/show/content/?view=full")
+    response = TemplateResponse(request, "unused.html", {"page": page})
+    discovery = '<http://testserver/indieweb/webmention/>; rel="webmention"'
+    existing = f'{discovery}; anchor="{anchor}"'
+    response["Link"] = existing
+    expected = existing if same_context else f"{existing}, {discovery}"
+    middleware = WebmentionDiscoveryMiddleware(lambda r: response)
+
+    for _ in range(2):
+        middleware.process_template_response(request, response)
+        assert response["Link"] == expected
+
+
+@pytest.mark.parametrize(
     "context",
     [
         {},

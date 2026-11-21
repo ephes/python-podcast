@@ -723,9 +723,11 @@ available, its timestamp; it does not disclose submitted URLs or content.
 Live, public cast blog, post and episode pages advertise the endpoint through
 an HTTP ``Link: <…/indieweb/webmention/>; rel="webmention"`` header, across all
 themes. The middleware preserves existing Link values in order and appends
-the discovery link only when the same endpoint and relation are absent.
-It resolves relative Link targets against the request URI for this comparison
-and emits newly added discovery links with an absolute endpoint URI.
+the discovery link when the page has no Webmention relation for that endpoint.
+It resolves relative Link targets and ``anchor`` parameters against the request
+URI for this comparison. A link anchored to another page or fragment is
+preserved alongside the page's discovery link. Newly added discovery links use
+an absolute endpoint URI. See `RFC 8288 <https://www.rfc-editor.org/rfc/rfc8288.html#section-3>`_.
 Drafts, previews, restricted pages (including ancestor restrictions),
 account/admin pages and error responses do not advertise it. The receiver
 accepts HTTP(S) targets on the current Django Sites domain; discovery is limited

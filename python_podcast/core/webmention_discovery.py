@@ -14,17 +14,19 @@ LINK_VALUE = re.compile(r'(?:^|,)[ \t]*<([^>]*)>((?:[^",]|"(?:[^"\\]|\\.)*")*)')
 
 def _has_webmention_link(header: str, endpoint: str, request_uri: str) -> bool:
     for target, parameters in LINK_VALUE.findall(header):
-        try:
-            resolved_target = urljoin(request_uri, target)
-        except ValueError:
-            continue
-        if resolved_target != endpoint:
-            continue
         link = Message()
         link["Link"] = f"link{parameters}"
         relation = link.get_param("rel", header="Link", failobj="")
-        if isinstance(relation, str) and "webmention" in relation.lower().split():
-            return True
+        if not isinstance(relation, str) or "webmention" not in relation.lower().split():
+            continue
+        anchor = link.get_param("anchor", header="Link", failobj="")
+        if not isinstance(anchor, str):
+            continue
+        try:
+            if urljoin(request_uri, target) == endpoint and urljoin(request_uri, anchor) == request_uri:
+                return True
+        except ValueError:
+            continue
     return False
 
 
