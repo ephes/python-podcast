@@ -48,7 +48,8 @@ domain while the actual server runs at ``https://fedi.python-podcast.de``. Since
      gunicorn worker. A timeout returns ``504``; any other
      connection or protocol error, a truncated body, a body larger than
      1 MiB, or an invalid upstream status, header or redirect location returns
-     ``502``.
+     ``502``. The proxy rejects a known body length above 1 MiB before
+     reading and enforces the same limit incrementally while streaming.
    * DNS admission allows at most four outstanding lookups per web process.
      Capacity stays occupied until the resolver actually finishes, even after
      the request times out. Saturation returns ``502`` immediately without

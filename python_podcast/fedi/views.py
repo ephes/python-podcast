@@ -69,6 +69,9 @@ def _get_ssl_context():
 
 
 def _read_limited(upstream) -> bytes:
+    if upstream.length is not None and upstream.length > MAX_UPSTREAM_BYTES:
+        raise UpstreamError("response-too-large")
+
     chunks = []
     total = 0
     while True:
