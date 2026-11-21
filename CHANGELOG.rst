@@ -4,6 +4,12 @@ Changelog
 Unreleased
 ----------
 
+* Reject Fediverse discovery responses whose known body length exceeds 1 MiB
+  before reading the body.
+
+* Return ``504`` when the Fediverse upstream deadline has elapsed, including
+  when the socket shutdown timer has yet to run.
+
 * Resolve relative Webmention discovery targets against the request URI before
   checking for an existing link to the endpoint.
 

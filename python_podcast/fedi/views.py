@@ -69,6 +69,9 @@ def _get_ssl_context():
 
 
 def _read_limited(upstream) -> bytes:
+    if upstream.length is not None and upstream.length > MAX_UPSTREAM_BYTES:
+        raise UpstreamError("response-too-large")
+
     chunks = []
     total = 0
     while True:
@@ -192,6 +195,11 @@ def _fetch(url, accept):
                 pass
 
     deadline = time.monotonic() + UPSTREAM_DEADLINE
+
+    def deadline_expired():
+        # The timer can run late, and shutting down the socket can look like EOF.
+        return deadline_hit.is_set() or time.monotonic() >= deadline
+
     timer = threading.Timer(UPSTREAM_DEADLINE, abort)
     timer.daemon = True
     timer.start()
@@ -204,18 +212,17 @@ def _fetch(url, accept):
         )
         upstream = conn.getresponse()
         body = _read_limited(upstream)
-        if deadline_hit.is_set():
-            # The shutdown may surface as a clean EOF; never return a truncated body.
+        if deadline_expired():
             raise UpstreamTimeout
         return upstream.status, upstream.headers, body
     except UpstreamTimeout:
         raise
     except UpstreamError:
-        if deadline_hit.is_set():
+        if deadline_expired():
             raise UpstreamTimeout from None
         raise
     except (OSError, ValueError, http.client.HTTPException) as exc:
-        if deadline_hit.is_set() or isinstance(exc, TimeoutError):
+        if deadline_expired() or isinstance(exc, TimeoutError):
             raise UpstreamTimeout from exc
         if isinstance(exc, ssl.SSLError):
             category = "tls"
