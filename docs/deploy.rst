@@ -727,7 +727,9 @@ the discovery link when the page has no Webmention relation for that endpoint.
 It resolves relative Link targets and ``anchor`` parameters against the request
 URI for this comparison. A link anchored to another page or fragment is
 preserved alongside the page's discovery link. Newly added discovery links use
-an absolute endpoint URI. See `RFC 8288 <https://www.rfc-editor.org/rfc/rfc8288.html#section-3>`_.
+an absolute endpoint URI. The scan stops at the first match. If the existing
+Link header exceeds 8,192 characters, the middleware leaves it as supplied to
+avoid adding a potentially duplicate advertisement. See `RFC 8288 <https://www.rfc-editor.org/rfc/rfc8288.html#section-3>`_.
 Drafts, previews, restricted pages (including ancestor restrictions),
 account/admin pages and error responses do not advertise it. The receiver
 accepts HTTP(S) targets on the current Django Sites domain; discovery is limited

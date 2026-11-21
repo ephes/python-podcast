@@ -10,10 +10,12 @@ from django.utils.deprecation import MiddlewareMixin
 
 # Commas within the target or quoted parameters belong to that link value.
 LINK_VALUE = re.compile(r'(?:^|,)[ \t]*<([^>]*)>((?:[^",]|"(?:[^"\\]|\\.)*")*)')
+MAX_LINK_SCAN_CHARS = 8192
 
 
 def _has_webmention_link(header: str, endpoint: str, request_uri: str) -> bool:
-    for target, parameters in LINK_VALUE.findall(header):
+    for match in LINK_VALUE.finditer(header):
+        target, parameters = match.groups()
         link = Message()
         link["Link"] = f"link{parameters}"
         relation = link.get_param("rel", header="Link", failobj="")
@@ -42,9 +44,12 @@ class WebmentionDiscoveryMiddleware(MiddlewareMixin):
             and not context.get("is_preview", False)
             and not page.get_view_restrictions().exists()
         ):
+            existing = response.get("Link", "")
+            # A partial scan could miss an existing advertisement or split a quoted value.
+            if len(existing) > MAX_LINK_SCAN_CHARS:
+                return response
             endpoint = request.build_absolute_uri(reverse("indieweb:webmention"))
             link = f'<{endpoint}>; rel="webmention"'
-            existing = response.get("Link", "")
             if not _has_webmention_link(existing, endpoint, request.build_absolute_uri()):
                 response["Link"] = f"{existing}, {link}" if existing else link
         return response

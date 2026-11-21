@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Stop Webmention Link discovery at the first matching advertisement and
+  preserve existing headers over 8,192 characters without scanning them.
+
 * Reject Fediverse discovery responses whose known body length exceeds 1 MiB
   before reading the body.
 
