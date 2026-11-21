@@ -207,8 +207,9 @@ missing IDs are memoized separately by database authority.
 The batch omits cards the repository marks as having no audio. Cards without
 eligibility metadata remain candidates, and the card requesting a payload is
 always included.
-If a cached card's Wagtail page has been deleted, the request remembers the
-missing ID along with the pages it found. Both themes omit that card's play
+If a cached card's Wagtail page has been deleted or its content type has
+disappeared during a routed batch, the request remembers the unavailable ID
+along with the pages it found. Both themes omit that card's play
 action and leave its ordinary episode link and the other cards in place.
 Detail pages keep their already concrete page. Payload identity and transcript
 context still belong to each post, including when posts share an audio.

@@ -62,7 +62,11 @@ def _routed_card_pages(queryset: QuerySet, using: str) -> dict[int, Page]:
     pages = {}
     content_types = ContentType.objects.db_manager(using)
     for content_type_id, ids in ids_by_type.items():
-        model = content_types.get_for_id(content_type_id).model_class()
+        try:
+            content_type = content_types.get_for_id(content_type_id)
+        except ContentType.DoesNotExist:
+            continue
+        model = content_type.model_class()
         if model is not None and issubclass(model, Post):
             pages.update(model.objects.using(using).prefetch_related(_cover_prefetch(using)).in_bulk(ids))
     return pages

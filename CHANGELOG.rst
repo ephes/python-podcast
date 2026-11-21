@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Skip cached play cards whose content type disappears during a routed
+  lookup, keeping the other cards playable.
+
 * Sync staged assets, recovery copies and the pending minifier journal before
   replacing any generated asset. On macOS the syncs use ``F_FULLFSYNC``.
 

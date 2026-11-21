@@ -11,6 +11,7 @@ from cast.models.pages import PODLOVE_POSTER_RENDITION_SPEC
 from cast.models.repository.serialization import deserialize_post, serialize_post
 from django.contrib.contenttypes.models import ContentType
 from django.core.cache import caches
+from django.db import DatabaseError
 from django.template import Context, RequestContext, Template
 from django.test import RequestFactory, override_settings
 from wagtail.coreutils import get_supported_content_language_variant
@@ -144,6 +145,42 @@ def test_cached_card_lookup_and_misses_follow_the_overview_database(card_rows, s
         html = template.render(default)
     assert f"cover-0.{PLAYER_FILENAME_SPEC}.webp" in html
     assert f"cast-player-data-{audio.pk}-post-{default_only.pk}" in html
+
+
+@pytest.mark.parametrize("error", [ContentType.DoesNotExist, DatabaseError])
+def test_routed_card_batch_handles_only_missing_content_types(
+    card_rows, settings, monkeypatch, django_assert_num_queries, error
+):
+    settings.PYTHON_PODCAST_PERSISTENT_AUDIO_PLAYER = True
+    settings.CAST_AUDIO_PLAYER = "custom"
+    blog, audio, (episode, *_) = card_rows
+    stale = blog.add_child(instance=Post(title="Retired post", slug="retired", owner=episode.owner, body=[]))
+    template, context = _render(blog, audio, [stale, episode])
+    settings.DATABASE_ROUTERS = [
+        SimpleNamespace(db_for_read=lambda model, **hints: "legacy" if model is ContentType else None)
+    ]
+    content_type_manager = type(ContentType.objects)
+    get_for_id = content_type_manager.get_for_id
+
+    def lookup(manager, content_type_id):
+        assert manager.db == blog._state.db
+        if content_type_id == stale.content_type_id:
+            # Simulate retirement after the base page query enumerates the ID.
+            raise error("content type lookup failed")
+        return get_for_id(manager, content_type_id)
+
+    monkeypatch.setattr(content_type_manager, "get_for_id", lookup)
+    if error is DatabaseError:
+        with pytest.raises(DatabaseError, match="content type lookup failed"):
+            template.render(context)
+        return
+
+    html = template.render(context)
+    assert f'href="/{blog.slug}/{stale.slug}/"' in html
+    assert f"cast-player-data-{audio.pk}-post-{stale.pk}" not in html
+    assert f"cast-player-data-{audio.pk}-post-{episode.pk}" in html
+    with django_assert_num_queries(0):
+        assert template.render(context) == html
 
 
 @pytest.mark.parametrize("theme", ["pp", "bootstrap5"])
