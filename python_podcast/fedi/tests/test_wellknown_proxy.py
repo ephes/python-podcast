@@ -4,6 +4,7 @@ standing in for the fedi host.
 """
 
 import datetime
+import http.client
 import http.server
 import ipaddress
 import socket
@@ -195,6 +196,27 @@ def test_redirect_is_passed_on_not_followed(client, upstream):
     assert response["Location"] == upstream.base_url + "/.well-known/nodeinfo/2.0"
     assert not response.has_header("Set-Cookie")
     assert len(upstream.requests) == 2  # not followed
+
+
+@pytest.mark.parametrize("location_fields", [[], ["/other"], ["/next"]], ids=["single", "conflicting", "repeated"])
+def test_proxy_requires_a_single_location_for_redirects(rf, monkeypatch, location_fields):
+    headers = http.client.HTTPMessage()
+    headers["Location"] = "/next"
+    for location in location_fields:
+        headers["location"] = location
+    origin = "https://fedi.example.invalid"
+    monkeypatch.setattr(views, "FEDI_BASE_URL", origin)
+    monkeypatch.setattr(views, "_fetch", lambda *args: (302, headers, b""))
+
+    response = views.wellknown_nodeinfo(rf.get("/.well-known/nodeinfo"))
+
+    if location_fields:
+        assert response.status_code == 502
+        assert response.content == b"Bad gateway"
+        assert "Location" not in response
+    else:
+        assert response.status_code == 302
+        assert response["Location"] == origin + "/next"
 
 
 def test_oversized_upstream_returns_502(client, upstream, caplog):

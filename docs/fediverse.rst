@@ -40,6 +40,7 @@ domain while the actual server runs at ``https://fedi.python-podcast.de``. Since
      any ``Content-Encoding`` the upstream still uses is passed on as is.
    * Upstream redirects are not followed; a ``3xx`` is returned to the client
      with its ``Location`` made absolute against the fedi host.
+     Multiple upstream ``Location`` fields on a ``3xx`` return ``502``.
    * Timeouts: 3 s per TCP connect attempt, 10 s per socket read and a hard
      10 s overall deadline that also bounds DNS resolution (done in a helper
      thread), every connect attempt and the TLS handshake; when it passes, the

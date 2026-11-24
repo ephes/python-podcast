@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Return ``502`` for Fediverse discovery redirects with multiple upstream
+  ``Location`` fields.
+
 * Paginate the staff account directory in username order, with 50 accounts
   per page and Previous and Next links.
 
