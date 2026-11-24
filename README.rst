@@ -50,6 +50,9 @@ Setting Up Your Users
   ``/users/<username>/`` is shown to its owner and to staff; anyone else gets
   a 404, so the page does not reveal whether a username exists.
 
+* Profile edits stay tied to the signed-in account if its username changes.
+  A successful edit redirects to the profile URL from the loaded account.
+
 * When creating a user in Django admin, usernames that differ only in case
   are treated as duplicates and show the localized message
   “This username has already been taken.”
