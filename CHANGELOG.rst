@@ -7,6 +7,9 @@ Unreleased
 * Resolve profile edits by account ID and redirect to the profile URL for the
   username loaded from that account. Return 404 if the account is missing.
 
+* Limit profile saves to the display name, preserving concurrent changes to
+  other account fields. Return 404 if the account is removed before the save.
+
 * Return ``502`` for Fediverse discovery redirects with multiple upstream
   ``Location`` fields.
 

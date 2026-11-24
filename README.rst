@@ -52,6 +52,9 @@ Setting Up Your Users
 
 * Profile edits stay tied to the signed-in account if its username changes.
   A successful edit redirects to the profile URL from the loaded account.
+  The form updates only the display name and preserves concurrent changes to
+  other account fields. If the account is removed before the edit is saved,
+  the request returns 404.
 
 * When creating a user in Django admin, usernames that differ only in case
   are treated as duplicates and show the localized message

@@ -9,7 +9,13 @@ from django.test import RequestFactory
 from django.urls import reverse
 
 from python_podcast.users.tests.factories import UserFactory
-from python_podcast.users.views import UserRedirectView, user_detail_view, user_list_view, user_update_view
+from python_podcast.users.views import (
+    UserRedirectView,
+    UserUpdateView,
+    user_detail_view,
+    user_list_view,
+    user_update_view,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -34,6 +40,41 @@ class TestUserUpdateView:
 
         with pytest.raises(Http404):
             user_update_view(request)
+
+    def test_profile_save_preserves_concurrent_staff_change(self, user, request_factory, monkeypatch):
+        form_valid = UserUpdateView.form_valid
+
+        def change_staff_before_save(view, form):
+            get_user_model().objects.filter(pk=view.object.pk).update(is_staff=True)
+            return form_valid(view, form)
+
+        monkeypatch.setattr(UserUpdateView, "form_valid", change_staff_before_save)
+        request = request_factory.post(reverse("users:update"), {"name": "Updated Name"})
+        request.user = user
+
+        response = user_update_view(request)
+
+        user.refresh_from_db()
+        assert user.name == "Updated Name"
+        assert user.is_staff
+        assert response.status_code == 302
+        assert response.url == user.get_absolute_url()
+
+    def test_account_removed_before_save_is_404(self, user, request_factory, monkeypatch):
+        form_valid = UserUpdateView.form_valid
+        account = get_user_model().objects.filter(pk=user.pk)
+
+        def delete_account_before_save(view, form):
+            account.delete()
+            return form_valid(view, form)
+
+        monkeypatch.setattr(UserUpdateView, "form_valid", delete_account_before_save)
+        request = request_factory.post(reverse("users:update"), {"name": "Updated Name"})
+        request.user = user
+
+        with pytest.raises(Http404):
+            user_update_view(request)
+        assert not account.exists()
 
 
 class TestUserRedirectView:
