@@ -293,7 +293,11 @@ def _build_response(request, url, status, headers, content):
         content_type=headers.get("Content-Type") or "application/octet-stream",
     )
     for name in PASSED_RESPONSE_HEADERS:
-        value = headers.get(name)
+        if name == "Cache-Control":
+            values = [value for field, value in headers.items() if field.lower() == "cache-control"]
+            value = ", ".join(values) if values else None
+        else:
+            value = headers.get(name)
         if value is not None:
             response[name] = value
     # Accept is the only variable client input forwarded upstream. Preserve the
@@ -303,10 +307,13 @@ def _build_response(request, url, status, headers, content):
             patch_vary_headers(
                 response, [field.strip() for field in value.split(",") if field.strip().lower() in {"accept", "*"}]
             )
-    location = headers.get("Location")
-    if 300 <= status < 400 and location:
-        # Redirects are not followed; pass them on, absolute against the fedi host.
-        response["Location"] = urljoin(url, location)
+    if 300 <= status < 400:
+        locations = [value for name, value in headers.items() if name.lower() == "location"]
+        if len(locations) > 1:
+            raise ValueError("Multiple upstream Location fields")
+        if locations and locations[0]:
+            # Redirects are not followed; pass them on, absolute against the fedi host.
+            response["Location"] = urljoin(url, locations[0])
     return response
 
 

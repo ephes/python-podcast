@@ -4,6 +4,12 @@ Changelog
 Unreleased
 ----------
 
+* Return ``502`` for Fediverse discovery redirects with multiple upstream
+  ``Location`` fields.
+
+* Preserve all upstream ``Cache-Control`` directives on Fediverse discovery
+  responses, including directives sent in separate header fields.
+
 * Paginate the staff account directory in username order, with 50 accounts
   per page and Previous and Next links.
 
