@@ -4,6 +4,12 @@ Changelog
 Unreleased
 ----------
 
+* Return ``502`` for conflicting upstream ``Content-Type`` fields on Fediverse
+  discovery responses.
+
+* Preserve all upstream ``Content-Encoding`` fields in wire order on Fediverse
+  discovery responses.
+
 * Resolve profile edits by account ID and redirect to the profile URL for the
   username loaded from that account. Return 404 if the account is missing.
 

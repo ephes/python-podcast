@@ -28,6 +28,9 @@ domain while the actual server runs at ``https://fedi.python-podcast.de``. Since
      ``Access-Control-Allow-Origin`` and ``Content-Encoding`` are returned.
      Upstream ``Set-Cookie`` and all other headers are dropped, except for
      the supported ``Vary`` fields below.
+   * Repeated upstream ``Content-Type`` fields must have identical values.
+     Conflicting values return ``502``. A missing or empty ``Content-Type``
+     defaults to ``application/octet-stream``.
    * Repeated upstream ``Cache-Control`` fields are combined in the order
      received, preserving directives such as ``no-store`` and ``private``.
    * Every proxy response varies on ``Accept``, including redirects, upstream
@@ -38,8 +41,9 @@ domain while the actual server runs at ``https://fedi.python-podcast.de``. Since
      not forwarded (``Accept-Encoding`` is fixed to ``identity``). Middleware
      can still add its own variation fields. ``HEAD`` has no body on gateway
      failures as well as successful responses.
-   * The body is not decoded: ``Accept-Encoding: identity`` is requested and
-     any ``Content-Encoding`` the upstream still uses is passed on as is.
+   * The proxy requests ``Accept-Encoding: identity`` and forwards the body
+     without decoding it. Repeated upstream ``Content-Encoding`` fields are
+     combined in the order received so clients can decode the full chain.
    * Upstream redirects are not followed; a ``3xx`` is returned to the client
      with its ``Location`` made absolute against the fedi host.
      Multiple upstream ``Location`` fields on a ``3xx`` return ``502``.
