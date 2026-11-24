@@ -1,5 +1,8 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.db import router
+from django.http import Http404, HttpResponseRedirect
+from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.views.generic import DetailView, ListView, RedirectView, UpdateView
 
@@ -51,10 +54,22 @@ class UserUpdateView(LoginRequiredMixin, UpdateView):
     fields = ["name"]
 
     def get_success_url(self):
-        return reverse("users:detail", kwargs={"username": self.request.user.username})
+        return self.object.get_absolute_url()
 
-    def get_object(self):
-        return User.objects.get(username=self.request.user.username)
+    def get_queryset(self):
+        writer = router.db_for_write(User, instance=self.request.user)
+        return super().get_queryset().using(writer)
+
+    def get_object(self, queryset=None):
+        if queryset is None:
+            queryset = self.get_queryset()
+        return get_object_or_404(queryset, pk=self.request.user.pk)
+
+    def form_valid(self, form):
+        updated = self.get_queryset().filter(pk=self.object.pk).update(name=form.cleaned_data["name"])
+        if not updated:
+            raise Http404
+        return HttpResponseRedirect(self.get_success_url())
 
 
 user_update_view = UserUpdateView.as_view()
