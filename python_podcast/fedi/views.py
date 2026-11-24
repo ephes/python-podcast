@@ -170,9 +170,8 @@ def _fetch(url, accept):
     """
     GET ``url`` and return ``(status, headers, body)``.
 
-    Redirects are not followed and the body is not decoded (``identity`` is
-    requested; any Content-Encoding is passed on unchanged). Raises
-    ``UpstreamTimeout`` or ``UpstreamError``.
+    Fetch a single response with ``Accept-Encoding: identity`` and return the
+    body as received. Raises ``UpstreamTimeout`` or ``UpstreamError``.
     """
     parts = urlsplit(url)
     # The socket is set up by _connect; http.client only speaks HTTP over it.
@@ -293,8 +292,8 @@ def _build_response(request, url, status, headers, content):
         content_type=headers.get("Content-Type") or "application/octet-stream",
     )
     for name in PASSED_RESPONSE_HEADERS:
-        if name == "Cache-Control":
-            values = [value for field, value in headers.items() if field.lower() == "cache-control"]
+        if name in ("Cache-Control", "Content-Encoding"):
+            values = [value for field, value in headers.items() if field.lower() == name.lower()]
             value = ", ".join(values) if values else None
         else:
             value = headers.get(name)

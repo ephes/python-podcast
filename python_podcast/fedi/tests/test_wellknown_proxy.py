@@ -319,6 +319,23 @@ def test_content_encoding_passed_through_undecoded(client, upstream):
     assert upstream.requests[0]["headers"]["Accept-Encoding"] == "identity"
 
 
+def test_repeated_content_encodings_preserved_in_wire_order(rf, monkeypatch):
+    body = b"\x1f\x8bencoded-document"
+    headers = http.client.HTTPMessage()
+    headers["Content-Encoding"] = "gzip, br"
+    headers["content-encoding"] = "gzip"
+    headers["Set-Cookie"] = "upstream=synthetic"
+    monkeypatch.setattr(views, "_fetch", lambda *args: (200, headers, body))
+
+    response = views.wellknown_nodeinfo(rf.get("/.well-known/nodeinfo"))
+
+    assert response.status_code == 200
+    assert response.content == body
+    assert response["Content-Encoding"] == "gzip, br, gzip"
+    assert not response.cookies
+    assert "Set-Cookie" not in response
+
+
 def test_stalled_dns_resolution_hits_deadline(client, upstream, monkeypatch):
     real_getaddrinfo = views.socket.getaddrinfo
 

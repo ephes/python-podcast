@@ -38,8 +38,9 @@ domain while the actual server runs at ``https://fedi.python-podcast.de``. Since
      not forwarded (``Accept-Encoding`` is fixed to ``identity``). Middleware
      can still add its own variation fields. ``HEAD`` has no body on gateway
      failures as well as successful responses.
-   * The body is not decoded: ``Accept-Encoding: identity`` is requested and
-     any ``Content-Encoding`` the upstream still uses is passed on as is.
+   * The proxy requests ``Accept-Encoding: identity`` and forwards the body
+     without decoding it. Repeated upstream ``Content-Encoding`` fields are
+     combined in the order received so clients can decode the full chain.
    * Upstream redirects are not followed; a ``3xx`` is returned to the client
      with its ``Location`` made absolute against the fedi host.
      Multiple upstream ``Location`` fields on a ``3xx`` return ``502``.
