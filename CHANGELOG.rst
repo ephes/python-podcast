@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Return ``502`` for conflicting upstream ``Content-Type`` fields on Fediverse
+  discovery responses.
+
 * Preserve all upstream ``Content-Encoding`` fields in wire order on Fediverse
   discovery responses.
 

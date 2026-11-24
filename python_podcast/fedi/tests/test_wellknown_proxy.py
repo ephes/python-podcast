@@ -336,6 +336,44 @@ def test_repeated_content_encodings_preserved_in_wire_order(rf, monkeypatch):
     assert "Set-Cookie" not in response
 
 
+@pytest.mark.parametrize("method, expected_body", [("get", b"Bad gateway"), ("head", b"")])
+@pytest.mark.parametrize("conflicting_type", ["text/plain", "application/json; charset=iso-8859-1"])
+def test_conflicting_content_types_return_502(rf, monkeypatch, method, expected_body, conflicting_type):
+    headers = http.client.HTTPMessage()
+    headers["Content-Type"] = "application/json; charset=utf-8"
+    headers["content-type"] = conflicting_type
+    monkeypatch.setattr(views, "_fetch", lambda *args: (200, headers, b"document"))
+
+    request = getattr(rf, method)("/.well-known/nodeinfo")
+    response = views.wellknown_nodeinfo(request)
+
+    assert response.status_code == 502
+    assert response.content == expected_body
+    assert response["Content-Type"] == "text/plain"
+    assert response["Vary"] == "Accept"
+    assert request.fedi_upstream_failure
+
+
+@pytest.mark.parametrize(
+    "upstream_values, expected",
+    [
+        ([], "application/octet-stream"),
+        (["application/json", "application/json"], "application/json"),
+    ],
+)
+def test_missing_or_matching_content_types(rf, monkeypatch, upstream_values, expected):
+    headers = http.client.HTTPMessage()
+    for value in upstream_values:
+        headers["Content-Type"] = value
+    monkeypatch.setattr(views, "_fetch", lambda *args: (200, headers, b"document"))
+
+    response = views.wellknown_nodeinfo(rf.get("/.well-known/nodeinfo"))
+
+    assert response.status_code == 200
+    assert response.content == b"document"
+    assert response["Content-Type"] == expected
+
+
 def test_stalled_dns_resolution_hits_deadline(client, upstream, monkeypatch):
     real_getaddrinfo = views.socket.getaddrinfo
 

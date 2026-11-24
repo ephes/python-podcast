@@ -286,10 +286,14 @@ def _gateway_error(request, text, status):
 
 
 def _build_response(request, url, status, headers, content):
+    content_types = {value for name, value in headers.items() if name.lower() == "content-type"}
+    if len(content_types) > 1:
+        raise ValueError("Conflicting upstream Content-Type fields")
+    content_type = next(iter(content_types), None) or "application/octet-stream"
     response = HttpResponse(
         b"" if request.method == "HEAD" else content,
         status=status,
-        content_type=headers.get("Content-Type") or "application/octet-stream",
+        content_type=content_type,
     )
     for name in PASSED_RESPONSE_HEADERS:
         if name in ("Cache-Control", "Content-Encoding"):
