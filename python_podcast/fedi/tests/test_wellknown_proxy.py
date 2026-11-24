@@ -11,6 +11,7 @@ import socket
 import ssl
 import threading
 import time
+from unittest.mock import Mock
 from urllib.parse import urlsplit
 
 import pytest
@@ -667,6 +668,40 @@ def test_shared_cache_keeps_accept_representations_separate(rf, monkeypatch):
         assert calls == ["application/jrd+json", "application/json"]
     finally:
         cache.clear()
+
+
+@pytest.mark.parametrize("directive", ["no-store", "private"])
+def test_repeated_cache_control_fields_prevent_shared_cache_storage(rf, monkeypatch, directive):
+    from django.core.cache import cache
+    from django.middleware.cache import CacheMiddleware
+
+    headers = http.client.HTTPMessage()
+    headers["Cache-Control"] = "max-age=60"
+    headers["cache-control"] = directive
+    fetch = Mock(return_value=(200, headers, b"document"))
+    monkeypatch.setattr(views, "_fetch", fetch)
+    cached = CacheMiddleware(views.wellknown_nodeinfo, cache_timeout=60, key_prefix="fedi-cache-control-regression")
+    cache.clear()
+    try:
+        responses = [cached(rf.get("/.well-known/nodeinfo")) for _ in range(2)]
+
+        assert fetch.call_count == 2
+        assert [response.status_code for response in responses] == [200, 200]
+        assert [response["Cache-Control"] for response in responses] == [f"max-age=60, {directive}"] * 2
+    finally:
+        cache.clear()
+
+
+def test_invalid_repeated_cache_control_field_returns_502(rf, monkeypatch):
+    headers = http.client.HTTPMessage()
+    headers["Cache-Control"] = "max-age=60"
+    headers["Cache-Control"] = "no-store\r\n invalid"
+    monkeypatch.setattr(views, "_fetch", lambda *args: (200, headers, b"document"))
+
+    response = views.wellknown_nodeinfo(rf.get("/.well-known/nodeinfo"))
+
+    assert response.status_code == 502
+    assert response.content == b"Bad gateway"
 
 
 @pytest.mark.parametrize(

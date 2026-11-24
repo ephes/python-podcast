@@ -293,7 +293,11 @@ def _build_response(request, url, status, headers, content):
         content_type=headers.get("Content-Type") or "application/octet-stream",
     )
     for name in PASSED_RESPONSE_HEADERS:
-        value = headers.get(name)
+        if name == "Cache-Control":
+            values = [value for field, value in headers.items() if field.lower() == "cache-control"]
+            value = ", ".join(values) if values else None
+        else:
+            value = headers.get(name)
         if value is not None:
             response[name] = value
     # Accept is the only variable client input forwarded upstream. Preserve the

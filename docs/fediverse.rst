@@ -28,6 +28,8 @@ domain while the actual server runs at ``https://fedi.python-podcast.de``. Since
      ``Access-Control-Allow-Origin`` and ``Content-Encoding`` are returned.
      Upstream ``Set-Cookie`` and all other headers are dropped, except for
      the supported ``Vary`` fields below.
+   * Repeated upstream ``Cache-Control`` fields are combined in the order
+     received, preserving directives such as ``no-store`` and ``private``.
    * Every proxy response varies on ``Accept``, including redirects, upstream
      error statuses, gateway failures, ``HEAD`` and method refusals. Shared caches
      therefore keep representations separate. Upstream ``Vary: Accept`` is
