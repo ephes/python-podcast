@@ -264,7 +264,7 @@ class Command(BaseCommand):
             loaded = episodes.in_bulk([pk for pk, _ in identities])
             for pk, slug in identities:
                 episode = loaded.pop(pk, None)
-                yield episode if episode is not None else self._edit_conflict(pk, slug)
+                yield episode if episode is not None and episode.slug == slug else self._edit_conflict(pk, slug)
 
     @staticmethod
     def _archive_episodes(episodes: models.QuerySet[Episode]) -> Iterator[Episode]:

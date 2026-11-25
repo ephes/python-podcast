@@ -81,6 +81,10 @@ Safety model
   lists candidate page IDs for ambiguous slugs, then rejects the entire
   selection before loading episode bodies. With a valid selection, it loads
   the selected episodes in batches of up to 20, in primary-key order.
+  Each loaded episode must still have the selected ID and slug. If it is
+  renamed or deleted before loading, the command reports an edit conflict
+  under the requested slug, leaves that episode untouched and continues with
+  the other selections.
   Omit ``--slug`` to process the full archive.
 * ``--force`` re-converts from the original legacy body, ignoring the "already
   converted" guard. Use it to regenerate conversions after the converter has

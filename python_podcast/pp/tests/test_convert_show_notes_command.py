@@ -907,6 +907,32 @@ def test_ambiguous_explicit_slug_refuses_the_entire_selection(mode):
     assert unique.revisions.count() == 1
 
 
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize("mode", [(), ("--apply",), ("--publish",)])
+def test_explicit_selection_refuses_slug_changed_before_hydration(monkeypatch, mode):
+    from python_podcast.pp.management.commands.convert_show_notes import Command
+
+    episode = _make_episode(slug="admitted-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
+    original_selected_episodes = Command._selected_episodes
+
+    def rename_before_hydration(command, episodes, selected):
+        assert selected == [(episode.pk, "admitted-ep")]
+        Page.objects.filter(pk=episode.pk).update(slug="renamed-ep")
+        return original_selected_episodes(command, episodes, selected)
+
+    monkeypatch.setattr(Command, "_selected_episodes", rename_before_hydration)
+
+    output, error = _run_expecting_error("--slug", "admitted-ep", *mode)
+
+    assert f"Episode admitted-ep (pk={episode.pk})" in output
+    assert "conflict: not converted" in output
+    assert "changed while the command was running and were left untouched: admitted-ep" in error
+    assert "renamed-ep" not in output + error
+    episode.refresh_from_db()
+    assert episode.slug == "renamed-ep"
+    assert episode.revisions.count() == 0
+
+
 RICH_SHOWNOTE_HTML = (
     "<h2>Shownotes</h2>"
     "<h3>News</h3><ul>"

@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Report an edit conflict under the requested slug if an explicitly selected
+  show-note conversion target is renamed before it is loaded.
+
 * Use the episode's write database for show-note conversion locks, publication
   verification, and commit receipts in routed deployments. Report rolled-back
   conversions as failures.
