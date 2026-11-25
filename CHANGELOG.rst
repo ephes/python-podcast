@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Preserve show-note list items with anchor attributes beyond ``href`` as
+  prose, keeping fragment targets and download filenames in list order.
+
 * Try the next resolved Fediverse address when opening a socket fails,
   within the existing upstream deadline.
 

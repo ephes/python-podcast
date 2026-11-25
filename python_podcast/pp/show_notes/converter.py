@@ -426,9 +426,9 @@ def _tokenize_item(li: Tag, skip: Tag | None = None) -> list[tuple[str, object]]
     as too ambiguous to convert safely.
 
     A ``formatting`` token names markup the plain-text destination fields cannot
-    keep: an inline formatting tag around real text, or any element inside a
-    link. Formatting that wraps only whitespace/separators carries nothing and
-    is tokenized as plain text.
+    keep: an inline formatting tag around real text, an element inside a link,
+    or a link attribute other than ``href``. Formatting that wraps only
+    whitespace/separators carries nothing and is tokenized as plain text.
     """
     tokens: list[tuple[str, object]] = []
     for child in li.children:
@@ -446,6 +446,8 @@ def _tokenize_item(li: Tag, skip: Tag | None = None) -> list[tuple[str, object]]
                     tokens.append(("formatting", f"has <{inner.name}> markup inside a link title"))
                 elif _has_non_text_string(child):
                     tokens.append(("formatting", "has a comment or other non-text markup inside a link title"))
+                elif child.attrs.keys() - {"href"}:
+                    tokens.append(("formatting", "has link attributes that a title and URL cannot keep"))
                 tokens.append(("link", {"title": _clean_text(child.get_text()), "url": child.get("href", "")}))
             elif child.name == "br":
                 tokens.append(("text", " "))

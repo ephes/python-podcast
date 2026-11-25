@@ -32,6 +32,30 @@ def test_heading_followed_by_list_becomes_single_link_list():
     assert value["items"][0]["url"] == "https://example.com/a"
 
 
+def test_link_attributes_stay_in_prose_in_list_order():
+    html = (
+        "<h3>News</h3><ul>"
+        '<li><a href="https://example.com/article" id="article">Article</a></li>'
+        '<li><a href="https://example.com/plain">Plain link</a></li>'
+        '<li><a href="https://example.com/project">Project</a> | '
+        '<a href="https://example.com/data.csv" download="report.csv">Download</a></li>'
+        "</ul>"
+    )
+
+    conversion = convert_paragraph_html(html)
+
+    assert _types(conversion) == ["show_note_heading", "paragraph", "show_note_link_list", "paragraph"]
+    anchor = BeautifulSoup(conversion.blocks[1].value, "html.parser").a
+    assert anchor.attrs == {"href": "https://example.com/article", "id": "article"}
+    items = conversion.blocks[2].value["items"]
+    assert [(item["title"], item["url"]) for item in items] == [("Plain link", "https://example.com/plain")]
+    anchors = BeautifulSoup(conversion.blocks[3].value, "html.parser").find_all("a")
+    assert [anchor.get_text() for anchor in anchors] == ["Project", "Download"]
+    assert anchors[1].attrs == {"href": "https://example.com/data.csv", "download": "report.csv"}
+    assert len(conversion.warnings) == 2
+    assert all("link attributes" in warning for warning in conversion.warnings)
+
+
 def test_prefix_is_extracted_before_first_link():
     html = '<h3>X</h3><ul><li>Visualisierungen:&nbsp;<a href="https://example.com/v">Vega</a></li></ul>'
 

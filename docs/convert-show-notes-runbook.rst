@@ -56,7 +56,9 @@ What the command does
     unformatted text. Inline formatting around real text (``<strong>``,
     ``<b>``, ``<em>``, ``<i>``, ``<code>``, ``<sub>``, ``<sup>``, ``<small>``,
     ``<u>``, ``<span>``), any element inside a link, and comments keep that item
-    as prose; the other items of the same list still convert, in order. The same
+    as prose. An anchor with attributes beyond ``href`` also stays in prose,
+    preserving fragment targets such as ``id`` and filenames from ``download``.
+    The other items of the same list still convert, in order. The same
     applies to the topic label and sub-items of a nested group. Formatting that
     wraps only whitespace or a separator (``<b> | </b>``) carries nothing and
     does not block the conversion.
