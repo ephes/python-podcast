@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Wait for the dock's own exit animation or its fallback before dismissing the
+  player and restoring focus.
+
 * Report an edit conflict under the requested slug if an explicitly selected
   show-note conversion target is renamed before it is loaded.
 

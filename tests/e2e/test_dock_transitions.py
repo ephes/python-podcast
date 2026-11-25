@@ -125,7 +125,9 @@ def test_close_invalidates_pending_switch_and_allows_reactivation(dock, reduced_
     _complete(dock, 1)
     if reduced_motion == "no-preference":
         # Drive the animation end explicitly instead of depending on a timer/CSS.
-        dock.locator(".cast-dock__inner").dispatch_event("animationend")
+        dock.locator(".cast-dock__inner").evaluate(
+            "el => el.dispatchEvent(new AnimationEvent('animationend', {animationName: 'cast-dock-sink'}))"
+        )
     assert dock.locator("cast-audio-player").count() == 0
     assert dock.evaluate("window.__castPersistentAudioDebug.activeAudioId") is None
     assert dock.evaluate("window.plays") == [1]
@@ -184,8 +186,10 @@ def test_close_keeps_focus_moved_outside_during_animation(dock):
     dock.evaluate("""() => {
         document.querySelector('.cast-dock__close').click();
         document.querySelector('#play-b').focus();
-        document.querySelector('.cast-dock__inner').dispatchEvent(new Event('animationend'));
+        document.querySelector('.cast-dock__inner').dispatchEvent(
+            new AnimationEvent('animationend', {animationName: 'cast-dock-sink'}));
     }""")
+    expect(dock.locator("#cast-persistent-player")).to_be_hidden()
     expect(dock.locator("#play-b")).to_be_focused()
 
 

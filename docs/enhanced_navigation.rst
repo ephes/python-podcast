@@ -129,7 +129,10 @@ Transition update from an older activation cannot rebuild or start its episode,
 even if it runs after the newer update. Closing invalidates queued updates so
 they cannot reopen the dock. Activating without a transition (including reduced
 motion) also supersedes pending updates. Transition cleanup and close animation
-completion retain their ownership guards.
+completion retain their ownership guards. With motion enabled, closing waits
+for the dock inner element's sink animation or the 400 ms fallback. Descendant
+animations and other animation names cannot finish the close. Reactivation
+removes the old close listener and timer. Reduced-motion dismissal is immediate.
 
 Closing with focus inside the dock returns focus to its activation button, or
 the matching current episode action if navigation replaced that button. When

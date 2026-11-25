@@ -72,7 +72,7 @@
     // close takes a sequence number; activating (or a newer close) bumps it so a
     // stale finish() no-ops instead of tearing down the freshly built dock.
     closeSeq: 0,
-    closeTimer: null,
+    closeCancel: null,
     // Same idea for the View Transition: a rapid second activate supersedes the
     // first. vtSeq generation-scopes updates and cleanup; close and non-VT
     // activation invalidate it too, so a stale transition can't rebuild or strip the
@@ -123,10 +123,7 @@
   // never leaks onto it.
   function cancelPendingClose() {
     state.closeSeq += 1;
-    if (state.closeTimer) {
-      window.clearTimeout(state.closeTimer);
-      state.closeTimer = null;
-    }
+    if (state.closeCancel) state.closeCancel();
     var region = getRegion();
     if (region) {
       region.removeAttribute("data-cast-closing");
@@ -784,16 +781,14 @@
     state.vtSeq += 1;
     clearMorphNames();
     region.classList.remove("cast-vt-active");
+    if (state.closeCancel) state.closeCancel();
     var myClose = (state.closeSeq += 1);
     var finish = function () {
       // No-op if a re-activation (or a newer close) has superseded this one.
       if (myClose !== state.closeSeq) {
         return;
       }
-      if (state.closeTimer) {
-        window.clearTimeout(state.closeTimer);
-        state.closeTimer = null;
-      }
+      cancelPendingClose();
       // Decide before unmounting, and respect focus moved away during close.
       var restoreFocus = region.contains(document.activeElement);
       var payloadId = state.activePayloadId;
@@ -801,7 +796,6 @@
       teardownActive();
       region.hidden = true;
       region.removeAttribute("data-cast-active");
-      region.removeAttribute("data-cast-closing");
       region.removeAttribute("data-cast-min"); // a future dock starts expanded
       document.body.classList.remove("cast-dock-open");
       state.activePayloadId = null;
@@ -819,12 +813,16 @@
       return;
     }
     region.setAttribute("data-cast-closing", "");
-    var onEnd = function () {
-      inner.removeEventListener("animationend", onEnd);
-      finish();
+    var onEnd = function (event) {
+      if (event.target === inner && event.animationName === "cast-dock-sink") finish();
     };
     inner.addEventListener("animationend", onEnd);
-    state.closeTimer = window.setTimeout(onEnd, 400); // fallback if animationend never fires
+    var timer = window.setTimeout(finish, 400); // fallback if animationend never fires
+    state.closeCancel = function () {
+      inner.removeEventListener("animationend", onEnd);
+      window.clearTimeout(timer);
+      state.closeCancel = null;
+    };
   }
 
   // Wire every page-published "play this episode" action to the manager. Old
