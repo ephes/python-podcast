@@ -237,9 +237,12 @@ JSON (sorted keys, compact separators, UTF-8). Preserve this receipt with the
 operator's command log; it identifies the input used, not a new publication.
 
 Each episode's result is emitted immediately after its transaction finishes,
-including the created revision ID. Run ``--apply`` and ``--publish`` with database
-autocommit enabled. Both refuse to select episodes inside a caller-owned
-transaction or with autocommit disabled. Dry runs can run inside a transaction.
+including the created revision ID. Run ``--apply`` and ``--publish`` with
+autocommit enabled on the database Django routes episode writes to. Both refuse
+to select episodes if that connection is inside a caller-owned transaction or
+has autocommit disabled. Dry runs can run inside a transaction.
+Selection, row locks, publication checks and commit tracking in write mode
+use that same database. A rolled-back conversion is reported as a failure.
 
 A handled per-episode exception reports the episode identity and exception
 class without exception text. Independent later episodes continue.

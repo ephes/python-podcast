@@ -4,6 +4,10 @@ Changelog
 Unreleased
 ----------
 
+* Use the episode's write database for show-note conversion locks, publication
+  verification, and commit receipts in routed deployments. Report rolled-back
+  conversions as failures.
+
 * Require autocommit for show-note conversion with ``--apply`` or ``--publish``
   so revision receipts follow each episode's commit. Dry runs still work inside
   a transaction.
