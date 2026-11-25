@@ -445,3 +445,28 @@ def test_switch_close_and_late_readiness_do_not_steal_current_owner(page, asset_
     page.evaluate("deliverReady(players[2]); allWaiters[2]()")
     assert page.locator("cast-audio-player").count() == 0
     assert page.evaluate("window.__castPersistentAudioDebug.activeAudioId") is None
+
+
+def test_current_audio_error_offers_retry_after_readiness(page, asset_name):
+    from playwright.sync_api import expect
+
+    _deferred_player(page, asset_name)
+    page.locator("#play-a").click()
+    page.evaluate("deliverReady(players[0])")
+    page.locator("#play-b").click()
+    page.evaluate("""() => {
+        deliverReady(players[1]);
+        players[0].querySelector('audio').dispatchEvent(new Event('error'));
+        players[1].querySelector('audio').dispatchEvent(new Event('pause'));
+    }""")
+    expect(page.get_by_role("alert")).to_have_count(0)
+    assert page.evaluate("window.__castPersistentAudioDebug.activeAudioId") == 2
+
+    page.locator("cast-audio-player audio").dispatch_event("error")
+    expect(page.get_by_role("alert")).to_contain_text("The audio could not be loaded")
+    expect(page.locator("cast-audio-player")).to_have_count(0)
+    page.get_by_role("button", name="Retry playback").click()
+    page.evaluate("deliverReady(players[2])")
+    assert page.evaluate("window.__castPersistentAudioDebug.activeAudioId") == 2
+    assert page.evaluate("window.plays") == ["a", "b", "b"]
+    expect(page.get_by_role("alert")).to_have_count(0)

@@ -16,7 +16,7 @@ const context = {
   state, PLAYER_ID: 'player', PLAYER_READY_TIMEOUT_MS: 15000,
   getActiveAudio: () => audio, getPersistentPlayerEl: () => player,
   updateCards() {}, updateCardTime() {},
-  showPlayerReadinessError: error => errors.push(error),
+  showPlayerError: error => errors.push(error),
   document: {addEventListener: (event, fn) => listeners.add(fn), removeEventListener: (event, fn) => listeners.delete(fn)},
   window: {setTimeout: fn => { timers.add(fn); return fn; }, clearTimeout: fn => timers.delete(fn)}
 };
@@ -38,13 +38,33 @@ assert.equal(errors.length, 0, 'retired activation changed current dock');
 ready(); // A ready event without current audio must not restart the deadline.
 assert.equal(timers.size, 1);
 assert.equal(listeners.size, 1);
-audio = {addEventListener() {}, removeEventListener() {}};
+const audioListeners = new Map();
+const mediaError = new Error('synthetic media failure');
+audio = {
+  error: mediaError,
+  addEventListener: (event, fn) => audioListeners.set(event, fn),
+  removeEventListener: event => audioListeners.delete(event)
+};
 player.controller = {play: () => plays++};
 ready();
 assert.equal(timers.size, 0);
 assert.equal(listeners.size, 0);
 assert.equal(plays, 1, 'asynchronously ready controller never started');
+audioListeners.get('pause')();
+assert.equal(errors.length, 0);
+const reportError = audioListeners.get('error');
+assert.ok(reportError, 'ready audio has no error listener');
+state.closeCancel = () => {};
+reportError();
+assert.equal(errors.length, 0, 'closing dock showed a retry');
+state.closeCancel = null;
+reportError();
+assert.deepEqual(errors, [mediaError]);
 dispose();
+assert.equal(audioListeners.size, 0);
+reportError();
+assert.deepEqual(errors, [mediaError], 'retired audio changed the dock');
+errors.length = 0;
 audio = null; player = {};
 context.wireActiveAudio();
 [...timers][0]();

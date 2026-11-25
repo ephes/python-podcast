@@ -344,9 +344,9 @@
   // current dock: disposed in teardownActive(), re-attached per build.
   function wireActiveAudio() {
     var audio = getActiveAudio();
+    var generation = state.dockSeq;
     if (!audio) {
       var player = getPersistentPlayerEl();
-      var generation = state.dockSeq;
       var initialController = player && player.controller;
       var retired = false;
       var timer = null;
@@ -371,14 +371,14 @@
               typeof player.controller.play === "function") player.controller.play();
           updateCards();
         } catch (error) {
-          showPlayerReadinessError(error);
+          showPlayerError(error);
         }
       };
       document.addEventListener("cast:player-ready", onReady);
       timer = window.setTimeout(function () {
         var current = isCurrent();
         retire();
-        if (current) showPlayerReadinessError(new Error("Player readiness deadline exceeded"));
+        if (current) showPlayerError(new Error("Player readiness deadline exceeded"));
       }, PLAYER_READY_TIMEOUT_MS);
       state.readinessCancel = retire;
       state.dockDisposers.push(retire);
@@ -390,12 +390,20 @@
     var onTime = function () {
       updateCardTime();
     };
+    var onError = function () {
+      if (generation !== state.dockSeq || audio !== getActiveAudio() || state.closeCancel) {
+        return;
+      }
+      showPlayerError(audio.error || new Error("Audio media load failed"), "The audio could not be loaded. ");
+    };
+    audio.addEventListener("error", onError);
     audio.addEventListener("play", onState);
     audio.addEventListener("pause", onState);
     audio.addEventListener("ended", onState);
     audio.addEventListener("timeupdate", onTime);
     audio.addEventListener("durationchange", onTime);
     state.dockDisposers.push(function () {
+      audio.removeEventListener("error", onError);
       audio.removeEventListener("play", onState);
       audio.removeEventListener("pause", onState);
       audio.removeEventListener("ended", onState);
@@ -442,7 +450,7 @@
     updateCards();
   }
 
-  function showPlayerReadinessError(error) {
+  function showPlayerError(error, text) {
     var payloadId = state.activePayloadId;
     var opener = state.activeOpener;
     resetFailedDock(error);
@@ -450,7 +458,7 @@
     var message = document.createElement("div");
     message.className = "cast-dock__inner";
     message.setAttribute("role", "alert");
-    message.textContent = "The audio player could not become ready. ";
+    message.textContent = text || "The audio player could not become ready. ";
     var retry = document.createElement("button");
     retry.type = "button";
     retry.textContent = "Retry playback";

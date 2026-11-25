@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Show retry controls when the current dock audio fails to load, and ignore
+  errors from retired audio elements.
+
 * Wait for the dock's own exit animation or its fallback before dismissing the
   player and restoring focus.
 

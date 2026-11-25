@@ -158,11 +158,10 @@ in-place switch are not attributed to the new build. View Transition fallback
 does not repeat a failed build. Connection
 errors retain the browser's original report; the original error object is also
 available as ``window.__castPersistentAudioDebug.lastDockError`` until the next
-successful build. Asynchronous media playback failures retain the player's
-existing handling.
+successful build.
 
-Player readiness deadline
---------------------------
+Player readiness and media errors
+---------------------------------
 
 If the custom player has no audio yet, its activation owns a 15-second deadline
 and a single ready listener. Themes/tests can set
@@ -171,7 +170,11 @@ player retires the wait and starts a newly available controller. Ready events
 without current audio do not extend the deadline. Switching or closing cancels
 the pending wait immediately; stale callbacks cannot affect the current dock.
 Expiry disconnects the failed player, clears active cards and shows a retryable
-alert. ``Retry playback`` builds a fresh activation; ``Close`` dismisses it.
+alert. An audio element's media error after readiness shows the same retry
+controls for the current episode. The listener is removed on teardown, and a
+dock already closing continues to dismiss. A pause or an autoplay rejection
+leaves the dock available. ``Retry playback`` builds a fresh activation of the
+failed episode. ``Close`` dismisses the alert.
 
 Payload identity
 ----------------
