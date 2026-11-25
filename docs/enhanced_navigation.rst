@@ -328,6 +328,8 @@ persistent playback and delayed transcript tests across both server-rendered
 themes; explicit node IDs override marker filtering, and the JUnit report must
 contain exactly the seven required passing identities with no duplicates or skips.
 The identity includes the JUnit classname, browser, theme and response ordering.
+The gate reads at most 1 MiB of JUnit XML from a regular file, with one extra
+byte to detect growth beyond the limit. JUnit reports with a DOCTYPE are rejected.
 For intentional test selection or parameter changes, update ``TESTS`` and
 ``EXPECTED_CASES`` in ``scripts/check_core_media.py`` and the independently written
 ``EXPECTED`` fixture in ``tests/test_core_media_gate.py``. Check the collected

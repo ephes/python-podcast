@@ -47,6 +47,29 @@ def write_report(report, identities=EXPECTED, status=None):
     ET.ElementTree(suite).write(report)
 
 
+@pytest.mark.parametrize("variant", ["oversized", "doctype"])
+def test_report_admission(monkeypatch, capsys, variant):
+    def run(command, **kwargs):
+        report = Path(next(arg.split("=", 1)[1] for arg in command if arg.startswith("--junitxml=")))
+        write_report(report)
+        if variant == "oversized":
+            with report.open("ab") as stream:
+                stream.write(b" " * (1024 * 1024))
+        else:
+            report.write_bytes(b"<!DOCTYPE testsuite>" + report.read_bytes())
+        return SimpleNamespace(returncode=0)
+
+    def unexpected_parse(*args, **kwargs):
+        pytest.fail("oversized report reached the XML parser")
+
+    monkeypatch.setattr(gate, "run_gate", run)
+    if variant == "oversized":
+        monkeypatch.setattr(gate.ET, "parse", unexpected_parse)
+        monkeypatch.setattr(gate.ET, "fromstring", unexpected_parse)
+    assert gate.main() == 1
+    assert ("1 MiB" if variant == "oversized" else "DOCTYPE") in capsys.readouterr().err
+
+
 @pytest.mark.parametrize(
     "variant,valid",
     [

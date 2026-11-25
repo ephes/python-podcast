@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Limit the core media gate's JUnit input to a regular file of at most 1 MiB
+  and reject XML document type declarations.
+
 * Validate every generated asset recovery record before rollback. Preserve
   the outputs and pending journal if a recovery record is missing or invalid.
 

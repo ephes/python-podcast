@@ -2,6 +2,7 @@
 
 import os
 import signal
+import stat
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
@@ -10,6 +11,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 ROOT = Path(__file__).resolve().parents[1]
+MAX_REPORT_BYTES = 1024 * 1024
 TESTS = [
     "tests/e2e/test_custom_player.py::test_custom_player_in_browser",
     "tests/e2e/test_persistent_player.py::test_persistent_player_survives_navigation",
@@ -34,6 +36,25 @@ EXPECTED_CASES = {
         for order in ("old-first", "current-first")
     },
 }
+
+
+class ReportTreeBuilder(ET.TreeBuilder):
+    def doctype(self, name, pubid, system):
+        raise ET.ParseError("JUnit report must not contain a DOCTYPE")
+
+
+def read_report(report):
+    # Nonblocking open lets us reject a FIFO without waiting for a writer.
+    with open(report, "rb", opener=lambda path, flags: os.open(path, flags | os.O_NONBLOCK)) as stream:
+        info = os.fstat(stream.fileno())
+        if not stat.S_ISREG(info.st_mode):
+            raise OSError("JUnit report must be a regular file")
+        if info.st_size > MAX_REPORT_BYTES:
+            raise OSError("JUnit report exceeds 1 MiB")
+        data = stream.read(MAX_REPORT_BYTES + 1)
+    if len(data) > MAX_REPORT_BYTES:
+        raise OSError("JUnit report exceeds 1 MiB")
+    return ET.fromstring(data, parser=ET.XMLParser(target=ReportTreeBuilder()))
 
 
 def run_gate(command, *, cwd, env, timeout=300):
@@ -95,7 +116,7 @@ def main() -> int:
             )
             if result.returncode:
                 return result.returncode
-            cases = list(ET.parse(report).iter("testcase"))
+            cases = list(read_report(report).iter("testcase"))
             identities = Counter((case.get("classname"), case.get("name")) for case in cases)
             if identities != Counter(EXPECTED_CASES) or any(
                 case.find(tag) is not None for case in cases for tag in ("skipped", "failure", "error")
