@@ -271,12 +271,13 @@ After changing ``persistent-player.js`` or ``persistent-player.css``, run
 ``just minify-static``. A checkout-local ``.minify-static.lock`` covers source
 reads, publication and recovery. A second invocation exits immediately with an
 error. Retry after the first finishes and leave the lock file in place.
-The minifier stages all three generated assets and byte-exact recovery copies
-alongside their destinations. It reads existing outputs in bounded chunks and
-checks the resulting backup size before publication. Before replacing any
-output, it syncs the
-staged files, their directories and the pending publication recorded in
-``.minify-static-transaction``. This ordering relies on local POSIX filesystems
+After recovery, the minifier compares the generated UTF-8 bytes to the current
+outputs. If all three match exactly, it skips the publication transaction.
+When any output is missing or differs, it stages all three assets and byte-exact
+recovery copies alongside their destinations. It copies existing outputs in
+bounded chunks and checks each backup's size. Before replacing any output, it
+syncs the staged files, their directories and the pending publication recorded
+in ``.minify-static-transaction``. This ordering relies on local POSIX filesystems
 and storage that honor file and directory ``fsync``. On macOS each sync uses
 ``F_FULLFSYNC`` to flush the drive cache and falls back to ``fsync`` where the
 filesystem does not support it. If staging or replacement

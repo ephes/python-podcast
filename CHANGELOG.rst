@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Skip generated asset publication after recovery when all output bytes
+  already match the generated set.
+
 * Copy generated asset recovery backups in bounded chunks and check their
   sizes before publication.
 

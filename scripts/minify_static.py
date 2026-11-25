@@ -174,8 +174,20 @@ def _finish_transaction(transaction: Path, targets: tuple[Path, ...]) -> None:
     transaction.rmdir()
 
 
+def _matches_output(target: Path, expected: bytes) -> bool:
+    try:
+        with target.open("rb") as source:
+            # Read one extra byte so matching prefixes with trailing data differ.
+            return source.read(len(expected) + 1) == expected
+    except FileNotFoundError:
+        return False
+
+
 def _publish_assets(journal: Path, targets: tuple[Path, ...]) -> None:
-    assets = minified_assets()
+    assets = {target: text.encode("utf-8") for target, text in minified_assets().items()}
+    if all(_matches_output(target, assets[target]) for target in targets):
+        return
+
     journal.mkdir(mode=0o700)
     transaction = journal / uuid4().hex
     try:
@@ -201,7 +213,7 @@ def _publish_assets(journal: Path, targets: tuple[Path, ...]) -> None:
                 absent.touch()
                 _sync(absent)
             candidate = scratch / "candidate"
-            candidate.write_text(assets[target], encoding="utf-8")
+            candidate.write_bytes(assets[target])
             candidate.chmod(mode)
             _sync(candidate)
             _sync(scratch)
