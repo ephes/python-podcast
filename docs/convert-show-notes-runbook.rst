@@ -79,8 +79,9 @@ Safety model
 * Repeat ``--slug <slug>`` to select episodes. Every distinct slug must identify
   exactly one episode across all podcasts. The command reports unknown slugs and
   lists candidate page IDs for ambiguous slugs, then rejects the entire
-  selection before processing any episode. Omit ``--slug`` to process the full
-  archive.
+  selection before loading episode bodies. With a valid selection, it loads
+  the selected episodes in batches of up to 20, in primary-key order.
+  Omit ``--slug`` to process the full archive.
 * ``--force`` re-converts from the original legacy body, ignoring the "already
   converted" guard. Use it to regenerate conversions after the converter has
   been improved. It uses the live body if it is still legacy. Otherwise it

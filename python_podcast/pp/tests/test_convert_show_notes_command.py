@@ -741,6 +741,34 @@ def test_unknown_explicit_slugs_refuse_the_entire_selection(mode):
 
 
 @pytest.mark.django_db
+def test_invalid_slug_preflight_reads_only_identities():
+    slugs = [
+        _make_episode(
+            slug=f"large-{number}",
+            num=number,
+            detail_children=[{"type": "paragraph", "value": "synthetic " * 10000}],
+        ).slug
+        for number in range(8)
+    ]
+    selectors = [value for slug in [*slugs, "typo-ep"] for value in ("--slug", slug)]
+    statements = []
+
+    def record_sql(execute, sql, params, many, context):
+        statements.append(sql)
+        return execute(sql, params, many, context)
+
+    with connection.execute_wrapper(record_sql):
+        output, error = _run_expecting_error("--apply", *selectors)
+
+    assert not output
+    assert "Unknown episode slug(s): typo-ep" in error
+    selects = [sql for sql in statements if sql.startswith("SELECT") and f'"{Episode._meta.db_table}"' in sql]
+    assert len(selects) == 1
+    assert f'"{Episode._meta.get_field("body").column}"' not in selects[0]
+    assert not any(sql.startswith(("INSERT", "UPDATE", "DELETE")) for sql in statements)
+
+
+@pytest.mark.django_db
 @pytest.mark.parametrize("mode", [(), ("--apply",), ("--publish",)])
 def test_ambiguous_explicit_slug_refuses_the_entire_selection(mode):
     children = [{"type": "paragraph", "value": SHOWNOTE_HTML}]
@@ -1104,18 +1132,21 @@ def test_editor_save_waits_for_the_conversion_and_then_completes():
 
 
 @pytest.mark.django_db
-def test_archive_iteration_keeps_episode_hydration_bounded(monkeypatch):
+@pytest.mark.parametrize("explicit", [False, True])
+def test_iteration_keeps_episode_hydration_bounded(monkeypatch, explicit):
     import gc
     import weakref
 
     from python_podcast.pp.management.commands import convert_show_notes
 
-    for number in range(8):
+    identities = [
         _make_episode(
             slug=f"bounded-{number}",
             num=number,
             detail_children=[{"type": "paragraph", "value": "synthetic " * 10000}],
         )
+        for number in range(8)
+    ]
     hydrated = weakref.WeakSet()
     original = Episode.from_db
 
@@ -1124,15 +1155,20 @@ def test_archive_iteration_keeps_episode_hydration_bounded(monkeypatch):
         hydrated.add(episode)
         return episode
 
+    seen_pks = []
+
     def process(self, episode, **kwargs):
         gc.collect()
-        assert len(hydrated) <= 3, "archive queryset retained more than a batch of episode bodies"
+        assert len(hydrated) <= 3, "selection retained more than a batch of episode bodies"
+        seen_pks.append(episode.pk)
         return convert_show_notes.EpisodeResult(episode.slug, episode.pk, "skipped")
 
     monkeypatch.setattr(Episode, "from_db", classmethod(from_db))
-    monkeypatch.setattr(convert_show_notes, "ARCHIVE_BATCH_SIZE", 2)
+    monkeypatch.setattr(convert_show_notes, "EPISODE_BATCH_SIZE", 2)
     monkeypatch.setattr(convert_show_notes.Command, "_process_episode", process)
-    assert "8 skipped" in _run()
+    selectors = [value for episode in reversed(identities) for value in ("--slug", episode.slug)] if explicit else []
+    assert "8 skipped" in _run(*selectors)
+    assert seen_pks == [episode.pk for episode in identities]
 
 
 @pytest.mark.django_db
@@ -1169,7 +1205,7 @@ def test_archive_selection_closes_each_cursor_and_respects_initial_horizon(monke
             del selection_queries[selected_before_insert:]
         return convert_show_notes.EpisodeResult(episode.slug, episode.pk, "skipped")
 
-    monkeypatch.setattr(convert_show_notes, "ARCHIVE_BATCH_SIZE", 2)
+    monkeypatch.setattr(convert_show_notes, "EPISODE_BATCH_SIZE", 2)
     monkeypatch.setattr(convert_show_notes.Command, "_process_episode", process)
     with connection.execute_wrapper(track_selection):
         _run()

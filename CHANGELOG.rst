@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Validate explicit show-note conversion slugs using only episode IDs and slugs,
+  then load the selected episode bodies in batches.
+
 * Return ``502`` for conflicting upstream ``Content-Type`` fields on Fediverse
   discovery responses.
 
