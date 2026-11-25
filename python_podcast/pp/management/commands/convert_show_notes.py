@@ -12,6 +12,7 @@ The command is conservative and safe to run repeatedly:
 
 By default the command performs a dry run and writes nothing. Use ``--apply`` to
 create a Wagtail draft revision and ``--publish`` to publish that revision.
+Both write modes require autocommit so each episode's receipt follows its commit.
 
 ``--publish`` only ever puts the conversion live. If the draft differs from the
 live page in anything but the ``detail`` section (an overview edit, a changed
@@ -38,6 +39,7 @@ import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
+from itertools import batched
 
 from cast.models import Episode
 from django.core.exceptions import ObjectDoesNotExist
@@ -53,7 +55,7 @@ LOCK_NOT_AVAILABLE = "55P03"
 
 SHOW_NOTE_TYPES = frozenset({"show_note_heading", "show_note_link_list", "show_note_sponsor"})
 LEGACY_REVISION_SEARCH_LIMIT = 100
-ARCHIVE_BATCH_SIZE = 20
+EPISODE_BATCH_SIZE = 20
 
 # Page fields that describe the publication state of the page rather than its
 # content. A revision stores the values from the moment it was saved, so they
@@ -160,15 +162,18 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         publish = options["publish"]
         apply = options["apply"] or publish
+        if apply and not transaction.get_autocommit():
+            raise CommandError("--apply and --publish require autocommit outside an active transaction.")
         force = options["force"]
         slugs = options["slugs"]
 
         episodes = Episode.objects.order_by("pk")
+        batch: Iterator[Episode | EpisodeResult]
         if slugs:
-            selected = list(episodes.filter(slug__in=slugs))
+            selected = list(episodes.filter(slug__in=slugs).values_list("pk", "slug"))
             ids_by_slug: dict[str, list[int]] = {slug: [] for slug in sorted(set(slugs))}
-            for episode in selected:
-                ids_by_slug[episode.slug].append(episode.pk)
+            for pk, slug in selected:
+                ids_by_slug[slug].append(pk)
 
             selection_errors = []
             missing = [slug for slug, ids in ids_by_slug.items() if not ids]
@@ -181,19 +186,20 @@ class Command(BaseCommand):
                 selection_errors.append(f"Ambiguous episode slug(s): {', '.join(ambiguous)}")
             if selection_errors:
                 raise CommandError(". ".join(selection_errors))
-            batch = iter(selected)
+            batch = self._selected_episodes(episodes, selected)
         else:
             batch = self._archive_episodes(episodes)
 
         results = []
-        for episode in batch:
-            try:
-                result = self._process_episode(episode, apply=apply, publish=publish, force=force)
-            except Exception as exc:
-                # The per-episode transaction has unwound. Preserve earlier
-                # receipts and continue independent pages, without printing
-                # potentially sensitive exception text.
-                result = EpisodeResult(episode.slug, episode.pk, "failed", reason=type(exc).__name__)
+        for item in batch:
+            if isinstance(item, EpisodeResult):
+                result = item
+            else:
+                try:
+                    result = self._process_episode(item, apply=apply, publish=publish, force=force)
+                except Exception as exc:
+                    # Preserve earlier receipts and continue independent pages without exception text.
+                    result = EpisodeResult(item.slug, item.pk, "failed", reason=type(exc).__name__)
             self._report(result)
             self.stdout.flush()
             # Only summary flags/identities survive this episode, not its body
@@ -247,6 +253,15 @@ class Command(BaseCommand):
         if errors:
             raise CommandError(" ".join(errors))
 
+    def _selected_episodes(
+        self, episodes: models.QuerySet[Episode], selected: list[tuple[int, str]]
+    ) -> Iterator[Episode | EpisodeResult]:
+        for identities in batched(selected, EPISODE_BATCH_SIZE):
+            loaded = episodes.in_bulk([pk for pk, _ in identities])
+            for pk, slug in identities:
+                episode = loaded.pop(pk, None)
+                yield episode if episode is not None else self._edit_conflict(pk, slug)
+
     @staticmethod
     def _archive_episodes(episodes: models.QuerySet[Episode]) -> Iterator[Episode]:
         horizon = episodes.aggregate(horizon=models.Max("pk"))["horizon"]
@@ -255,7 +270,7 @@ class Command(BaseCommand):
         episodes = episodes.filter(pk__lte=horizon)
         page = episodes
         # Materialize each page so its selection cursor is closed before any writes.
-        while batch := list(page[:ARCHIVE_BATCH_SIZE]):
+        while batch := list(page[:EPISODE_BATCH_SIZE]):
             yield from batch
             last_pk = batch[-1].pk
             if last_pk == horizon:
@@ -278,7 +293,7 @@ class Command(BaseCommand):
             if current is not None and current.latest_revision_id == episode.latest_revision_id:
                 # Nothing about the episode changed, so this is not a concurrent edit.
                 raise
-            return self._edit_conflict(episode)
+            return self._edit_conflict(episode.pk, episode.slug)
 
     def _convert_episode(self, episode: Episode, *, apply: bool, publish: bool, force: bool) -> EpisodeResult:
         # The detail conversion source: normally the latest revision (the current
@@ -348,7 +363,7 @@ class Command(BaseCommand):
                 )
                 with self._write_conversion(episode, snapshot, result) as current:
                     if current is None:
-                        return self._edit_conflict(episode)
+                        return self._edit_conflict(episode.pk, episode.slug)
                     self._publish_revision(current.get_latest_revision(), episode.pk, result)
                     if result.published:
                         result.reason = "published existing converted draft"
@@ -390,7 +405,7 @@ class Command(BaseCommand):
             # conversion, and nothing is merged into or recomputed from it here.
             with self._write_conversion(episode, snapshot, result) as current:
                 if current is None:
-                    return self._edit_conflict(episode)
+                    return self._edit_conflict(episode.pk, episode.slug)
                 target = current.get_latest_revision_as_object()
                 # Checked before the conversion is merged in: whatever differs from the
                 # live page now is somebody else's pending edit.
@@ -515,10 +530,10 @@ class Command(BaseCommand):
         return True
 
     @staticmethod
-    def _edit_conflict(episode: Episode) -> EpisodeResult:
+    def _edit_conflict(pk: int, slug: str) -> EpisodeResult:
         return EpisodeResult(
-            episode.slug,
-            episode.pk,
+            slug,
+            pk,
             "skipped",
             reason="changed while the command was running",
             edit_conflict=True,

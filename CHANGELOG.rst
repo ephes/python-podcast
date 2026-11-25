@@ -4,6 +4,13 @@ Changelog
 Unreleased
 ----------
 
+* Require autocommit for show-note conversion with ``--apply`` or ``--publish``
+  so revision receipts follow each episode's commit. Dry runs still work inside
+  a transaction.
+
+* Validate explicit show-note conversion slugs using only episode IDs and slugs,
+  then load the selected episode bodies in batches.
+
 * Return ``502`` for conflicting upstream ``Content-Type`` fields on Fediverse
   discovery responses.
 

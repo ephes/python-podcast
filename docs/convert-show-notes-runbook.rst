@@ -79,8 +79,9 @@ Safety model
 * Repeat ``--slug <slug>`` to select episodes. Every distinct slug must identify
   exactly one episode across all podcasts. The command reports unknown slugs and
   lists candidate page IDs for ambiguous slugs, then rejects the entire
-  selection before processing any episode. Omit ``--slug`` to process the full
-  archive.
+  selection before loading episode bodies. With a valid selection, it loads
+  the selected episodes in batches of up to 20, in primary-key order.
+  Omit ``--slug`` to process the full archive.
 * ``--force`` re-converts from the original legacy body, ignoring the "already
   converted" guard. Use it to regenerate conversions after the converter has
   been improved. It uses the live body if it is still legacy. Otherwise it
@@ -236,9 +237,13 @@ JSON (sorted keys, compact separators, UTF-8). Preserve this receipt with the
 operator's command log; it identifies the input used, not a new publication.
 
 Each episode's result is emitted immediately after its transaction finishes,
-including the created revision ID. A handled per-episode exception reports its
-identity and exception class without exception text; independent later episodes
-continue. If a callback raises after the episode's transaction commits, the
+including the created revision ID. Run ``--apply`` and ``--publish`` with database
+autocommit enabled. Both refuse to select episodes inside a caller-owned
+transaction or with autocommit disabled. Dry runs can run inside a transaction.
+
+A handled per-episode exception reports the episode identity and exception
+class without exception text. Independent later episodes continue.
+If a callback raises after the episode's transaction commits, the
 episode's report keeps its usual details (block lists, warnings, conflicts) and
 adds the committed revision ID, the publication outcome and the failed follow-up.
 Inspect the callbacks and recover the follow-up separately. The final summary

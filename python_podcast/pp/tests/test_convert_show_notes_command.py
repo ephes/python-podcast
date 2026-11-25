@@ -96,7 +96,40 @@ def test_dry_run_does_not_write():
     assert "dry run" in output.lower()
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize("mode", ["--apply", "--publish"])
+def test_write_modes_refuse_outer_transaction_before_selecting_episodes(mode):
+    episode = _make_episode(slug="outer-transaction", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
+
+    with transaction.atomic():
+        output = StringIO()
+        with connection.execute_wrapper(_reject_episode_queries):
+            with pytest.raises(CommandError, match="outside an active transaction"):
+                call_command("convert_show_notes", "--slug", episode.slug, mode, stdout=output)
+
+        assert not output.getvalue()
+        assert "would change (dry run)" in _run("--slug", episode.slug)
+        assert episode.revisions.count() == 0
+
+
+@pytest.mark.django_db(transaction=True)
+def test_apply_refuses_manually_disabled_autocommit():
+    transaction.set_autocommit(False)
+    try:
+        with connection.execute_wrapper(_reject_episode_queries):
+            with pytest.raises(CommandError, match="outside an active transaction"):
+                _run("--apply")
+    finally:
+        transaction.rollback()
+        transaction.set_autocommit(True)
+
+
+def _reject_episode_queries(execute, sql, params, many, context):
+    assert f'"{Episode._meta.db_table}"' not in sql, "write mode queried episodes inside a caller-owned transaction"
+    return execute(sql, params, many, context)
+
+
+@pytest.mark.django_db(transaction=True)
 def test_apply_creates_revision_and_converts():
     episode = _make_episode(slug="apply-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
 
@@ -111,7 +144,7 @@ def test_apply_creates_revision_and_converts():
     assert _detail_types(Episode.objects.get(pk=episode.pk)) == ["paragraph"]
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_publish_updates_live_body():
     episode = _make_episode(slug="publish-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
 
@@ -121,7 +154,7 @@ def test_publish_updates_live_body():
     assert "show_note_link_list" in live_types
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_idempotent_skips_already_converted():
     _make_episode(slug="idem-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
 
@@ -135,7 +168,7 @@ def test_idempotent_skips_already_converted():
     assert "already" in output.lower()
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_publish_after_apply_publishes_existing_draft():
     episode = _make_episode(
         slug="apply-then-publish-ep",
@@ -200,7 +233,7 @@ def test_publish_reports_committed_revision_when_callback_fails(monkeypatch, exi
     assert episode.slug in str(error.value)
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_publish_does_not_publish_unrelated_draft():
     episode = _make_episode(
         slug="unrelated-draft-ep",
@@ -254,7 +287,7 @@ def _run_expecting_conflict(*args):
     return out.getvalue(), str(excinfo.value)
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_publish_refuses_conversion_draft_with_later_unrelated_edit():
     episode = _make_episode(
         slug="apply-edit-publish-ep",
@@ -281,7 +314,7 @@ def test_publish_refuses_conversion_draft_with_later_unrelated_edit():
     assert "apply-edit-publish-ep" in error
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_publish_refuses_conversion_draft_with_later_title_edit():
     episode = _make_episode(
         slug="apply-title-publish-ep",
@@ -300,7 +333,7 @@ def test_publish_refuses_conversion_draft_with_later_title_edit():
     assert "also changes title" in output
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_publish_refuses_to_convert_on_top_of_pending_unrelated_draft():
     episode = _make_episode(
         slug="edit-then-publish-ep",
@@ -322,7 +355,7 @@ def test_publish_refuses_to_convert_on_top_of_pending_unrelated_draft():
     assert "conflict: not published" in output
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_publish_conflict_does_not_block_other_episodes():
     conflicted = _make_episode(
         slug="batch-conflict-ep",
@@ -345,7 +378,7 @@ def test_publish_conflict_does_not_block_other_episodes():
     assert "batch-conflict-ep" in error and "batch-clean-ep" not in error
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 @pytest.mark.parametrize("with_conflict", [False, True])
 def test_publish_summary_counts_only_written_drafts_and_publications(monkeypatch, with_conflict):
     legacy_detail = [{"type": "paragraph", "value": SHOWNOTE_HTML}]
@@ -391,7 +424,7 @@ def test_publish_summary_counts_only_written_drafts_and_publications(monkeypatch
         assert conflict.live_revision_id is None
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 @pytest.mark.parametrize("existing_draft", [False, True])
 @pytest.mark.parametrize("outcome", ["published", "scheduled", "unconfirmed"])
 def test_publish_receipt_requires_revision_state(monkeypatch, existing_draft, outcome):
@@ -428,7 +461,7 @@ def test_publish_receipt_requires_revision_state(monkeypatch, existing_draft, ou
     assert ("publication unconfirmed" in output) == (outcome == "unconfirmed")
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_publish_summary_excludes_scheduled_revision():
     episode = _make_episode(
         slug="scheduled-conversion", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}]
@@ -470,7 +503,7 @@ def test_followup_failure_reports_scheduled_publication(monkeypatch):
     assert "Revisions: 1 created, 0 published." in output.getvalue()
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_publish_accepts_reviewed_detail_edit_in_conversion_draft():
     episode = _make_episode(
         slug="reviewed-detail-ep",
@@ -493,7 +526,7 @@ def test_publish_accepts_reviewed_detail_edit_in_conversion_draft():
     assert not live.has_unpublished_changes
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_publish_accepts_detail_section_rebuilt_with_a_new_block_id():
     episode = _make_episode(
         slug="rebuilt-detail-ep",
@@ -517,7 +550,7 @@ def test_publish_accepts_detail_section_rebuilt_with_a_new_block_id():
     assert not live.has_unpublished_changes
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_publish_refuses_draft_that_reorders_sections():
     episode = _make_episode(
         slug="reordered-ep",
@@ -535,7 +568,7 @@ def test_publish_refuses_draft_that_reorders_sections():
     assert "body outside the detail section" in output
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_force_preserves_current_overview():
     episode = _make_episode(
         slug="force-overview-ep",
@@ -571,7 +604,7 @@ def test_force_preserves_current_overview():
     assert "show_note_link_list" in _detail_types(revised)
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_preserves_sibling_image_block():
     _ensure_site()  # create the root collection before building an image
     image = create_image()
@@ -595,7 +628,7 @@ def test_preserves_sibling_image_block():
     assert image_values == [image.pk]
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_skips_episode_without_detail():
     _make_episode(slug="no-detail-ep", detail_children=None)
 
@@ -606,7 +639,7 @@ def test_skips_episode_without_detail():
     assert Episode.objects.get(slug="no-detail-ep").revisions.count() == 0
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_ambiguous_item_preserved_with_warning():
     # A nested sub-item with multiple links cannot be flattened safely.
     html = (
@@ -627,7 +660,7 @@ def test_ambiguous_item_preserved_with_warning():
     assert "warning" in output.lower()
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_force_reconverts_already_converted_draft():
     episode = _make_episode(slug="force-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
 
@@ -647,7 +680,7 @@ def test_force_reconverts_already_converted_draft():
     assert Episode.objects.get(pk=episode.pk).revisions.count() == 2
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_force_recovers_legacy_body_after_publish():
     episode = _make_episode(
         slug="force-published-ep",
@@ -666,7 +699,7 @@ def test_force_recovers_legacy_body_after_publish():
     assert "show_note_link_list" in _detail_types(revised)
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_force_reports_history_beyond_legacy_search_limit():
     from python_podcast.pp.management.commands.convert_show_notes import Command
 
@@ -714,7 +747,7 @@ def test_force_reports_history_beyond_legacy_search_limit():
     assert "show_note_link_list" in _detail_types(stored.get_latest_revision_as_object())
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_slug_filter_limits_scope():
     _make_episode(slug="target-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}], num=1)
     other = _make_episode(slug="other-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}], num=2)
@@ -724,7 +757,7 @@ def test_slug_filter_limits_scope():
     assert other.revisions.count() == 0
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 @pytest.mark.parametrize("mode", [(), ("--apply",), ("--publish",)])
 def test_unknown_explicit_slugs_refuse_the_entire_selection(mode):
     episode = _make_episode(slug="selected-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
@@ -740,7 +773,35 @@ def test_unknown_explicit_slugs_refuse_the_entire_selection(mode):
     assert episode.revisions.count() == 1
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
+def test_invalid_slug_preflight_reads_only_identities():
+    slugs = [
+        _make_episode(
+            slug=f"large-{number}",
+            num=number,
+            detail_children=[{"type": "paragraph", "value": "synthetic " * 10000}],
+        ).slug
+        for number in range(8)
+    ]
+    selectors = [value for slug in [*slugs, "typo-ep"] for value in ("--slug", slug)]
+    statements = []
+
+    def record_sql(execute, sql, params, many, context):
+        statements.append(sql)
+        return execute(sql, params, many, context)
+
+    with connection.execute_wrapper(record_sql):
+        output, error = _run_expecting_error("--apply", *selectors)
+
+    assert not output
+    assert "Unknown episode slug(s): typo-ep" in error
+    selects = [sql for sql in statements if sql.startswith("SELECT") and f'"{Episode._meta.db_table}"' in sql]
+    assert len(selects) == 1
+    assert f'"{Episode._meta.get_field("body").column}"' not in selects[0]
+    assert not any(sql.startswith(("INSERT", "UPDATE", "DELETE")) for sql in statements)
+
+
+@pytest.mark.django_db(transaction=True)
 @pytest.mark.parametrize("mode", [(), ("--apply",), ("--publish",)])
 def test_ambiguous_explicit_slug_refuses_the_entire_selection(mode):
     children = [{"type": "paragraph", "value": SHOWNOTE_HTML}]
@@ -779,7 +840,7 @@ def _detail_children(page):
     return None
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_apply_persists_unrepresentable_markup_in_the_revision():
     episode = _make_episode(slug="rich-ep", detail_children=[{"type": "paragraph", "value": RICH_SHOWNOTE_HTML}])
 
@@ -862,7 +923,7 @@ def _detail_values(page):
     return [child.value.source for block in page.body if block.block_type == "detail" for child in block.value]
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 @pytest.mark.parametrize("mode", ["--apply", "--publish"])
 def test_detail_edit_saved_during_conversion_is_not_replaced(monkeypatch, mode):
     episode = _make_episode(slug="race-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
@@ -883,7 +944,7 @@ def test_detail_edit_saved_during_conversion_is_not_replaced(monkeypatch, mode):
     assert "changed while the command was running" in error
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 @pytest.mark.parametrize("mode", ["--apply", "--publish"])
 def test_detail_edit_published_during_conversion_is_not_replaced(monkeypatch, mode):
     episode = _make_episode(slug="race-live-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
@@ -898,7 +959,7 @@ def test_detail_edit_published_during_conversion_is_not_replaced(monkeypatch, mo
     assert "race-live-ep" in error
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_force_does_not_replace_detail_edit_saved_during_conversion(monkeypatch):
     episode = _make_episode(slug="race-force-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
     _run("--slug", "race-force-ep", "--apply")
@@ -912,7 +973,7 @@ def test_force_does_not_replace_detail_edit_saved_during_conversion(monkeypatch)
     assert "race-force-ep" in error
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_existing_conversion_draft_edited_during_publish_is_not_published(monkeypatch):
     episode = _make_episode(slug="race-draft-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
     _run("--slug", "race-draft-ep", "--apply")
@@ -931,7 +992,7 @@ def test_existing_conversion_draft_edited_during_publish_is_not_published(monkey
     assert "race-draft-ep" in error
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_episode_deleted_during_conversion_is_reported(monkeypatch):
     episode = _make_episode(slug="race-gone-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
     _edit_after(monkeypatch, "_convert_top", lambda: Episode.objects.get(pk=episode.pk).delete(), slug="race-gone-ep")
@@ -942,7 +1003,7 @@ def test_episode_deleted_during_conversion_is_reported(monkeypatch):
     assert "race-gone-ep" in error
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_edit_conflict_does_not_block_other_episodes(monkeypatch):
     raced = _make_episode(slug="race-first-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
     other = _make_episode(
@@ -971,7 +1032,7 @@ def test_dry_run_reports_conversion_of_unchanged_episode_without_locking(monkeyp
     assert "would change (dry run)" in output
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_episode_with_a_draft_deleted_before_it_is_read_is_reported(monkeypatch):
     """The batch holds the episode as loaded; its latest revision is gone when it is read."""
     from python_podcast.pp.management.commands.convert_show_notes import Command
@@ -1104,18 +1165,21 @@ def test_editor_save_waits_for_the_conversion_and_then_completes():
 
 
 @pytest.mark.django_db
-def test_archive_iteration_keeps_episode_hydration_bounded(monkeypatch):
+@pytest.mark.parametrize("explicit", [False, True])
+def test_iteration_keeps_episode_hydration_bounded(monkeypatch, explicit):
     import gc
     import weakref
 
     from python_podcast.pp.management.commands import convert_show_notes
 
-    for number in range(8):
+    identities = [
         _make_episode(
             slug=f"bounded-{number}",
             num=number,
             detail_children=[{"type": "paragraph", "value": "synthetic " * 10000}],
         )
+        for number in range(8)
+    ]
     hydrated = weakref.WeakSet()
     original = Episode.from_db
 
@@ -1124,15 +1188,20 @@ def test_archive_iteration_keeps_episode_hydration_bounded(monkeypatch):
         hydrated.add(episode)
         return episode
 
+    seen_pks = []
+
     def process(self, episode, **kwargs):
         gc.collect()
-        assert len(hydrated) <= 3, "archive queryset retained more than a batch of episode bodies"
+        assert len(hydrated) <= 3, "selection retained more than a batch of episode bodies"
+        seen_pks.append(episode.pk)
         return convert_show_notes.EpisodeResult(episode.slug, episode.pk, "skipped")
 
     monkeypatch.setattr(Episode, "from_db", classmethod(from_db))
-    monkeypatch.setattr(convert_show_notes, "ARCHIVE_BATCH_SIZE", 2)
+    monkeypatch.setattr(convert_show_notes, "EPISODE_BATCH_SIZE", 2)
     monkeypatch.setattr(convert_show_notes.Command, "_process_episode", process)
-    assert "8 skipped" in _run()
+    selectors = [value for episode in reversed(identities) for value in ("--slug", episode.slug)] if explicit else []
+    assert "8 skipped" in _run(*selectors)
+    assert seen_pks == [episode.pk for episode in identities]
 
 
 @pytest.mark.django_db
@@ -1169,7 +1238,7 @@ def test_archive_selection_closes_each_cursor_and_respects_initial_horizon(monke
             del selection_queries[selected_before_insert:]
         return convert_show_notes.EpisodeResult(episode.slug, episode.pk, "skipped")
 
-    monkeypatch.setattr(convert_show_notes, "ARCHIVE_BATCH_SIZE", 2)
+    monkeypatch.setattr(convert_show_notes, "EPISODE_BATCH_SIZE", 2)
     monkeypatch.setattr(convert_show_notes.Command, "_process_episode", process)
     with connection.execute_wrapper(track_selection):
         _run()
@@ -1179,7 +1248,7 @@ def test_archive_selection_closes_each_cursor_and_respects_initial_horizon(monke
     assert sum("LIMIT 2" in sql for sql in selection_queries) == 3
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_force_uses_stable_revision_identity_and_content_receipt():
     import hashlib
 
@@ -1200,7 +1269,7 @@ def test_force_uses_stable_revision_identity_and_content_receipt():
         assert f"source: revision {second.pk}, sha256={expected_digest}" in output
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_failure_emits_committed_progress_and_continues_independent_episodes(monkeypatch):
     from python_podcast.pp.management.commands.convert_show_notes import Command
 
