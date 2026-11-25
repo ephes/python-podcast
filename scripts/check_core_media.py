@@ -2,6 +2,7 @@
 
 import os
 import signal
+import stat
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
@@ -10,6 +11,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 ROOT = Path(__file__).resolve().parents[1]
+MAX_REPORT_BYTES = 1024 * 1024
 TESTS = [
     "tests/e2e/test_custom_player.py::test_custom_player_in_browser",
     "tests/e2e/test_persistent_player.py::test_persistent_player_survives_navigation",
@@ -34,6 +36,44 @@ EXPECTED_CASES = {
         for order in ("old-first", "current-first")
     },
 }
+
+
+class ReportTreeBuilder(ET.TreeBuilder):
+    def doctype(self, name, pubid, system):
+        raise ET.ParseError("JUnit report must not contain a DOCTYPE")
+
+
+def read_report(report):
+    # Nonblocking open lets us reject a FIFO without waiting for a writer.
+    with open(report, "rb", opener=lambda path, flags: os.open(path, flags | os.O_NONBLOCK)) as stream:
+        info = os.fstat(stream.fileno())
+        if not stat.S_ISREG(info.st_mode):
+            raise OSError("JUnit report must be a regular file")
+        if info.st_size > MAX_REPORT_BYTES:
+            raise OSError("JUnit report exceeds 1 MiB")
+        data = stream.read(MAX_REPORT_BYTES + 1)
+    if len(data) > MAX_REPORT_BYTES:
+        raise OSError("JUnit report exceeds 1 MiB")
+    return ET.fromstring(data, parser=ET.XMLParser(target=ReportTreeBuilder()))
+
+
+def passing_cases(root):
+    expected_counts = {"tests": str(len(EXPECTED_CASES)), "failures": "0", "errors": "0", "skipped": "0"}
+    suite = root
+    if root.tag == "testsuites":
+        if len(root) != 1 or any(root.get(name, count) != count for name, count in expected_counts.items()):
+            raise ValueError("JUnit report must contain one passing suite")
+        suite = root[0]
+    if suite.tag != "testsuite" or any(suite.get(name) != count for name, count in expected_counts.items()):
+        raise ValueError("JUnit suite counters must report seven passing tests")
+    if any(child.tag not in {"testcase", "properties", "system-out", "system-err"} for child in suite):
+        raise ValueError("Unexpected child in JUnit suite")
+    if any(node.tag in {"skipped", "failure", "error"} for node in suite.iter()):
+        raise ValueError("JUnit suite must not contain failures, errors or skips")
+    cases = suite.findall("testcase")
+    if len(cases) != sum(1 for _ in suite.iter("testcase")):
+        raise ValueError("JUnit cases must be direct children of the suite")
+    return cases
 
 
 def run_gate(command, *, cwd, env, timeout=300):
@@ -95,16 +135,14 @@ def main() -> int:
             )
             if result.returncode:
                 return result.returncode
-            cases = list(ET.parse(report).iter("testcase"))
+            cases = passing_cases(read_report(report))
             identities = Counter((case.get("classname"), case.get("name")) for case in cases)
-            if identities != Counter(EXPECTED_CASES) or any(
-                case.find(tag) is not None for case in cases for tag in ("skipped", "failure", "error")
-            ):
+            if identities != Counter(EXPECTED_CASES):
                 print(
                     "Core media gate requires the exact seven required cases to pass without skips.", file=sys.stderr
                 )
                 return 1
-        except (OSError, subprocess.TimeoutExpired, KeyboardInterrupt, ET.ParseError) as error:
+        except (OSError, subprocess.TimeoutExpired, KeyboardInterrupt, ET.ParseError, ValueError) as error:
             print(f"Core media gate failed: {type(error).__name__}: {error}", file=sys.stderr)
             return 1
     return 0
