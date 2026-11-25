@@ -174,7 +174,9 @@ alert. An audio element's media error after readiness shows the same retry
 controls for the current episode. The listener is removed on teardown, and a
 dock already closing continues to dismiss. A pause or an autoplay rejection
 leaves the dock available. ``Retry playback`` builds a fresh activation of the
-failed episode. ``Close`` dismisses the alert.
+failed episode from the dock's own payload copy, so it still works after
+enhanced navigation removed the episode's payload from the page. ``Close``
+dismisses the alert.
 
 Payload identity
 ----------------

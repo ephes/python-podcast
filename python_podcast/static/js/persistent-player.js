@@ -453,6 +453,9 @@
   function showPlayerError(error, text) {
     var payloadId = state.activePayloadId;
     var opener = state.activeOpener;
+    // Keep the dock's own payload copy: after enhanced navigation the page may
+    // no longer publish this episode, and Retry must still rebuild it.
+    var payload = parsePayload(DATA_ID);
     resetFailedDock(error);
     var region = getRegion();
     var message = document.createElement("div");
@@ -462,7 +465,7 @@
     var retry = document.createElement("button");
     retry.type = "button";
     retry.textContent = "Retry playback";
-    var onRetry = function () { activate(payloadId, opener); };
+    var onRetry = function () { activate(payloadId, opener, payload); };
     retry.addEventListener("click", onRetry);
     message.appendChild(retry);
     var close = document.createElement("button");
@@ -643,8 +646,8 @@
   // Activate an episode. Called only on an explicit "play this episode" action.
   // When the View Transitions API is available (and motion is allowed) the play
   // card's poster glides into the dock; otherwise the dock just builds/reveals.
-  function activate(payloadId, sourceButton) {
-    var payload = parsePayload(payloadId);
+  function activate(payloadId, sourceButton, retryPayload) {
+    var payload = retryPayload || parsePayload(payloadId);
     var region = getRegion();
     if (!payload || !region) {
       return;

@@ -402,7 +402,8 @@ def _deferred_player(page, asset_name):
         });
         window.deliverReady = player => {
             player.append(document.createElement('audio'));
-            player.controller = {play: () => window.plays.push(player.dataset.payload)};
+            player.controller = {play: () => window.plays.push(
+                JSON.parse(document.getElementById(player.dataset.payload).textContent).title)};
             document.dispatchEvent(new CustomEvent('cast:player-ready', {detail: {playerId: player.id}}));
         };
     }""")
@@ -420,6 +421,7 @@ def test_readiness_expiry_clears_owner_and_retry_recovers(page, asset_name):
     assert page.evaluate("[waiters.size, readyListeners.size]") == [0, 0]
     assert page.evaluate("window.__castPersistentAudioDebug.activeAudioId") is None
     assert page.locator("cast-audio-player").count() == 0
+    page.evaluate("document.getElementById('a').remove()")
     page.get_by_role("button", name="Retry playback").click()
     page.evaluate("deliverReady(players[1])")
     assert page.evaluate("window.__castPersistentAudioDebug.activeAudioId") == 1
@@ -465,8 +467,10 @@ def test_current_audio_error_offers_retry_after_readiness(page, asset_name):
     page.locator("cast-audio-player audio").dispatch_event("error")
     expect(page.get_by_role("alert")).to_contain_text("The audio could not be loaded")
     expect(page.locator("cast-audio-player")).to_have_count(0)
+    # Enhanced navigation may have removed the page's payload for the episode.
+    page.evaluate("document.getElementById('b').remove()")
     page.get_by_role("button", name="Retry playback").click()
     page.evaluate("deliverReady(players[2])")
     assert page.evaluate("window.__castPersistentAudioDebug.activeAudioId") == 2
-    assert page.evaluate("window.plays") == ["a", "b", "b"]
+    assert page.evaluate("window.plays") == ["A", "B", "B"]
     expect(page.get_by_role("alert")).to_have_count(0)

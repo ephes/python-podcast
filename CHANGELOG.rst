@@ -11,7 +11,8 @@ Unreleased
   sizes before publication.
 
 * Show retry controls when the current dock audio fails to load, and ignore
-  errors from retired audio elements.
+  errors from retired audio elements. Retry rebuilds the failed episode from
+  the dock's own payload copy, also after navigating away from its page.
 
 * Wait for the dock's own exit animation or its fallback before dismissing the
   player and restoring focus.
