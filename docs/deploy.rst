@@ -107,6 +107,18 @@ with migrations (62 passed), the full suite (720 passed, the known hanging
 dock/navigation browser tests (152 passed), Sphinx ``-W``, the full suite on
 Python 3.14 (720 passed) and the core media gate (7 passed).
 
+Deployed ``c03be33`` on 2026-11-25 at 17:10 (owner approval in chat the same
+day; it also shipped every python-podcast change merged since the previous
+deploy). No task result was queued before it. The deploy also applied the
+pending unit drift (``RuntimeDirectory=django-site/python-podcast`` and
+``XDG_RUNTIME_DIR``). Verified after it: the host's ``uv.lock`` names the three
+new revisions; ``indieweb.0032``/``0033`` are applied; ``manage.py check``
+reports only the two known allauth deprecation warnings; both units run with
+``NRestarts=0``; ``/show/``, an episode, the MP3 feed, the episode's transcript
+page and ``/cms/login/`` answered 200 and the static CSS/JS they reference
+answered 200; the journal of both units held no warning or error for the
+first ten minutes.
+
 Rollback: the sequence under "2026-11-18" below with the previous commit.
 The old code does not know ``failure_attempts`` (a non-null column without a
 database default). If ``indieweb.0033`` was applied, then after both units
