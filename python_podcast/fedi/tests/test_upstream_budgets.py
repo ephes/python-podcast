@@ -1,3 +1,4 @@
+import errno
 import logging
 import socket
 from types import SimpleNamespace
@@ -27,6 +28,53 @@ def test_unknown_length_body_is_limited_incrementally(monkeypatch):
         views._read_limited(upstream)
 
     assert upstream.read1.call_count == 3
+
+
+@pytest.mark.parametrize("deadline_expires", [False, True], ids=["fallback", "deadline-expired"])
+def test_socket_construction_failure_uses_remaining_address_budget(rf, monkeypatch, deadline_expires):
+    now = 0
+    ipv6 = ("2001:db8::1", 443, 0, 0)
+    ipv4 = ("192.0.2.1", 443)
+    addresses = [
+        (socket.AF_INET6, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", ipv6),
+        (socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", ipv4),
+    ]
+    connected_socket = Mock()
+    attempted_families = []
+
+    def open_socket(family, _socktype, _proto):
+        nonlocal now
+        attempted_families.append(family)
+        if family == socket.AF_INET6:
+            now = views.UPSTREAM_DEADLINE if deadline_expires else views.UPSTREAM_DEADLINE - 1
+            raise OSError(errno.EAFNOSUPPORT, "synthetic unsupported address family")
+        return connected_socket
+
+    tls_context = Mock()
+    tls_context.wrap_socket.return_value = connected_socket
+    upstream = Mock(length=None, status=200, headers={})
+    upstream.read1.side_effect = [b"document", b""]
+    connection = Mock()
+    connection.getresponse.return_value = upstream
+    monkeypatch.setattr(views, "_resolve", Mock(return_value=addresses))
+    monkeypatch.setattr(views.socket, "socket", open_socket)
+    monkeypatch.setattr(views.http.client, "HTTPConnection", Mock(return_value=connection))
+    monkeypatch.setattr(views, "_get_ssl_context", lambda: tls_context)
+    monkeypatch.setattr(views, "time", SimpleNamespace(monotonic=lambda: now))
+    monkeypatch.setattr(views.threading, "Timer", Mock())
+
+    response = views.wellknown_nodeinfo(rf.get("/.well-known/nodeinfo"))
+
+    if deadline_expires:
+        assert response.status_code == 504
+        assert attempted_families == [socket.AF_INET6]
+        connection.request.assert_not_called()
+    else:
+        assert response.status_code == 200
+        assert response.content == b"document"
+        assert attempted_families == [socket.AF_INET6, socket.AF_INET]
+        connected_socket.connect.assert_called_once_with(ipv4)
+        assert connected_socket.settimeout.call_args_list[0].args == (1,)
 
 
 @pytest.mark.parametrize(

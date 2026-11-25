@@ -140,12 +140,15 @@ def _connect(conn, parts, deadline, deadline_hit, active):
     port = parts.port or (443 if parts.scheme == "https" else 80)
     last_error = None
     for family, socktype, proto, _, address in _resolve(parts.hostname, port, remaining()):
-        sock = socket.socket(family, socktype, proto)
+        remaining()
+        sock = None
         try:
+            sock = socket.socket(family, socktype, proto)
             sock.settimeout(min(CONNECT_TIMEOUT, remaining()))
             sock.connect(address)
         except OSError as exc:
-            sock.close()
+            if sock is not None:
+                sock.close()
             last_error = exc
             continue
         except UpstreamTimeout:

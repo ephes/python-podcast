@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Try the next resolved Fediverse address when opening a socket fails,
+  within the existing upstream deadline.
+
 * Relock django-cast to develop ``d4f29f33`` (0.2.70 development state; from
   ``e0c632ad``), cast-bootstrap5 to ``8a11f2b`` (gallery opening fixes; from
   ``b7f16729``) and django-indieweb to develop ``3faf52a`` (0.7.1 plus the

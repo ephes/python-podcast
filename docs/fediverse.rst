@@ -59,6 +59,8 @@ domain while the actual server runs at ``https://fedi.python-podcast.de``. Since
      1 MiB, or an invalid upstream status, header or redirect location returns
      ``502``. The proxy rejects a known body length above 1 MiB before
      reading and enforces the same limit incrementally while streaming.
+   * If opening a socket for a resolved address or connecting to it fails,
+     the proxy tries the next address within the same overall deadline.
    * DNS admission allows at most four outstanding lookups per web process.
      Capacity stays occupied until the resolver actually finishes, even after
      the request times out. Saturation returns ``502`` immediately without
