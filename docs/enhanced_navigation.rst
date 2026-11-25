@@ -129,7 +129,10 @@ Transition update from an older activation cannot rebuild or start its episode,
 even if it runs after the newer update. Closing invalidates queued updates so
 they cannot reopen the dock. Activating without a transition (including reduced
 motion) also supersedes pending updates. Transition cleanup and close animation
-completion retain their ownership guards.
+completion retain their ownership guards. With motion enabled, closing waits
+for the dock inner element's sink animation or the 400 ms fallback. Descendant
+animations and other animation names cannot finish the close. Reactivation
+removes the old close listener and timer. Reduced-motion dismissal is immediate.
 
 Closing with focus inside the dock returns focus to its activation button, or
 the matching current episode action if navigation replaced that button. When
@@ -155,11 +158,10 @@ in-place switch are not attributed to the new build. View Transition fallback
 does not repeat a failed build. Connection
 errors retain the browser's original report; the original error object is also
 available as ``window.__castPersistentAudioDebug.lastDockError`` until the next
-successful build. Asynchronous media playback failures retain the player's
-existing handling.
+successful build.
 
-Player readiness deadline
---------------------------
+Player readiness and media errors
+---------------------------------
 
 If the custom player has no audio yet, its activation owns a 15-second deadline
 and a single ready listener. Themes/tests can set
@@ -168,7 +170,13 @@ player retires the wait and starts a newly available controller. Ready events
 without current audio do not extend the deadline. Switching or closing cancels
 the pending wait immediately; stale callbacks cannot affect the current dock.
 Expiry disconnects the failed player, clears active cards and shows a retryable
-alert. ``Retry playback`` builds a fresh activation; ``Close`` dismisses it.
+alert. An audio element's media error after readiness shows the same retry
+controls for the current episode. The listener is removed on teardown, and a
+dock already closing continues to dismiss. A pause or an autoplay rejection
+leaves the dock available. ``Retry playback`` builds a fresh activation of the
+failed episode from the dock's own payload copy, so it still works after
+enhanced navigation removed the episode's payload from the page. ``Close``
+dismisses the alert.
 
 Payload identity
 ----------------
@@ -265,10 +273,13 @@ After changing ``persistent-player.js`` or ``persistent-player.css``, run
 ``just minify-static``. A checkout-local ``.minify-static.lock`` covers source
 reads, publication and recovery. A second invocation exits immediately with an
 error. Retry after the first finishes and leave the lock file in place.
-The minifier stages all three generated assets and byte-exact recovery copies
-alongside their destinations. Before replacing any output, it syncs the
-staged files, their directories and the pending publication recorded in
-``.minify-static-transaction``. This ordering relies on local POSIX filesystems
+After recovery, the minifier compares the generated UTF-8 bytes to the current
+outputs. If all three match exactly, it skips the publication transaction.
+When any output is missing or differs, it stages all three assets and byte-exact
+recovery copies alongside their destinations. It copies existing outputs in
+bounded chunks and checks each backup's size. Before replacing any output, it
+syncs the staged files, their directories and the pending publication recorded
+in ``.minify-static-transaction``. This ordering relies on local POSIX filesystems
 and storage that honor file and directory ``fsync``. On macOS each sync uses
 ``F_FULLFSYNC`` to flush the drive cache and falls back to ``fsync`` where the
 filesystem does not support it. If staging or replacement

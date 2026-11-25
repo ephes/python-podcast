@@ -72,7 +72,7 @@
     // close takes a sequence number; activating (or a newer close) bumps it so a
     // stale finish() no-ops instead of tearing down the freshly built dock.
     closeSeq: 0,
-    closeTimer: null,
+    closeCancel: null,
     // Same idea for the View Transition: a rapid second activate supersedes the
     // first. vtSeq generation-scopes updates and cleanup; close and non-VT
     // activation invalidate it too, so a stale transition can't rebuild or strip the
@@ -123,10 +123,7 @@
   // never leaks onto it.
   function cancelPendingClose() {
     state.closeSeq += 1;
-    if (state.closeTimer) {
-      window.clearTimeout(state.closeTimer);
-      state.closeTimer = null;
-    }
+    if (state.closeCancel) state.closeCancel();
     var region = getRegion();
     if (region) {
       region.removeAttribute("data-cast-closing");
@@ -347,9 +344,9 @@
   // current dock: disposed in teardownActive(), re-attached per build.
   function wireActiveAudio() {
     var audio = getActiveAudio();
+    var generation = state.dockSeq;
     if (!audio) {
       var player = getPersistentPlayerEl();
-      var generation = state.dockSeq;
       var initialController = player && player.controller;
       var retired = false;
       var timer = null;
@@ -374,14 +371,14 @@
               typeof player.controller.play === "function") player.controller.play();
           updateCards();
         } catch (error) {
-          showPlayerReadinessError(error);
+          showPlayerError(error);
         }
       };
       document.addEventListener("cast:player-ready", onReady);
       timer = window.setTimeout(function () {
         var current = isCurrent();
         retire();
-        if (current) showPlayerReadinessError(new Error("Player readiness deadline exceeded"));
+        if (current) showPlayerError(new Error("Player readiness deadline exceeded"));
       }, PLAYER_READY_TIMEOUT_MS);
       state.readinessCancel = retire;
       state.dockDisposers.push(retire);
@@ -393,12 +390,20 @@
     var onTime = function () {
       updateCardTime();
     };
+    var onError = function () {
+      if (generation !== state.dockSeq || audio !== getActiveAudio() || state.closeCancel) {
+        return;
+      }
+      showPlayerError(audio.error || new Error("Audio media load failed"), "The audio could not be loaded. ");
+    };
+    audio.addEventListener("error", onError);
     audio.addEventListener("play", onState);
     audio.addEventListener("pause", onState);
     audio.addEventListener("ended", onState);
     audio.addEventListener("timeupdate", onTime);
     audio.addEventListener("durationchange", onTime);
     state.dockDisposers.push(function () {
+      audio.removeEventListener("error", onError);
       audio.removeEventListener("play", onState);
       audio.removeEventListener("pause", onState);
       audio.removeEventListener("ended", onState);
@@ -445,19 +450,22 @@
     updateCards();
   }
 
-  function showPlayerReadinessError(error) {
+  function showPlayerError(error, text) {
     var payloadId = state.activePayloadId;
     var opener = state.activeOpener;
+    // Keep the dock's own payload copy: after enhanced navigation the page may
+    // no longer publish this episode, and Retry must still rebuild it.
+    var payload = parsePayload(DATA_ID);
     resetFailedDock(error);
     var region = getRegion();
     var message = document.createElement("div");
     message.className = "cast-dock__inner";
     message.setAttribute("role", "alert");
-    message.textContent = "The audio player could not become ready. ";
+    message.textContent = text || "The audio player could not become ready. ";
     var retry = document.createElement("button");
     retry.type = "button";
     retry.textContent = "Retry playback";
-    var onRetry = function () { activate(payloadId, opener); };
+    var onRetry = function () { activate(payloadId, opener, payload); };
     retry.addEventListener("click", onRetry);
     message.appendChild(retry);
     var close = document.createElement("button");
@@ -638,8 +646,8 @@
   // Activate an episode. Called only on an explicit "play this episode" action.
   // When the View Transitions API is available (and motion is allowed) the play
   // card's poster glides into the dock; otherwise the dock just builds/reveals.
-  function activate(payloadId, sourceButton) {
-    var payload = parsePayload(payloadId);
+  function activate(payloadId, sourceButton, retryPayload) {
+    var payload = retryPayload || parsePayload(payloadId);
     var region = getRegion();
     if (!payload || !region) {
       return;
@@ -784,16 +792,14 @@
     state.vtSeq += 1;
     clearMorphNames();
     region.classList.remove("cast-vt-active");
+    if (state.closeCancel) state.closeCancel();
     var myClose = (state.closeSeq += 1);
     var finish = function () {
       // No-op if a re-activation (or a newer close) has superseded this one.
       if (myClose !== state.closeSeq) {
         return;
       }
-      if (state.closeTimer) {
-        window.clearTimeout(state.closeTimer);
-        state.closeTimer = null;
-      }
+      cancelPendingClose();
       // Decide before unmounting, and respect focus moved away during close.
       var restoreFocus = region.contains(document.activeElement);
       var payloadId = state.activePayloadId;
@@ -801,7 +807,6 @@
       teardownActive();
       region.hidden = true;
       region.removeAttribute("data-cast-active");
-      region.removeAttribute("data-cast-closing");
       region.removeAttribute("data-cast-min"); // a future dock starts expanded
       document.body.classList.remove("cast-dock-open");
       state.activePayloadId = null;
@@ -819,12 +824,16 @@
       return;
     }
     region.setAttribute("data-cast-closing", "");
-    var onEnd = function () {
-      inner.removeEventListener("animationend", onEnd);
-      finish();
+    var onEnd = function (event) {
+      if (event.target === inner && event.animationName === "cast-dock-sink") finish();
     };
     inner.addEventListener("animationend", onEnd);
-    state.closeTimer = window.setTimeout(onEnd, 400); // fallback if animationend never fires
+    var timer = window.setTimeout(finish, 400); // fallback if animationend never fires
+    state.closeCancel = function () {
+      inner.removeEventListener("animationend", onEnd);
+      window.clearTimeout(timer);
+      state.closeCancel = null;
+    };
   }
 
   // Wire every page-published "play this episode" action to the manager. Old

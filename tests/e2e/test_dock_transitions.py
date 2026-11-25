@@ -125,7 +125,9 @@ def test_close_invalidates_pending_switch_and_allows_reactivation(dock, reduced_
     _complete(dock, 1)
     if reduced_motion == "no-preference":
         # Drive the animation end explicitly instead of depending on a timer/CSS.
-        dock.locator(".cast-dock__inner").dispatch_event("animationend")
+        dock.locator(".cast-dock__inner").evaluate(
+            "el => el.dispatchEvent(new AnimationEvent('animationend', {animationName: 'cast-dock-sink'}))"
+        )
     assert dock.locator("cast-audio-player").count() == 0
     assert dock.evaluate("window.__castPersistentAudioDebug.activeAudioId") is None
     assert dock.evaluate("window.plays") == [1]
@@ -184,8 +186,10 @@ def test_close_keeps_focus_moved_outside_during_animation(dock):
     dock.evaluate("""() => {
         document.querySelector('.cast-dock__close').click();
         document.querySelector('#play-b').focus();
-        document.querySelector('.cast-dock__inner').dispatchEvent(new Event('animationend'));
+        document.querySelector('.cast-dock__inner').dispatchEvent(
+            new AnimationEvent('animationend', {animationName: 'cast-dock-sink'}));
     }""")
+    expect(dock.locator("#cast-persistent-player")).to_be_hidden()
     expect(dock.locator("#play-b")).to_be_focused()
 
 
@@ -398,7 +402,8 @@ def _deferred_player(page, asset_name):
         });
         window.deliverReady = player => {
             player.append(document.createElement('audio'));
-            player.controller = {play: () => window.plays.push(player.dataset.payload)};
+            player.controller = {play: () => window.plays.push(
+                JSON.parse(document.getElementById(player.dataset.payload).textContent).title)};
             document.dispatchEvent(new CustomEvent('cast:player-ready', {detail: {playerId: player.id}}));
         };
     }""")
@@ -416,6 +421,7 @@ def test_readiness_expiry_clears_owner_and_retry_recovers(page, asset_name):
     assert page.evaluate("[waiters.size, readyListeners.size]") == [0, 0]
     assert page.evaluate("window.__castPersistentAudioDebug.activeAudioId") is None
     assert page.locator("cast-audio-player").count() == 0
+    page.evaluate("document.getElementById('a').remove()")
     page.get_by_role("button", name="Retry playback").click()
     page.evaluate("deliverReady(players[1])")
     assert page.evaluate("window.__castPersistentAudioDebug.activeAudioId") == 1
@@ -441,3 +447,30 @@ def test_switch_close_and_late_readiness_do_not_steal_current_owner(page, asset_
     page.evaluate("deliverReady(players[2]); allWaiters[2]()")
     assert page.locator("cast-audio-player").count() == 0
     assert page.evaluate("window.__castPersistentAudioDebug.activeAudioId") is None
+
+
+def test_current_audio_error_offers_retry_after_readiness(page, asset_name):
+    from playwright.sync_api import expect
+
+    _deferred_player(page, asset_name)
+    page.locator("#play-a").click()
+    page.evaluate("deliverReady(players[0])")
+    page.locator("#play-b").click()
+    page.evaluate("""() => {
+        deliverReady(players[1]);
+        players[0].querySelector('audio').dispatchEvent(new Event('error'));
+        players[1].querySelector('audio').dispatchEvent(new Event('pause'));
+    }""")
+    expect(page.get_by_role("alert")).to_have_count(0)
+    assert page.evaluate("window.__castPersistentAudioDebug.activeAudioId") == 2
+
+    page.locator("cast-audio-player audio").dispatch_event("error")
+    expect(page.get_by_role("alert")).to_contain_text("The audio could not be loaded")
+    expect(page.locator("cast-audio-player")).to_have_count(0)
+    # Enhanced navigation may have removed the page's payload for the episode.
+    page.evaluate("document.getElementById('b').remove()")
+    page.get_by_role("button", name="Retry playback").click()
+    page.evaluate("deliverReady(players[2])")
+    assert page.evaluate("window.__castPersistentAudioDebug.activeAudioId") == 2
+    assert page.evaluate("window.plays") == ["A", "B", "B"]
+    expect(page.get_by_role("alert")).to_have_count(0)

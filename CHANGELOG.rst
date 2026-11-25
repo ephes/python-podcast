@@ -4,6 +4,19 @@ Changelog
 Unreleased
 ----------
 
+* Skip generated asset publication after recovery when all output bytes
+  already match the generated set.
+
+* Copy generated asset recovery backups in bounded chunks and check their
+  sizes before publication.
+
+* Show retry controls when the current dock audio fails to load, and ignore
+  errors from retired audio elements. Retry rebuilds the failed episode from
+  the dock's own payload copy, also after navigating away from its page.
+
+* Wait for the dock's own exit animation or its fallback before dismissing the
+  player and restoring focus.
+
 * Report an edit conflict under the requested slug if an explicitly selected
   show-note conversion target is renamed before it is loaded.
 

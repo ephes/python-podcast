@@ -16,6 +16,7 @@ from rjsmin import jsmin
 ROOT = Path(__file__).resolve().parents[1]
 PERSISTENT_CSS = ROOT / "python_podcast/static/css/persistent-player.css"
 PERSISTENT_JS = ROOT / "python_podcast/static/js/persistent-player.js"
+BACKUP_CHUNK_SIZE = 1024 * 1024
 DOCK_MARKER = "/* ==========================================================================\n   The dock —"
 
 
@@ -173,8 +174,20 @@ def _finish_transaction(transaction: Path, targets: tuple[Path, ...]) -> None:
     transaction.rmdir()
 
 
+def _matches_output(target: Path, expected: bytes) -> bool:
+    try:
+        with target.open("rb") as source:
+            # Read one extra byte so matching prefixes with trailing data differ.
+            return source.read(len(expected) + 1) == expected
+    except FileNotFoundError:
+        return False
+
+
 def _publish_assets(journal: Path, targets: tuple[Path, ...]) -> None:
-    assets = minified_assets()
+    assets = {target: text.encode("utf-8") for target, text in minified_assets().items()}
+    if all(_matches_output(target, assets[target]) for target in targets):
+        return
+
     journal.mkdir(mode=0o700)
     transaction = journal / uuid4().hex
     try:
@@ -186,9 +199,13 @@ def _publish_assets(journal: Path, targets: tuple[Path, ...]) -> None:
             scratch.mkdir(mode=0o700)
             mode = 0o644
             if target.exists():
-                mode = target.stat().st_mode & 0o777
+                previous = target.stat()
+                mode = previous.st_mode & 0o777
                 backup = scratch / "backup"
-                backup.write_bytes(target.read_bytes())
+                with target.open("rb") as source, backup.open("wb") as destination:
+                    shutil.copyfileobj(source, destination, length=BACKUP_CHUNK_SIZE)
+                if backup.stat().st_size != previous.st_size:
+                    raise OSError(f"Asset changed size while backing up {target}")
                 backup.chmod(mode)
                 _sync(backup)
             else:
@@ -196,7 +213,7 @@ def _publish_assets(journal: Path, targets: tuple[Path, ...]) -> None:
                 absent.touch()
                 _sync(absent)
             candidate = scratch / "candidate"
-            candidate.write_text(assets[target], encoding="utf-8")
+            candidate.write_bytes(assets[target])
             candidate.chmod(mode)
             _sync(candidate)
             _sync(scratch)
