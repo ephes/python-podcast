@@ -65,13 +65,15 @@ domain while the actual server runs at ``https://fedi.python-podcast.de``. Since
      creating or queuing another lookup. Capacity recovers automatically on
      completion; lookups stuck forever require a web process restart.
    * These ``502``/``504`` responses are expected when the fedi host is slow
-     or briefly unreachable. Each is logged as a warning
+     or briefly unreachable. The proxy attempts to log each as a warning
      with only the fixed discovery path and a fixed category (``timeout``,
      ``dns``, ``connect``, ``tls``, ``request``, ``protocol``, ``transport``,
      ``resolver-capacity``, ``resolver-start``, ``response-too-large``,
      ``response-truncated`` or ``invalid-response``; unknown failures use
      ``upstream-failure``). Raw transport exceptions, query values and remote
-     status/header/redirect text are omitted. Client error bodies remain generic.
+     status/header/redirect text are omitted. Client error bodies remain generic,
+     and HEAD responses have an empty body. A failing warning handler leaves
+     the gateway response and the request's upstream failure marker intact.
      These warnings do not mail
      the admins: ``python_podcast.fedi.log_filters.SkipFediUpstreamFailures``,
      installed on the ``django.request`` logger in ``FediConfig.ready``, drops

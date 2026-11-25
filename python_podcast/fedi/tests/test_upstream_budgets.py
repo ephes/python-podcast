@@ -1,3 +1,5 @@
+import logging
+import socket
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -58,3 +60,45 @@ def test_elapsed_deadline_returns_504_even_when_timer_has_not_fired(rf, monkeypa
     assert response.content == b"Upstream timeout"
     timer.start.assert_called_once_with()
     timer.cancel.assert_called_once_with()
+
+
+@pytest.mark.parametrize(
+    "method, error, status, body",
+    [
+        ("head", socket.timeout("synthetic upstream timeout"), 504, b""),
+        ("get", socket.timeout("synthetic upstream timeout"), 504, b"Upstream timeout"),
+        ("get", OSError("synthetic transport failure"), 502, b"Bad gateway"),
+        ("get", None, 502, b"Bad gateway"),
+    ],
+    ids=["head-timeout", "get-timeout", "transport", "invalid-response"],
+)
+def test_gateway_reply_survives_warning_handler_failure(client, monkeypatch, settings, method, error, status, body):
+    # The endpoint has no database queries, so a request transaction is unnecessary.
+    monkeypatch.setitem(settings.DATABASES["default"], "ATOMIC_REQUESTS", False)
+    if error is None:
+        monkeypatch.setattr(views, "_fetch", Mock(return_value=(99, {}, b"document")))
+    else:
+        connection = Mock()
+        connection.request.side_effect = error
+        monkeypatch.setattr(views.http.client, "HTTPConnection", Mock(return_value=connection))
+        monkeypatch.setattr(views, "_connect", Mock())
+
+    records = []
+
+    class BrokenWarningHandler(logging.Handler):
+        def emit(self, record):
+            records.append(record)
+            raise RuntimeError("synthetic warning sink failure")
+
+    handler = BrokenWarningHandler()
+    views.logger.addHandler(handler)
+    try:
+        client.raise_request_exception = False
+        response = getattr(client, method)("/.well-known/nodeinfo")
+    finally:
+        views.logger.removeHandler(handler)
+
+    assert len(records) == 1
+    assert response.status_code == status
+    assert response.content == body
+    assert response.wsgi_request.fedi_upstream_failure is True

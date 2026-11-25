@@ -10,6 +10,9 @@ Unreleased
 * Require a single passing JUnit suite with matching summary counters for the
   seven core media cases, and reject suite-level failure indicators.
 
+* Preserve Fediverse discovery gateway responses and failure markers when
+  warning dispatch raises. HEAD responses remain bodyless.
+
 * Validate every generated asset recovery record before rollback. Preserve
   the outputs and pending journal if a recovery record is missing or invalid.
 

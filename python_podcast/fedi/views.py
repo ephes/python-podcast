@@ -4,6 +4,7 @@ import socket
 import ssl
 import threading
 import time
+from contextlib import suppress
 from urllib.parse import urljoin, urlsplit
 
 import certifi
@@ -260,29 +261,30 @@ def _proxy_wellknown(request, path, *, forward_query=True, default_accept="*/*")
     try:
         status, headers, content = _fetch(url, accept)
     except UpstreamTimeout:
-        logger.warning("Timeout fetching %s (timeout)", path)
-        return _gateway_error(request, "Upstream timeout", 504)
+        return _gateway_error(request, "Upstream timeout", 504, "Timeout fetching %s (timeout)", path)
     except UpstreamError as exc:
-        logger.warning("Failed to fetch %s (%s)", path, exc.category)
-        return _gateway_error(request, "Bad gateway", 502)
+        return _gateway_error(request, "Bad gateway", 502, "Failed to fetch %s (%s)", path, exc.category)
 
     try:
         return _build_response(request, url, status, headers, content)
     except ValueError:
         # Invalid upstream status or header values (BadHeaderError is a ValueError),
         # or a malformed redirect location.
-        logger.warning("Invalid upstream response for %s (invalid-response)", path)
-        return _gateway_error(request, "Bad gateway", 502)
+        return _gateway_error(request, "Bad gateway", 502, "Invalid upstream response for %s (invalid-response)", path)
 
 
-def _gateway_error(request, text, status):
+def _gateway_error(request, text, status, warning, *args):
     """
     Return a 502/504 for a failed upstream fetch and mark the request, so
     ``SkipFediUpstreamFailures`` keeps Django's request logging from mailing
-    the admins about it. The warning logged above stays the record.
+    the admins about it. Dispatch the proxy warning on a best-effort basis.
     """
     request.fedi_upstream_failure = True
-    return HttpResponse(b"" if request.method == "HEAD" else text, status=status, content_type="text/plain")
+    response = HttpResponse(b"" if request.method == "HEAD" else text, status=status, content_type="text/plain")
+    # Logging handlers can raise. Keep failures in warning dispatch out of the response path.
+    with suppress(Exception):
+        logger.warning(warning, *args)
+    return response
 
 
 def _build_response(request, url, status, headers, content):
