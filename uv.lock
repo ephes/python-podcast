@@ -339,8 +339,8 @@ wheels = [
 
 [[package]]
 name = "cast-bootstrap5"
-version = "0.0.77"
-source = { git = "https://github.com/ephes/cast-bootstrap5#b7f16729bb0b9a2aca228c88198c5431b363e2f9" }
+version = "0.0.78"
+source = { git = "https://github.com/ephes/cast-bootstrap5#8a11f2bcc9cddbb9b8ba7d482c1442dc83dadb37" }
 dependencies = [
     { name = "crispy-bootstrap5" },
     { name = "django-cast" },
@@ -893,8 +893,8 @@ wheels = [
 
 [[package]]
 name = "django-cast"
-version = "0.2.69"
-source = { git = "https://github.com/ephes/django-cast?branch=develop#e0c632ad0cf64f47183b0d53fcf6156e069e62cf" }
+version = "0.2.70"
+source = { git = "https://github.com/ephes/django-cast?branch=develop#d4f29f33ce2d4359bda6a705763fee00fb1dd60a" }
 dependencies = [
     { name = "crispy-bootstrap4" },
     { name = "django" },
@@ -1019,8 +1019,8 @@ wheels = [
 
 [[package]]
 name = "django-indieweb"
-version = "0.6.2"
-source = { git = "https://github.com/ephes/django-indieweb?branch=develop#7ab7a8efcba466b813c222ca371a9316680072ff" }
+version = "0.7.1"
+source = { git = "https://github.com/ephes/django-indieweb?branch=develop#3faf52aef21c8a1ee3d59b5bc116cab777af9dc8" }
 dependencies = [
     { name = "beautifulsoup4" },
     { name = "cryptography" },
@@ -1029,6 +1029,7 @@ dependencies = [
     { name = "httpx" },
     { name = "mf2py" },
     { name = "nh3" },
+    { name = "soupsieve" },
 ]
 
 [[package]]
