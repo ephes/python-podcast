@@ -9,7 +9,6 @@ import stat
 from pathlib import Path
 from uuid import uuid4
 
-from filelock import FileLock, Timeout
 from rcssmin import cssmin
 from rjsmin import jsmin
 
@@ -49,17 +48,21 @@ def minified_assets() -> dict[Path, str]:
 
 
 def main() -> None:
-    lock = FileLock(ROOT / ".minify-static.lock")
+    lock_fd = os.open(ROOT / ".minify-static.lock", os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o666)
     try:
-        acquired = lock.acquire(timeout=0)
-    except Timeout:
-        raise SystemExit("Asset generation is already running in this checkout. Retry after it finishes.") from None
-    with acquired:
+        try:
+            fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise SystemExit(
+                "Asset generation is already running in this checkout. Retry after it finishes."
+            ) from None
         journal = ROOT / ".minify-static-transaction"
         targets = _asset_targets()
         _check_outputs(targets)
         _recover(journal, targets)
         _publish_assets(journal, targets)
+    finally:
+        os.close(lock_fd)
 
 
 def _check_outputs(targets: tuple[Path, ...]) -> None:

@@ -4,6 +4,22 @@ Changelog
 Unreleased
 ----------
 
+* Remove the failed-login throttle on the Django admin and Wagtail admin
+  logins (``python_podcast.users.login_throttle``) together with its
+  ``api_token_auth_throttle`` cache, ``ADMIN_LOGIN_THROTTLE_LOCK_PATH``, the
+  ``DJANGO_ADMIN_LOGIN_CLIENT_RATE``/``DJANGO_ADMIN_LOGIN_USERNAME_RATE``
+  settings and the ``filelock`` dependency. Admin accounts rely on long,
+  randomly generated passwords; failed admin logins no longer get ``429``.
+  allauth's own rate limits, ``ALLAUTH_TRUSTED_PROXY_COUNT`` and the limited
+  Wagtail password reset stay. The ``api-token-auth-throttle/`` directory and
+  ``admin-login-throttle.lock`` under ``DJANGO_CACHE_LOCATION`` are no longer
+  used and can be deleted. ``docs/admin_login_throttle.rst`` is now
+  ``docs/login_rate_limits.rst``.
+
+* ``commands.py switch-to-*`` and ``just minify-static`` keep their
+  checkout-local lock files but take them with ``fcntl.flock`` from the
+  standard library instead of ``filelock``.
+
 * Limit the core media gate's JUnit input to a regular file of at most 1 MiB
   and reject XML document type declarations.
 

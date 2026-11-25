@@ -1,5 +1,4 @@
 import logging
-import os
 from tempfile import SpooledTemporaryFile
 
 import sentry_sdk
@@ -61,21 +60,7 @@ CACHES = {
         "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
         "LOCATION": env("DJANGO_CACHE_LOCATION"),
     },
-    # Admin login counters (docs/admin_login_throttle.rst). Keep the legacy
-    # alias and directory so active lockouts survive endpoint removal.
-    # A separate directory keeps page-cache traffic from culling them,
-    # and the high MAX_ENTRIES keeps
-    # junk usernames from evicting live counters.
-    "api_token_auth_throttle": {
-        "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
-        "LOCATION": os.path.join(env("DJANGO_CACHE_LOCATION"), "api-token-auth-throttle"),
-        "OPTIONS": {"MAX_ENTRIES": 100000},
-    },
 }
-
-# Stable sibling of the cache directory; cache.clear() must not unlink the lock.
-# All workers must share this local filesystem and path.
-ADMIN_LOGIN_THROTTLE_LOCK_PATH = os.path.join(env("DJANGO_CACHE_LOCATION"), "admin-login-throttle.lock")
 
 # django-indieweb rate-limit client keys. Traefik is the only reverse proxy and
 # appends the client address, so the last X-Forwarded-For entry is the client;
@@ -86,7 +71,7 @@ INDIEWEB_RATE_LIMIT_TRUSTED_PROXY_HOPS = env.int("DJANGO_NUM_PROXIES", default=1
 # allauth rate limits (login, failed logins, password reset, also used for the
 # Wagtail admin password reset) key on the client address. Without this every
 # request counts against Traefik's 127.0.0.1, so one client could lock every
-# editor out. Same knob and trust rule as above; see docs/admin_login_throttle.rst.
+# editor out. Same knob and trust rule as above; see docs/login_rate_limits.rst.
 ALLAUTH_TRUSTED_PROXY_COUNT = env.int("DJANGO_NUM_PROXIES", default=1)
 
 # SECURITY

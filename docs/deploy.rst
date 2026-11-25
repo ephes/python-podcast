@@ -439,8 +439,8 @@ updates has a migration, and no settings change is needed.
   ``429`` and ``Retry-After``. Both settings stay at their defaults. The
   client address comes from ``REST_FRAMEWORK["NUM_PROXIES"]``
   (``DJANGO_NUM_PROXIES``, default ``1``), which matches Traefik as the only
-  reverse proxy; see :doc:`admin_login_throttle`. The counters live in the
-  ``default`` cache, not in ``api_token_auth_throttle``.
+  reverse proxy; see :doc:`login_rate_limits`. The counters live in the
+  ``default`` cache.
   The production ``default`` cache is a file cache with Django's default
   ``MAX_ENTRIES`` of 300. When it is full, culling removes entries at random,
   which can drop a counter and reset that client's budget early.

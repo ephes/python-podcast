@@ -1,5 +1,7 @@
 import collections
+import contextlib
 import datetime
+import fcntl
 import gzip
 import os
 import platform
@@ -41,7 +43,6 @@ except ImportError:
     bootstrap()
     import typer
 
-from filelock import FileLock  # noqa
 from rich import print  # noqa
 from rich.markup import escape  # noqa
 
@@ -680,6 +681,17 @@ def _sync_environment(args, pyproject_path):
         )
 
 
+@contextlib.contextmanager
+def _source_switch_lock(project_root):
+    """Hold the project-local source-switch lock; a second switch waits."""
+    fd = os.open(project_root / ".source-switch.lock", os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o666)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        yield
+    finally:
+        os.close(fd)
+
+
 def _fail_source_switch(error):
     print(f"source switch failed: {escape(str(error))}")
     raise typer.Exit(1) from error
@@ -718,7 +730,7 @@ def switch_to_dev_environment():
         try:
             # Stable sidecar: pyproject itself is atomically replaced. Hold the
             # same lock as the Git switch through sync and its success report.
-            with FileLock(project_root / ".source-switch.lock"):
+            with _source_switch_lock(project_root):
                 _update_uv_sources(pyproject_path, updates)
                 print("\nRunning uv sync to apply changes...")
                 _sync_environment(["uv", "sync"], pyproject_path)
@@ -754,7 +766,7 @@ def switch_to_git_sources():
         print(f"✓ {package_name} -> {git_source}")
 
     try:
-        with FileLock(project_root / ".source-switch.lock"):
+        with _source_switch_lock(project_root):
             _update_uv_sources(pyproject_path, default_sources)
             print("\nRunning uv sync to apply changes...")
             _sync_environment(["uv", "sync", "--reinstall"], pyproject_path)

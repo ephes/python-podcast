@@ -362,3 +362,13 @@ def test_failed_sync_releases_lock_for_recovery(project, uv_sync, capsys):
     uv_sync()
     commands.switch_to_git_sources()
     assert "Switched back to git sources!" in capsys.readouterr().out
+
+
+def test_source_switch_lock_refuses_a_symlink(project, tmp_path):
+    outside = tmp_path / "outside.lock"
+    outside.write_text("")
+    (project / ".source-switch.lock").symlink_to(outside)
+
+    with pytest.raises(OSError):
+        with commands._source_switch_lock(project):
+            pass

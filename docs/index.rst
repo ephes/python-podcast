@@ -13,7 +13,7 @@ Contents:
 
    install
    deploy
-   admin_login_throttle
+   login_rate_limits
    enhanced_navigation
    docker_ec2
    convert-show-notes-runbook
