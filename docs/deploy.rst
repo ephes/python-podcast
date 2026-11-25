@@ -108,13 +108,14 @@ dock/navigation browser tests (152 passed), Sphinx ``-W``, the full suite on
 Python 3.14 (747 passed) and the core media gate (7 passed).
 
 Rollback: the sequence under "2026-11-18" below with the previous commit.
-The old code does not know ``failure_attempts``. If ``indieweb.0033`` was
-applied, then after both units have stopped (step 1, under the deploy lock)
-and before redeploying the old commit, give the column a database default in
-the site's PostgreSQL database, as a role that owns the table or a superuser
-(``ALTER TABLE indieweb_webmentionoutboundtarget ALTER COLUMN
-failure_attempts SET DEFAULT '{}'::jsonb``), so the old code's inserts still
-succeed.
+The old code does not know ``failure_attempts`` (a non-null column without a
+database default). If ``indieweb.0033`` was applied, then after both units
+have stopped (step 1, under the deploy lock) and before redeploying the old
+commit, reverse it with the new code that is still installed, as the
+``python-podcast`` user with the site ``.env``: ``manage.py migrate indieweb
+0032``. This drops the per-attempt failure history and keeps the aggregate
+failure count, so the old code can insert outbound targets again and a later
+upgrade does not count stale attempts.
 
 2026-11-18 Wagtail 8.1 and django-cast e0c632ad
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
