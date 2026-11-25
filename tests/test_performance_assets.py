@@ -125,7 +125,8 @@ def test_minifier_refuses_same_size_edit_during_backup(asset_dir, monkeypatch, r
             replacement.replace(target)
         else:
             target.write_bytes(writer_bytes)
-            os.utime(target, ns=(original_mtime, original_mtime - 1_000_000_000))
+            # Keep the original mtime so only the change time reveals the edit.
+            os.utime(target, ns=(original_mtime, original_mtime))
         copy(source, destination, length)
 
     monkeypatch.setattr(shutil, "copyfileobj", edit_during_copy)
@@ -608,8 +609,13 @@ def test_minifier_reports_retained_recovery_copy_if_compensation_fails(asset_dir
     assert set(asset_dir.iterdir()) == set(targets)
 
 
-@pytest.mark.parametrize("damage", ["both", "neither", "linked-backup", "linked-absent", "nonempty-absent"])
+@pytest.mark.parametrize(
+    "damage",
+    ["both", "neither", "linked-backup", "linked-absent", "hardlinked-backup", "hardlinked-absent", "nonempty-absent"],
+)
 def test_minifier_preflights_all_recovery_roles(asset_dir, monkeypatch, damage):
+    import os
+
     from scripts import minify_static
 
     damaged = asset_dir / "damaged"
@@ -635,6 +641,11 @@ def test_minifier_preflights_all_recovery_roles(asset_dir, monkeypatch, damage):
         (scratch / "backup").symlink_to(valid_backup)
     elif damage == "linked-absent":
         (scratch / "absent").symlink_to(pending)
+    elif damage in {"hardlinked-backup", "hardlinked-absent"}:
+        role = scratch / damage.removeprefix("hardlinked-")
+        stray = transaction / "stray"
+        stray.write_bytes(b"previous" if role.name == "backup" else b"")
+        os.link(stray, role)
     elif damage == "nonempty-absent":
         (scratch / "absent").write_bytes(b"damaged")
     evidence = set(scratch.iterdir())
@@ -650,6 +661,40 @@ def test_minifier_preflights_all_recovery_roles(asset_dir, monkeypatch, damage):
     assert all(target.read_bytes() == b"published" for target in targets)
     assert pending.is_file()
     assert set(scratch.iterdir()) == evidence
+    assert set(valid_scratch.iterdir()) == {valid_backup}
+    assert valid_backup.read_bytes() == b"previous"
+
+
+def test_minifier_preflight_refuses_missing_recovery_directory(asset_dir, monkeypatch):
+    from scripts import minify_static
+
+    missing = asset_dir / "missing"
+    valid = asset_dir / "valid"
+    targets = (missing, valid)  # Rollback would restore the valid target first.
+    for target in targets:
+        target.write_bytes(b"published")
+    journal = asset_dir.parent / ".minify-static-transaction"
+    transaction = journal / ("a" * 32)
+    transaction.mkdir(parents=True)
+    pending = transaction / "pending"
+    pending.touch()
+    valid_scratch = minify_static._scratch(valid, transaction)
+    valid_scratch.mkdir()
+    valid_backup = valid_scratch / "backup"
+    valid_backup.write_bytes(b"previous")
+    scratch = minify_static._scratch(missing, transaction)
+    monkeypatch.setattr(minify_static, "_asset_targets", lambda: targets)
+
+    def unexpected_generation():
+        pytest.fail("missing recovery directory allowed asset generation")
+
+    monkeypatch.setattr(minify_static, "minified_assets", unexpected_generation)
+    with pytest.raises(RuntimeError, match=f"Missing asset recovery directory.*{scratch.name}"):
+        minify_static.main()
+
+    assert all(target.read_bytes() == b"published" for target in targets)
+    assert pending.is_file()
+    assert not scratch.exists()
     assert set(valid_scratch.iterdir()) == {valid_backup}
     assert valid_backup.read_bytes() == b"previous"
 
