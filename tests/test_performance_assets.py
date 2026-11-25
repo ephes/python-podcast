@@ -608,6 +608,52 @@ def test_minifier_reports_retained_recovery_copy_if_compensation_fails(asset_dir
     assert set(asset_dir.iterdir()) == set(targets)
 
 
+@pytest.mark.parametrize("damage", ["both", "neither", "linked-backup", "linked-absent", "nonempty-absent"])
+def test_minifier_preflights_all_recovery_roles(asset_dir, monkeypatch, damage):
+    from scripts import minify_static
+
+    damaged = asset_dir / "damaged"
+    valid = asset_dir / "valid"
+    targets = (damaged, valid)  # Rollback would restore the valid target first.
+    for target in targets:
+        target.write_bytes(b"published")
+    journal = asset_dir.parent / ".minify-static-transaction"
+    transaction = journal / ("a" * 32)
+    transaction.mkdir(parents=True)
+    pending = transaction / "pending"
+    pending.touch()
+    valid_scratch = minify_static._scratch(valid, transaction)
+    valid_scratch.mkdir()
+    valid_backup = valid_scratch / "backup"
+    valid_backup.write_bytes(b"previous")
+    scratch = minify_static._scratch(damaged, transaction)
+    scratch.mkdir()
+    if damage == "both":
+        (scratch / "backup").write_bytes(b"previous")
+        (scratch / "absent").touch()
+    elif damage == "linked-backup":
+        (scratch / "backup").symlink_to(valid_backup)
+    elif damage == "linked-absent":
+        (scratch / "absent").symlink_to(pending)
+    elif damage == "nonempty-absent":
+        (scratch / "absent").write_bytes(b"damaged")
+    evidence = set(scratch.iterdir())
+    monkeypatch.setattr(minify_static, "_asset_targets", lambda: targets)
+
+    def unexpected_generation():
+        pytest.fail("ambiguous recovery allowed asset generation")
+
+    monkeypatch.setattr(minify_static, "minified_assets", unexpected_generation)
+    with pytest.raises(RuntimeError, match=f"Invalid asset recovery role.*{scratch.name}"):
+        minify_static.main()
+
+    assert all(target.read_bytes() == b"published" for target in targets)
+    assert pending.is_file()
+    assert set(scratch.iterdir()) == evidence
+    assert set(valid_scratch.iterdir()) == {valid_backup}
+    assert valid_backup.read_bytes() == b"previous"
+
+
 def test_minifier_cleanup_failure_does_not_hide_publication_interrupt(asset_dir, monkeypatch):
     from scripts import minify_static
 

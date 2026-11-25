@@ -290,11 +290,15 @@ fails or is interrupted by Ctrl-C, the command attempts recovery before
 propagating the original exception. After a forced kill or a cleanup error, rerun
 ``just minify-static``. Under the lock it restores the whole previous generation
 for a pending publication before reading the sources, including deleting outputs
-that were previously absent. Publication and rollback both sync the resulting
-files and their parent directories before removing the pending marker. Recovery
-files remain available until the marker removal itself has been synced. If the
-marker is gone on restart, the minifier keeps the current generation and syncs
-the journal before clearing the remaining recovery files.
+that were previously absent. Before changing any output, rollback checks every
+scratch directory for exactly one recovery record. It accepts a regular backup
+file or an empty regular absence marker, each with a single link. If any record
+is missing, conflicting or invalid, rollback leaves all outputs, the pending
+marker and the recovery files in place. Publication and rollback both sync
+the resulting files and their parent directories before removing the pending
+marker. Recovery files remain available until the marker removal itself has
+been synced. If the marker is gone on restart, the minifier keeps the current
+generation and syncs the journal before clearing the remaining recovery files.
 
 Before recovery or staging, the command checks all output paths. It lists
 every symlink, hard-linked file or other non-regular output and exits with the

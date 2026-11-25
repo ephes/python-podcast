@@ -128,26 +128,48 @@ def _recover(journal: Path, targets: tuple[Path, ...]) -> None:
     _sync(journal.parent)
 
 
+def _recovery_backup(scratch: Path) -> Path | None:
+    try:
+        mode = scratch.lstat().st_mode
+    except FileNotFoundError:
+        raise RuntimeError(f"Missing asset recovery directory: {scratch}") from None
+    if not stat.S_ISDIR(mode):
+        raise RuntimeError(f"Unexpected asset recovery directory: {scratch}")
+
+    roles = {"backup", "absent"}.intersection(os.listdir(scratch))
+    if len(roles) != 1:
+        raise RuntimeError(f"Invalid asset recovery role in {scratch}: expected exactly one of backup or absent")
+    (role,) = roles
+    path = scratch / role
+    info = path.lstat()
+    if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or (role == "absent" and info.st_size != 0):
+        raise RuntimeError(f"Invalid asset recovery role: {path}")
+    return path if role == "backup" else None
+
+
 def _finish_transaction(transaction: Path, targets: tuple[Path, ...]) -> None:
     pending = transaction / "pending"
     if pending.name in os.listdir(transaction):
+        # Validate the whole record before rollback can touch any output.
+        backups = {target: _recovery_backup(_scratch(target, transaction)) for target in reversed(targets)}
         # Replay every backup: after a power loss the candidate can still exist
         # even when the target entry was replaced. Keep the backups for retries.
-        for target in reversed(targets):
-            scratch = _scratch(target, transaction)
-            backup = scratch / "backup"
+        for target, backup in backups.items():
             try:
-                if (scratch / "absent").exists():
+                if backup is None:
                     target.unlink(missing_ok=True)
                 else:
-                    restored = scratch / "restore"
+                    restored = backup.with_name("restore")
                     restored.unlink(missing_ok=True)
                     shutil.copy(backup, restored)
                     os.replace(restored, target)
                     _sync(target)
                 _sync(target.parent)
             except BaseException as error:
-                error.add_note(f"Could not restore {target}; recovery files retained in {scratch} (backup: {backup})")
+                scratch = _scratch(target, transaction)
+                error.add_note(
+                    f"Could not restore {target}; recovery files retained in {scratch} (backup: {scratch / 'backup'})"
+                )
                 raise
         pending.unlink()
 

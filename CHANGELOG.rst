@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Validate every generated asset recovery record before rollback. Preserve
+  the outputs and pending journal if a recovery record is missing or invalid.
+
 * Skip generated asset publication after recovery when all output bytes
   already match the generated set.
 
