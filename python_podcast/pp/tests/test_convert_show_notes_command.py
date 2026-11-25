@@ -785,6 +785,93 @@ def test_force_recovers_legacy_body_after_publish():
     assert "show_note_link_list" in _detail_types(revised)
 
 
+@pytest.mark.parametrize(
+    "current_id, historical_id, matches",
+    [(None, "historical", True), ("current", None, True), ("current", "historical", False)],
+)
+def test_force_single_detail_fallback_requires_a_missing_id(current_id, historical_id, matches):
+    from python_podcast.pp.management.commands.convert_show_notes import Command
+
+    current = {"type": "detail", "id": current_id, "value": []}
+    historical = {"type": "detail", "id": historical_id, "value": [{"type": "show_note_heading"}]}
+
+    merged = Command._merge_detail([current], [historical])
+
+    assert merged == ([{**current, "value": historical["value"]}] if matches else None)
+
+
+@pytest.fixture
+def converted_two_detail_episode():
+    episode = _make_episode(slug="two-details", detail_children=None)
+    raw = list(episode.body.raw_data)
+    raw.extend(
+        {
+            "type": "detail",
+            "id": f"detail-{label}",
+            "value": [
+                {
+                    "type": "paragraph",
+                    "value": f'<h3>{label}</h3><ul><li><a href="https://example.com/{label}">{label}</a></li></ul>',
+                }
+            ],
+        }
+        for label in ("first", "second")
+    )
+    episode.body = episode.body.stream_block.to_python(raw)
+    episode.save_revision().publish()
+    _run("--slug", episode.slug, "--publish")
+    return Episode.objects.get(pk=episode.pk)
+
+
+@pytest.mark.django_db(transaction=True)
+def test_force_matches_historical_details_by_id_in_current_order(converted_two_detail_episode):
+    episode = converted_two_detail_episode
+    overview, first, second = list(episode.body.raw_data)
+    new_detail = {
+        "type": "detail",
+        "id": "detail-new",
+        "value": [{"type": "paragraph", "id": "new-paragraph", "value": "<p>New detail</p>"}],
+    }
+    draft = episode.get_latest_revision_as_object()
+    draft.body = draft.body.stream_block.to_python([overview, second, new_detail, first])
+    draft.save_revision()
+
+    _run("--slug", episode.slug, "--force", "--apply")
+
+    raw = list(_latest_revision_object(episode).body.raw_data)
+    assert [block["id"] for block in raw] == [overview["id"], "detail-second", "detail-new", "detail-first"]
+    assert raw[0] == overview
+    assert raw[2] == new_detail
+    for block, label in ((raw[1], "second"), (raw[3], "first")):
+        (child,) = block["value"]
+        assert child["type"] == "show_note_link_list"
+        assert child["value"]["heading"] == label
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize(
+    "conflict, mode",
+    [("missing", ()), ("missing", ("--publish",)), ("duplicate", ("--apply",))],
+)
+def test_force_reports_unmatched_historical_details_without_writing(converted_two_detail_episode, conflict, mode):
+    episode = converted_two_detail_episode
+    overview, first, second = list(episode.body.raw_data)
+    current = [overview, second] if conflict == "missing" else [overview, first, second, second]
+    draft = episode.get_latest_revision_as_object()
+    draft.body = draft.body.stream_block.to_python(current)
+    draft_revision = draft.save_revision()
+    previous_count = episode.revisions.count()
+
+    output, error = _run_expecting_error("--slug", episode.slug, "--force", *mode)
+
+    assert "historical detail conflict" in output
+    assert episode.slug in error
+    live = Episode.objects.get(pk=episode.pk)
+    assert live.revisions.count() == previous_count
+    assert live.latest_revision_id == draft_revision.pk
+    assert live.live_revision_id == episode.live_revision_id
+
+
 @pytest.mark.django_db(transaction=True)
 def test_force_reports_history_beyond_legacy_search_limit():
     from python_podcast.pp.management.commands.convert_show_notes import Command

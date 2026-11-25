@@ -21,8 +21,8 @@ What the command does
 * Splits a paragraph by headings (``h1``–``h6``):
 
   - a standalone heading becomes ``show_note_heading``;
-  - a heading immediately followed by a ``ul``/``ol`` becomes a
-    ``show_note_link_list``;
+  - a heading immediately followed by an eligible ``ul`` becomes a
+    ``show_note_link_list``. Ordered lists stay in prose with their numbering;
   - contact/intro prose stays as a ``paragraph``. Preserved HTML keeps
     comments as comments, including in comment-only segments, and escaped
     literal text stays text.
@@ -101,9 +101,15 @@ Safety model
   converted" guard. Use it to regenerate conversions after the converter has
   been improved. It uses the live body if it is still legacy. Otherwise it
   searches the newest 100 revisions for a detail with no ``show_note_*`` blocks.
-  The conversion replaces only the ``detail`` section, keeping the current
-  ``overview`` and other body sections. If the history ends without a legacy
-  body, the episode is skipped with "no legacy body to re-convert" (its legacy
+  The conversion matches historical ``detail`` sections to the current draft by
+  block ID. It keeps the draft's section order, any additional details, and
+  the current ``overview`` and other body sections. A missing ID is tolerated
+  when both bodies contain exactly one detail. If a historical section has
+  been removed or its ID cannot be matched uniquely, the command reports a
+  historical detail conflict, including in a dry run. It writes no revision
+  for that episode and continues the batch. Inspect the current detail
+  sections against the reported source revision before retrying.
+  If the history ends without a legacy body, the episode is skipped with "no legacy body to re-convert" (its legacy
   body was overwritten and never saved as a revision). If older revisions
   remain after the search, the episode fails with "legacy revision search limit
   reached", with no draft created or published; other episodes still run.

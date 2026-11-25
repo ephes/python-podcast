@@ -4,6 +4,10 @@ Changelog
 Unreleased
 ----------
 
+* Match forced show-note conversions to current detail blocks by ID, keeping
+  newly added and reordered sections in place. Report missing or ambiguous
+  historical matches before writing a revision.
+
 * Keep HTML comments and escaped literal text intact in preserved show-note
   paragraphs during conversion.
 

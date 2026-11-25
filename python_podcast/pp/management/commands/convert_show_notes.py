@@ -37,6 +37,7 @@ from __future__ import annotations
 import hashlib
 import json
 import uuid
+from collections import Counter
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
@@ -397,11 +398,19 @@ class Command(BaseCommand):
             source_sha256=source_sha256,
         )
 
+        merged_top: list[dict] | None = new_top
+        if force:
+            target_raw = episode.get_latest_revision_as_object().body.raw_data
+            merged_top = self._merge_detail(target_raw, new_top)
+            if merged_top is None:
+                result.status = "failed"
+                result.reason = "historical detail conflict: source sections do not match unique current block IDs"
+                return result
+
         if snapshot is not None:
-            # Always edit the latest-revision object so other unpublished draft
-            # changes (overview edits, page fields) are preserved. Only the
-            # detail section is swapped in -- with --force the converted detail
-            # comes from the legacy body while everything else stays current.
+            # Always edit the latest-revision object to keep other unpublished
+            # draft changes (such as page fields). The new body is computed from
+            # that draft, with only matched detail values replaced on --force.
             #
             # The conversion was computed from the snapshot. It is written only if
             # the episode, read again under its row lock, is still in that state:
@@ -414,7 +423,6 @@ class Command(BaseCommand):
                 # Checked before the conversion is merged in: whatever differs from the
                 # live page now is somebody else's pending edit.
                 unrelated = self._unrelated_draft_changes(current, target) if publish else []
-                merged_top = self._merge_detail(target.body.raw_data, new_top)
                 target.body = target.body.stream_block.to_python(merged_top)
                 revision = target.save_revision()
                 result.revision_pk = revision.pk
@@ -585,24 +593,33 @@ class Command(BaseCommand):
         return changed
 
     @staticmethod
-    def _merge_detail(target_raw: list[dict], converted_top: list[dict]) -> list[dict]:
-        """Splice the converted detail block(s) into the target's current body.
-
-        Non-detail blocks (``overview`` etc.) are taken from ``target_raw`` so
-        they are never reverted, even when the conversion source is an older
-        revision (``--force``).
-        """
+    def _merge_detail(target_raw: list[dict], converted_top: list[dict]) -> list[dict] | None:
+        """Match historical details to the current body, or return None for a conflict."""
         converted_details = [block for block in converted_top if block["type"] == "detail"]
-        merged: list[dict] = []
-        index = 0
-        for block in target_raw:
-            if block["type"] == "detail" and index < len(converted_details):
-                converted = converted_details[index]
-                merged.append({"type": "detail", "value": converted["value"], "id": block.get("id")})
-                index += 1
-            else:
-                merged.append(block)
-        return merged
+        target_details = [block for block in target_raw if block["type"] == "detail"]
+        if len(converted_details) == len(target_details) == 1:
+            (converted,) = converted_details
+            (target,) = target_details
+            if not converted.get("id") or not target.get("id"):
+                # Older bodies may lack a block ID. One section on each side
+                # is the only case where a missing ID has an unambiguous match.
+                return [{**block, "value": converted["value"]} if block is target else block for block in target_raw]
+
+        converted_by_id = {block.get("id"): block["value"] for block in converted_details}
+        target_counts = Counter(block.get("id") for block in target_details)
+        if len(converted_by_id) != len(converted_details) or any(
+            not block_id or target_counts[block_id] != 1 for block_id in converted_by_id
+        ):
+            return None
+
+        return [
+            (
+                {**block, "value": converted_by_id[block.get("id")]}
+                if block["type"] == "detail" and block.get("id") in converted_by_id
+                else block
+            )
+            for block in target_raw
+        ]
 
     @staticmethod
     def _already_converted(detail_blocks: list[dict]) -> bool:
