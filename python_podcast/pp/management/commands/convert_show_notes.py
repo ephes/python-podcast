@@ -12,7 +12,8 @@ The command is conservative and safe to run repeatedly:
 
 By default the command performs a dry run and writes nothing. Use ``--apply`` to
 create a Wagtail draft revision and ``--publish`` to publish that revision.
-Both write modes require autocommit so each episode's receipt follows its commit.
+Both write modes require autocommit on the write database so each episode's
+receipt follows its commit.
 
 ``--publish`` only ever puts the conversion live. If the draft differs from the
 live page in anything but the ``detail`` section (an overview edit, a changed
@@ -45,7 +46,7 @@ from cast.models import Episode
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.management.base import BaseCommand, CommandError
 from django.core.serializers.json import DjangoJSONEncoder
-from django.db import OperationalError, models, transaction
+from django.db import OperationalError, models, router, transaction
 from wagtail.models import Page, Revision
 
 from python_podcast.pp.show_notes.converter import ConvertedBlock, convert_paragraph_html
@@ -162,12 +163,15 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         publish = options["publish"]
         apply = options["apply"] or publish
-        if apply and not transaction.get_autocommit():
-            raise CommandError("--apply and --publish require autocommit outside an active transaction.")
         force = options["force"]
         slugs = options["slugs"]
 
         episodes = Episode.objects.order_by("pk")
+        if apply:
+            using = router.db_for_write(Episode)
+            if not transaction.get_autocommit(using=using):
+                raise CommandError("--apply and --publish require autocommit outside an active transaction.")
+            episodes = episodes.using(using)
         batch: Iterator[Episode | EpisodeResult]
         if slugs:
             selected = list(episodes.filter(slug__in=slugs).values_list("pk", "slug"))
@@ -260,7 +264,7 @@ class Command(BaseCommand):
             loaded = episodes.in_bulk([pk for pk, _ in identities])
             for pk, slug in identities:
                 episode = loaded.pop(pk, None)
-                yield episode if episode is not None else self._edit_conflict(pk, slug)
+                yield episode if episode is not None and episode.slug == slug else self._edit_conflict(pk, slug)
 
     @staticmethod
     def _archive_episodes(episodes: models.QuerySet[Episode]) -> Iterator[Episode]:
@@ -289,7 +293,7 @@ class Command(BaseCommand):
         try:
             return self._convert_episode(episode, apply=apply, publish=publish, force=force)
         except ObjectDoesNotExist:
-            current = Episode.objects.filter(pk=episode.pk).first()
+            current = Episode.objects.using(episode._state.db).filter(pk=episode.pk).first()
             if current is not None and current.latest_revision_id == episode.latest_revision_id:
                 # Nothing about the episode changed, so this is not a concurrent edit.
                 raise
@@ -364,7 +368,7 @@ class Command(BaseCommand):
                 with self._write_conversion(episode, snapshot, result) as current:
                     if current is None:
                         return self._edit_conflict(episode.pk, episode.slug)
-                    self._publish_revision(current.get_latest_revision(), episode.pk, result)
+                    self._publish_revision(current.get_latest_revision(), current, result)
                     if result.published:
                         result.reason = "published existing converted draft"
                     elif result.publication_scheduled:
@@ -418,18 +422,21 @@ class Command(BaseCommand):
                 if unrelated:
                     result.publish_conflict = unrelated
                 elif publish:
-                    self._publish_revision(revision, episode.pk, result)
+                    self._publish_revision(revision, current, result)
 
         return result
 
     @staticmethod
-    def _publish_revision(revision: Revision, episode_pk: int, result: EpisodeResult) -> None:
+    def _publish_revision(revision: Revision, episode: Episode, result: EpisodeResult) -> None:
         revision.publish()
-        result.published = Page.objects.filter(pk=episode_pk, live=True, live_revision_id=revision.pk).exists()
+        using = episode._state.db
+        result.published = (
+            Page.objects.using(using).filter(pk=episode.pk, live=True, live_revision_id=revision.pk).exists()
+        )
         if not result.published:
-            result.publication_scheduled = Revision.objects.filter(
-                pk=revision.pk, approved_go_live_at__isnull=False
-            ).exists()
+            result.publication_scheduled = (
+                Revision.objects.using(using).filter(pk=revision.pk, approved_go_live_at__isnull=False).exists()
+            )
             result.publication_unconfirmed = not result.publication_scheduled
 
     @contextmanager
@@ -444,8 +451,10 @@ class Command(BaseCommand):
             with self._locked_unchanged(episode, snapshot) as current:
                 if current is not None:
                     # Run before callbacks registered by saving or publishing the revision.
-                    transaction.on_commit(record_commit)
+                    transaction.on_commit(record_commit, using=current._state.db)
                 yield current
+                if current is not None and transaction.get_rollback(using=current._state.db):
+                    raise transaction.TransactionManagementError("The conversion transaction was marked for rollback.")
         except Exception as exc:
             if not committed:
                 raise
@@ -482,11 +491,12 @@ class Command(BaseCommand):
         being saved by somebody else right now; the caller must then write
         nothing.
         """
-        with transaction.atomic():
+        using = episode._state.db
+        with transaction.atomic(using=using):
             if not self._lock_rows(episode):
                 yield None
                 return
-            current = Episode.objects.filter(pk=episode.pk).first()
+            current = Episode.objects.using(using).filter(pk=episode.pk).first()
             if current is None or self._snapshot(current) != snapshot:
                 yield None
                 return
@@ -509,17 +519,20 @@ class Command(BaseCommand):
         ``no_key`` asks for the lock an UPDATE takes, so only real changes to the
         rows count as busy, not a foreign key check that merely references them.
         """
+        using = episode._state.db
         try:
             # A refused lock fails the statement; the savepoint keeps the
             # surrounding transaction usable.
-            with transaction.atomic():
+            with transaction.atomic(using=using):
                 list(
-                    episode.revisions.select_for_update(nowait=True, no_key=True)
+                    episode.revisions.using(using)
+                    .select_for_update(nowait=True, no_key=True)
                     .order_by("pk")
                     .values_list("pk", flat=True)
                 )
                 list(
-                    Page.objects.select_for_update(nowait=True, no_key=True)
+                    Page.objects.using(using)
+                    .select_for_update(nowait=True, no_key=True)
                     .filter(pk=episode.pk)
                     .values_list("pk", flat=True)
                 )
@@ -608,7 +621,7 @@ class Command(BaseCommand):
         if live_detail and not self._already_converted(live_detail):
             return live, episode.live_revision_id
 
-        revisions = episode.revisions.order_by("-created_at", "-pk").only("content")
+        revisions = episode.revisions.using(episode._state.db).order_by("-created_at", "-pk").only("content")
         limit = LEGACY_REVISION_SEARCH_LIMIT
         inspected = 0
         for inspected, revision in enumerate(revisions[:limit].iterator(chunk_size=20), start=1):

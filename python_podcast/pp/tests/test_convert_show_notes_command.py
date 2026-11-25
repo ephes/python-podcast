@@ -13,7 +13,7 @@ from cast.models import Audio, Episode, Podcast
 from django.conf import settings
 from django.core.management import call_command
 from django.core.management.base import CommandError
-from django.db import connection, transaction
+from django.db import connection, connections, transaction
 from wagtail.coreutils import get_supported_content_language_variant
 from wagtail.models import Collection, Locale, Page, Revision, Site
 
@@ -127,6 +127,92 @@ def test_apply_refuses_manually_disabled_autocommit():
 def _reject_episode_queries(execute, sql, params, many, context):
     assert f'"{Episode._meta.db_table}"' not in sql, "write mode queried episodes inside a caller-owned transaction"
     return execute(sql, params, many, context)
+
+
+class ConversionWriteRouter:
+    read_replica = False
+
+    def db_for_read(self, model, **hints):
+        if self.read_replica and model in (Page, Revision) and not hints:
+            return "default"
+        return "legacy"
+
+    def db_for_write(self, model, **hints):
+        return "legacy"
+
+
+@pytest.mark.django_db(transaction=True, databases=["default", "legacy"])
+@pytest.mark.parametrize("mode", ["--apply", "--publish"])
+def test_conversion_preflight_checks_routed_write_transaction(settings, mode):
+    settings.DATABASE_ROUTERS = [ConversionWriteRouter()]
+
+    with transaction.atomic(using="legacy"), connections["legacy"].execute_wrapper(_reject_episode_queries):
+        with pytest.raises(CommandError, match="outside an active transaction"):
+            _run("--slug", "routed-ep", mode)
+
+
+@pytest.mark.django_db(transaction=True, databases=["default", "legacy"])
+@pytest.mark.parametrize("outcome", ["published", "scheduled", "rollback"])
+def test_conversion_receipts_follow_routed_write_transaction(settings, monkeypatch, outcome):
+    from python_podcast.pp.management.commands.convert_show_notes import Command
+
+    children = [{"type": "paragraph", "value": SHOWNOTE_HTML}]
+    replica = _make_episode(slug="routed-ep", detail_children=children)
+    replica.save_revision()
+
+    router = ConversionWriteRouter()
+    settings.DATABASE_ROUTERS = [router]
+    with transaction.atomic(using="legacy"):
+        episode = _make_episode(slug=replica.slug, detail_children=children)
+    if outcome == "scheduled":
+        episode.go_live_at = datetime.now(UTC) + timedelta(days=1)
+        episode.save(update_fields=["go_live_at"])
+    original_publish = Revision.publish
+    publish_revision = Command._publish_revision
+    callbacks = []
+    rolled_back = []
+
+    def fail_after_commit():
+        callbacks.append("legacy")
+        raise RuntimeError("synthetic follow-up failure")
+
+    def publish(revision):
+        transaction.on_commit(fail_after_commit, using="legacy")
+        original_publish(revision)
+        # Let Wagtail complete its own writes before routing unpinned receipt reads to stale data.
+        router.read_replica = True
+
+    def roll_back(*args):
+        publish_revision(*args)
+        rolled_back.append(args[0].pk)
+        transaction.set_rollback(True, using="legacy")
+
+    monkeypatch.setattr(Revision, "publish", publish)
+    if outcome == "rollback":
+        monkeypatch.setattr(Command, "_publish_revision", staticmethod(roll_back))
+
+    output, error = _run_expecting_error("--slug", episode.slug, "--publish")
+    episode.refresh_from_db(using="legacy")
+    replica.refresh_from_db(using="default")
+    assert replica.live_revision_id is None
+    assert Revision.objects.using("default").count() == 1
+    if outcome == "rollback":
+        assert len(rolled_back) == 1
+        assert not callbacks
+        assert Revision.objects.using("legacy").count() == 0
+        assert episode.latest_revision_id is None
+        assert "Revisions: 0 created, 0 published." in output
+        assert "1 episode(s) failed: routed-ep" in error
+    else:
+        revision = Revision.objects.using("legacy").get(pk=episode.latest_revision_id)
+        assert callbacks == ["legacy"]
+        state = "published" if outcome == "published" else "publication scheduled"
+        assert f"committed (revision {revision.pk}, {state})" in output
+        assert "follow-up failed: RuntimeError" in output
+        assert f"Revisions: 1 created, {int(outcome == 'published')} published." in output
+        assert "1 episode(s) committed with failed follow-up: routed-ep" in error
+        assert (episode.live_revision_id == revision.pk) == (outcome == "published")
+        assert (revision.approved_go_live_at is not None) == (outcome == "scheduled")
 
 
 @pytest.mark.django_db(transaction=True)
@@ -819,6 +905,32 @@ def test_ambiguous_explicit_slug_refuses_the_entire_selection(mode):
     # Repeating an unambiguous selector still processes the one matching page once.
     _run("--slug", unique.slug, "--slug", unique.slug, "--apply")
     assert unique.revisions.count() == 1
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize("mode", [(), ("--apply",), ("--publish",)])
+def test_explicit_selection_refuses_slug_changed_before_hydration(monkeypatch, mode):
+    from python_podcast.pp.management.commands.convert_show_notes import Command
+
+    episode = _make_episode(slug="admitted-ep", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}])
+    original_selected_episodes = Command._selected_episodes
+
+    def rename_before_hydration(command, episodes, selected):
+        assert selected == [(episode.pk, "admitted-ep")]
+        Page.objects.filter(pk=episode.pk).update(slug="renamed-ep")
+        return original_selected_episodes(command, episodes, selected)
+
+    monkeypatch.setattr(Command, "_selected_episodes", rename_before_hydration)
+
+    output, error = _run_expecting_error("--slug", "admitted-ep", *mode)
+
+    assert f"Episode admitted-ep (pk={episode.pk})" in output
+    assert "conflict: not converted" in output
+    assert "changed while the command was running and were left untouched: admitted-ep" in error
+    assert "renamed-ep" not in output + error
+    episode.refresh_from_db()
+    assert episode.slug == "renamed-ep"
+    assert episode.revisions.count() == 0
 
 
 RICH_SHOWNOTE_HTML = (
