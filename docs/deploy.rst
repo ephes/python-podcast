@@ -88,12 +88,17 @@ django-cast adds no migration in this range. django-indieweb adds
 (``failure_attempts``, a JSON column with default ``{}``) on
 ``WebmentionOutboundTarget``; the deploy's ``migrate`` applies them.
 
-Upgrade actions, checked for this site: django-cast 0.2.70 only changes
-programmatic editor API and Voxhelm settings clients, which this site does not
-use. django-indieweb 0.7 fails closed on malformed IndieWeb settings
-(``indieweb.E001``/``E004``/``E005`` system checks); the site's
-``INDIEWEB_RATE_LIMITS`` pass them (``manage.py check`` reports no
-``indieweb`` issue).
+Upgrade actions, checked for this site: the upgrade actions listed in
+django-cast 0.2.70 concern programmatic editor API and Voxhelm settings
+clients, which this site does not use. Other changes in this range are
+visible to readers, for example a single stable podcast RSS
+``lastBuildDate`` taken from stored publication dates and the gallery
+opening fixes of cast-bootstrap5. django-indieweb 0.7 adds system checks:
+``indieweb.E004`` reports malformed endpoint rate limits (at runtime an
+invalid limit is logged and not applied), ``indieweb.E001`` invalid Micropub
+canonical origins and ``indieweb.E005`` a non-boolean WebSub signature policy.
+This site sets only ``INDIEWEB_RATE_LIMITS`` of these, and ``manage.py check``
+reports no ``indieweb`` issue.
 
 Local gates on Python 3.15.2 with PostgreSQL 17: prek, the Webmention tests
 with migrations (62 passed), the full suite (747 passed, the known hanging
@@ -101,11 +106,14 @@ with migrations (62 passed), the full suite (747 passed, the known hanging
 dock/navigation browser tests (152 passed), Sphinx ``-W``, the full suite on
 Python 3.14 (747 passed) and the core media gate (7 passed).
 
-Rollback: the sequence under "2026-11-18" below with the previous commit. The
-old code does not know ``failure_attempts``; before starting it, give the column
-a database default as root in ``psql`` (``ALTER TABLE
-indieweb_webmentionoutboundtarget ALTER COLUMN failure_attempts SET DEFAULT
-'{}'::jsonb``) so its inserts still succeed.
+Rollback: the sequence under "2026-11-18" below with the previous commit.
+The old code does not know ``failure_attempts``. If ``indieweb.0033`` was
+applied, then after both units have stopped (step 1, under the deploy lock)
+and before redeploying the old commit, give the column a database default in
+the site's PostgreSQL database, as a role that owns the table or a superuser
+(``ALTER TABLE indieweb_webmentionoutboundtarget ALTER COLUMN
+failure_attempts SET DEFAULT '{}'::jsonb``), so the old code's inserts still
+succeed.
 
 2026-11-18 Wagtail 8.1 and django-cast e0c632ad
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

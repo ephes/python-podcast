@@ -4,6 +4,14 @@ Changelog
 Unreleased
 ----------
 
+* Relock django-cast to develop ``d4f29f33`` (0.2.70 development state; from
+  ``e0c632ad``), cast-bootstrap5 to ``8a11f2b`` (gallery opening fixes; from
+  ``b7f16729``) and django-indieweb to develop ``3faf52a`` (0.7.1 plus the
+  unreleased 0.7.2 changes; from ``7ab7a8ef``). Readers see, among others, a
+  single stable podcast RSS build date. django-indieweb adds migrations
+  ``indieweb.0032`` and ``indieweb.0033``; upgrade checks and the rollback
+  step for them are in ``docs/deploy.rst`` (2026-11-25).
+
 * Remove the failed-login throttle on the Django admin and Wagtail admin
   logins (``python_podcast.users.login_throttle``) together with its
   ``api_token_auth_throttle`` cache, ``ADMIN_LOGIN_THROTTLE_LOCK_PATH``, the
