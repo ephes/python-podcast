@@ -75,6 +75,38 @@ chromium`` and run ``just test-e2e``. Before deploying, also check the new froze
 environment with production settings and ``migrate --plan`` against PostgreSQL,
 and retain a fresh database backup and the previous commit/lock for rollback.
 
+2026-11-25 django-cast d4f29f33, cast-bootstrap5 8a11f2b, django-indieweb 3faf52a
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``uv.lock`` moves django-cast ``develop`` from ``e0c632ad`` to ``d4f29f33``
+(0.2.70 development state; release notes ``docs/releases/0.2.70.rst``),
+cast-bootstrap5 from ``b7f16729`` to ``8a11f2b`` (gallery opening fixes) and
+django-indieweb ``develop`` from ``7ab7a8ef`` (before 0.7.0) to ``3faf52a``
+(0.7.1 plus the unreleased 0.7.2 changes). Nothing else in the lock changed.
+django-cast adds no migration in this range. django-indieweb adds
+``indieweb.0032`` (two nullable columns) and ``indieweb.0033``
+(``failure_attempts``, a JSON column with default ``{}``) on
+``WebmentionOutboundTarget``; the deploy's ``migrate`` applies them.
+
+Upgrade actions, checked for this site: django-cast 0.2.70 only changes
+programmatic editor API and Voxhelm settings clients, which this site does not
+use. django-indieweb 0.7 fails closed on malformed IndieWeb settings
+(``indieweb.E001``/``E004``/``E005`` system checks); the site's
+``INDIEWEB_RATE_LIMITS`` pass them (``manage.py check`` reports no
+``indieweb`` issue).
+
+Local gates on Python 3.15.2 with PostgreSQL 17: prek, the Webmention tests
+with migrations (62 passed), the full suite (747 passed, the known hanging
+``test_stalled_phase_is_interrupted_and_resources_close`` deselected), the
+dock/navigation browser tests (152 passed), Sphinx ``-W``, the full suite on
+Python 3.14 (747 passed) and the core media gate (7 passed).
+
+Rollback: the sequence under "2026-11-18" below with the previous commit. The
+old code does not know ``failure_attempts``; before starting it, give the column
+a database default as root in ``psql`` (``ALTER TABLE
+indieweb_webmentionoutboundtarget ALTER COLUMN failure_attempts SET DEFAULT
+'{}'::jsonb``) so its inserts still succeed.
+
 2026-11-18 Wagtail 8.1 and django-cast e0c632ad
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
