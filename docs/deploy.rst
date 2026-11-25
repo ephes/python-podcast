@@ -93,12 +93,13 @@ django-cast 0.2.70 concern programmatic editor API and Voxhelm settings
 clients, which this site does not use. Other changes in this range are
 visible to readers, for example a single stable podcast RSS
 ``lastBuildDate`` taken from stored publication dates and the gallery
-opening fixes of cast-bootstrap5. django-indieweb 0.7 adds system checks:
-``indieweb.E004`` reports malformed endpoint rate limits (at runtime an
-invalid limit is logged and not applied), ``indieweb.E001`` invalid Micropub
-canonical origins and ``indieweb.E005`` a non-boolean WebSub signature policy.
-This site sets only ``INDIEWEB_RATE_LIMITS`` of these, and ``manage.py check``
-reports no ``indieweb`` issue.
+opening fixes of cast-bootstrap5. django-indieweb's system checks change in
+this range: ``indieweb.E004`` (malformed endpoint rate limits; at runtime an
+invalid limit is logged and not applied) and ``indieweb.E005`` (a
+non-boolean WebSub signature policy) are new after 0.7.1, and the existing
+``indieweb.E001`` for Micropub canonical origins now also rejects empty query
+and fragment delimiters. This site sets only ``INDIEWEB_RATE_LIMITS`` of the
+affected settings, and ``manage.py check`` reports no ``indieweb`` issue.
 
 Local gates on Python 3.15.2 with PostgreSQL 17: prek, the Webmention tests
 with migrations (62 passed), the full suite (747 passed, the known hanging
