@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Preserve show-note lists with HTML attributes as prose, including nested
+  list wrappers with fragment targets.
+
 * Preserve show-note list items with anchor attributes beyond ``href`` as
   prose, keeping fragment targets and download filenames in list order.
 

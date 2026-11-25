@@ -52,6 +52,9 @@ What the command does
     Headings with attributes such as ``id``, ``lang`` or ``data-*``, on the
     heading itself or on a ``<b>``/``<strong>``/``<br>`` inside it, also stay
     in prose with their lists, preserving fragment targets and metadata;
+  - an unordered list with HTML attributes stays whole in prose, preserving
+    its wrapper and attributes. A nested list with attributes keeps its parent
+    item in prose, while eligible sibling items can still convert;
   - a list item is converted only when its prefix, link titles and note are
     unformatted text. Inline formatting around real text (``<strong>``,
     ``<b>``, ``<em>``, ``<i>``, ``<code>``, ``<sub>``, ``<sup>``, ``<small>``,

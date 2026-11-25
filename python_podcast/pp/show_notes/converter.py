@@ -173,7 +173,7 @@ class _Builder:
         self.warnings.extend(warnings)
 
         if entries is None:
-            # Malformed list (stray content): keep the heading, preserve whole.
+            # The list wrapper or its direct contents must be preserved whole.
             self._emit_heading(heading_text)
             self.add_to_pending(list_tag)
             return
@@ -246,9 +246,12 @@ def parse_link_list(list_tag: Tag) -> tuple[list[tuple[str, object]] | None, lis
 
     Returns ``(entries, warnings)`` where each entry is ``("item", value_dict)``
     for a convertible link item or ``("preserve", li_tag)`` for an ambiguous one.
-    ``entries`` is ``None`` when the list itself is malformed (stray non-item
-    content) and must be preserved whole.
+    ``entries`` is ``None`` when the list has attributes or stray non-item
+    content and must be preserved whole.
     """
+    if list_tag.attrs:
+        return None, [f"List <{list_tag.name}> has HTML attributes; preserved as prose."]
+
     # Any direct child that is not an <li> (stray text or block content) means the
     # list is malformed; preserve it as prose rather than drop that content.
     for child in list_tag.children:
@@ -354,6 +357,9 @@ def _parse_grouped_item(li: Tag, nested: Tag) -> tuple[dict | None, str | None]:
     that would lose structure (multi-link sub-items, several notes, very large
     groups, deeper nesting) is reported as ambiguous so the caller preserves it.
     """
+    if nested.attrs:
+        return None, "nested list has HTML attributes"
+
     label_tokens = _tokenize_item(li, skip=nested)
     if label_tokens is None or any(kind == "link" for kind, _ in label_tokens):
         return None, "group label contains a link or unsupported markup"

@@ -56,6 +56,48 @@ def test_link_attributes_stay_in_prose_in_list_order():
     assert all("link attributes" in warning for warning in conversion.warnings)
 
 
+@pytest.mark.parametrize(
+    "list_html, selector, attrs, titles, structured",
+    [
+        (
+            '<ul id="references" lang="de"><li><a href="https://example.com/a">A</a></li></ul>',
+            "ul",
+            {"id": "references", "lang": "de"},
+            ["A"],
+            False,
+        ),
+        (
+            '<ul id="references" class="editor"><li><a href="https://example.com/a">A</a></li>'
+            "<li>Editorial item</li></ul>",
+            "ul",
+            {"id": "references", "class": ["editor"]},
+            ["A", "Editorial item"],
+            False,
+        ),
+        (
+            '<ul><li>Topic<ul id="subtopics"><li><a href="https://example.com/a">A</a></li></ul></li>'
+            '<li><a href="https://example.com/b">B</a></li></ul>',
+            "ul ul",
+            {"id": "subtopics"},
+            ["A"],
+            True,
+        ),
+    ],
+)
+def test_list_container_attributes_survive_conversion(list_html, selector, attrs, titles, structured):
+    conversion = convert_paragraph_html("<h3>News</h3>" + list_html)
+
+    expected_types = ["show_note_heading", "paragraph"]
+    if structured:
+        expected_types.append("show_note_link_list")
+    assert _types(conversion) == expected_types
+    wrapper = BeautifulSoup(conversion.blocks[1].value, "html.parser").select_one(selector)
+    assert wrapper.attrs == attrs
+    assert [item.get_text() for item in wrapper.find_all("li", recursive=False)] == titles
+    if structured:
+        assert [item["title"] for item in conversion.blocks[2].value["items"]] == ["B"]
+
+
 def test_prefix_is_extracted_before_first_link():
     html = '<h3>X</h3><ul><li>Visualisierungen:&nbsp;<a href="https://example.com/v">Vega</a></li></ul>'
 
