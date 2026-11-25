@@ -101,10 +101,46 @@ def test_minifier_failure_preserves_previous_asset_set(asset_dir, monkeypatch, o
     assert set(asset_dir.iterdir()) == set(targets)
 
 
+@pytest.mark.parametrize("replace_target", [False, True], ids=["in-place", "replace"])
+def test_minifier_refuses_same_size_edit_during_backup(asset_dir, monkeypatch, replace_target):
+    import os
+    import shutil
+
+    from scripts import minify_static
+
+    target = asset_dir / "asset"
+    target.write_bytes(b"old bytes")
+    original_mtime = target.stat().st_mtime_ns
+    writer_bytes = b"new bytes"
+    monkeypatch.setattr(minify_static, "_asset_targets", lambda: (target,))
+    monkeypatch.setattr(minify_static, "minified_assets", lambda: {target: "generated"})
+    copy = shutil.copyfileobj
+
+    def edit_during_copy(source, destination, *, length):
+        destination.write(source.read(1))
+        if replace_target:
+            replacement = asset_dir / "replacement"
+            replacement.write_bytes(writer_bytes)
+            os.utime(replacement, ns=(original_mtime, original_mtime))
+            replacement.replace(target)
+        else:
+            target.write_bytes(writer_bytes)
+            os.utime(target, ns=(original_mtime, original_mtime - 1_000_000_000))
+        copy(source, destination, length)
+
+    monkeypatch.setattr(shutil, "copyfileobj", edit_during_copy)
+    with pytest.raises(OSError, match="Asset changed while backing up"):
+        minify_static.main()
+
+    assert target.read_bytes() == writer_bytes
+    assert set(asset_dir.iterdir()) == {target}
+    assert not (asset_dir.parent / ".minify-static-transaction").exists()
+
+
 @pytest.mark.parametrize("truncated", [False, True])
 def test_minifier_backs_up_large_assets_in_chunks_and_restores_mode(asset_dir, monkeypatch, truncated):
     import os
-    from contextlib import contextmanager
+    import shutil
     from types import SimpleNamespace
 
     from scripts import minify_static
@@ -115,25 +151,19 @@ def test_minifier_backs_up_large_assets_in_chunks_and_restores_mode(asset_dir, m
     target.chmod(0o640)
     monkeypatch.setattr(minify_static, "_asset_targets", lambda: (target,))
     monkeypatch.setattr(minify_static, "minified_assets", lambda: {target: "replacement"})
-    open_path = Path.open
+    copy = shutil.copyfileobj
     replace = os.replace
     read_sizes = []
 
-    @contextmanager
-    def track_reads(path, *args, **kwargs):
-        with open_path(path, *args, **kwargs) as stream:
-            if path != target:
-                yield stream
-                return
+    def track_reads(source, destination, *, length):
+        def read(size=-1):
+            assert 0 < size <= 1024 * 1024, "backup issued an unbounded read"
+            read_sizes.append(size)
+            if truncated and source.tell() >= 1024 * 1024:
+                return b""
+            return source.read(size)
 
-            def read(size=-1):
-                assert 0 < size <= 1024 * 1024, "backup issued an unbounded read"
-                read_sizes.append(size)
-                if truncated and stream.tell() >= 1024 * 1024:
-                    return b""
-                return stream.read(size)
-
-            yield SimpleNamespace(read=read)
+        copy(SimpleNamespace(read=read), destination, length)
 
     def fail_after_publish(source, destination):
         assert not truncated, "incomplete backup allowed publication"
@@ -142,7 +172,7 @@ def test_minifier_backs_up_large_assets_in_chunks_and_restores_mode(asset_dir, m
             raise OSError("synthetic interruption after replacement")
 
     with monkeypatch.context() as tracked:
-        tracked.setattr(Path, "open", track_reads)
+        tracked.setattr(shutil, "copyfileobj", track_reads)
         tracked.setattr(os, "replace", fail_after_publish)
         failure = "Asset changed size" if truncated else "synthetic interruption"
         with pytest.raises(OSError, match=failure):

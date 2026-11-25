@@ -277,7 +277,10 @@ After recovery, the minifier compares the generated UTF-8 bytes to the current
 outputs. If all three match exactly, it skips the publication transaction.
 When any output is missing or differs, it stages all three assets and byte-exact
 recovery copies alongside their destinations. It copies existing outputs in
-bounded chunks and checks each backup's size. Before replacing any output, it
+bounded chunks from an open regular file and checks each backup's size and
+the source metadata before and after copying. It also rechecks the output
+paths after staging. A detected external edit or replacement aborts staging
+before the pending marker is written. Before replacing any output, it
 syncs the staged files, their directories and the pending publication recorded
 in ``.minify-static-transaction``. This ordering relies on local POSIX filesystems
 and storage that honor file and directory ``fsync``. On macOS each sync uses

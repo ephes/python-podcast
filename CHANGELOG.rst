@@ -8,7 +8,8 @@ Unreleased
   already match the generated set.
 
 * Copy generated asset recovery backups in bounded chunks and check their
-  sizes before publication.
+  sizes before publication. Refuse publication if source metadata or output
+  paths change during backup staging.
 
 * Show retry controls when the current dock audio fails to load, and ignore
   errors from retired audio elements. Retry rebuilds the failed episode from

@@ -183,6 +183,37 @@ def _matches_output(target: Path, expected: bytes) -> bool:
         return False
 
 
+def _asset_generation(info: os.stat_result) -> tuple[int, ...]:
+    # Access time can change as a result of the backup read itself.
+    return (info.st_dev, info.st_ino, info.st_mode, info.st_nlink, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+
+
+def _current_generation(target: Path) -> tuple[int, ...] | None:
+    try:
+        return _asset_generation(target.lstat())
+    except FileNotFoundError:
+        return None
+
+
+def _backup_asset(target: Path, backup: Path, generation: tuple[int, ...]) -> int:
+    # Reject symlinks and avoid blocking if the pathname was swapped for a FIFO.
+    with os.fdopen(os.open(target, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK), "rb") as source:
+        previous = os.fstat(source.fileno())
+        if not stat.S_ISREG(previous.st_mode) or previous.st_nlink != 1 or _asset_generation(previous) != generation:
+            raise OSError(f"Asset changed while backing up {target}")
+        with backup.open("wb") as destination:
+            shutil.copyfileobj(source, destination, length=BACKUP_CHUNK_SIZE)
+        if backup.stat().st_size != previous.st_size:
+            raise OSError(f"Asset changed size while backing up {target}")
+        if _asset_generation(os.fstat(source.fileno())) != generation:
+            raise OSError(f"Asset changed while backing up {target}")
+
+    mode = previous.st_mode & 0o777
+    backup.chmod(mode)
+    _sync(backup)
+    return mode
+
+
 def _publish_assets(journal: Path, targets: tuple[Path, ...]) -> None:
     assets = {target: text.encode("utf-8") for target, text in minified_assets().items()}
     if all(_matches_output(target, assets[target]) for target in targets):
@@ -194,20 +225,14 @@ def _publish_assets(journal: Path, targets: tuple[Path, ...]) -> None:
         _sync(journal.parent)
         transaction.mkdir(mode=0o700)
         _sync(journal)
+        generations = {}
         for target in targets:
             scratch = _scratch(target, transaction)
             scratch.mkdir(mode=0o700)
+            generation = generations[target] = _current_generation(target)
             mode = 0o644
-            if target.exists():
-                previous = target.stat()
-                mode = previous.st_mode & 0o777
-                backup = scratch / "backup"
-                with target.open("rb") as source, backup.open("wb") as destination:
-                    shutil.copyfileobj(source, destination, length=BACKUP_CHUNK_SIZE)
-                if backup.stat().st_size != previous.st_size:
-                    raise OSError(f"Asset changed size while backing up {target}")
-                backup.chmod(mode)
-                _sync(backup)
+            if generation is not None:
+                mode = _backup_asset(target, scratch / "backup", generation)
             else:
                 absent = scratch / "absent"
                 absent.touch()
@@ -218,6 +243,11 @@ def _publish_assets(journal: Path, targets: tuple[Path, ...]) -> None:
             _sync(candidate)
             _sync(scratch)
             _sync(target.parent)
+
+        # A previously checked output may have changed while staging the rest.
+        for target, generation in generations.items():
+            if _current_generation(target) != generation:
+                raise OSError(f"Asset changed while backing up {target}")
 
         # Only this phase can leave published assets needing a rollback.
         pending = transaction / "pending"
