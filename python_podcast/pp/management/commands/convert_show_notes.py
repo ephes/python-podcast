@@ -12,6 +12,7 @@ The command is conservative and safe to run repeatedly:
 
 By default the command performs a dry run and writes nothing. Use ``--apply`` to
 create a Wagtail draft revision and ``--publish`` to publish that revision.
+Both write modes require autocommit so each episode's receipt follows its commit.
 
 ``--publish`` only ever puts the conversion live. If the draft differs from the
 live page in anything but the ``detail`` section (an overview edit, a changed
@@ -161,6 +162,8 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         publish = options["publish"]
         apply = options["apply"] or publish
+        if apply and not transaction.get_autocommit():
+            raise CommandError("--apply and --publish require autocommit outside an active transaction.")
         force = options["force"]
         slugs = options["slugs"]
 

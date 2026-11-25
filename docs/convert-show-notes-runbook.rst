@@ -237,9 +237,13 @@ JSON (sorted keys, compact separators, UTF-8). Preserve this receipt with the
 operator's command log; it identifies the input used, not a new publication.
 
 Each episode's result is emitted immediately after its transaction finishes,
-including the created revision ID. A handled per-episode exception reports its
-identity and exception class without exception text; independent later episodes
-continue. If a callback raises after the episode's transaction commits, the
+including the created revision ID. Run ``--apply`` and ``--publish`` with database
+autocommit enabled. Both refuse to select episodes inside a caller-owned
+transaction or with autocommit disabled. Dry runs can run inside a transaction.
+
+A handled per-episode exception reports the episode identity and exception
+class without exception text. Independent later episodes continue.
+If a callback raises after the episode's transaction commits, the
 episode's report keeps its usual details (block lists, warnings, conflicts) and
 adds the committed revision ID, the publication outcome and the failed follow-up.
 Inspect the callbacks and recover the follow-up separately. The final summary
