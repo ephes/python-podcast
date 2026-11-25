@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Comment, NavigableString
 
 from python_podcast.pp.show_notes.converter import convert_paragraph_html
 
@@ -128,6 +128,40 @@ def test_list_item_with_attributed_break_stays_in_prose(break_html):
 
     assert _types(conversion) == ["show_note_heading", "paragraph"]
     assert BeautifulSoup(conversion.blocks[1].value, "html.parser").li.br["id"] == "item"
+
+
+def test_preserved_prose_keeps_comments_and_escaped_text_as_distinct_nodes():
+    html = (
+        "<!-- editorial note -->"
+        '<h3>News</h3><ul><li><a href="https://example.com/a">A</a></li></ul>'
+        "Use &lt;example&gt; &amp; show &amp;lt; literally.<!-- trailing note -->"
+    )
+
+    conversion = convert_paragraph_html(html)
+
+    assert _types(conversion) == ["paragraph", "show_note_link_list", "paragraph"]
+    intro = BeautifulSoup(conversion.blocks[0].value, "html.parser")
+    assert type(intro.contents[0]) is Comment
+    assert intro.contents[0] == " editorial note "
+    assert intro.get_text() == ""
+    outro = BeautifulSoup(conversion.blocks[2].value, "html.parser")
+    text, comment = outro.contents
+    assert type(text) is NavigableString
+    assert text == "Use <example> & show &lt; literally."
+    assert type(comment) is Comment
+    assert comment == " trailing note "
+
+
+def test_whitespace_only_comment_between_heading_and_list_is_preserved():
+    html = '<h3>News</h3><!-- --><ul><li><a href="https://example.com/a">A</a></li></ul>'
+
+    conversion = convert_paragraph_html(html)
+
+    assert _types(conversion) == ["show_note_heading", "paragraph"]
+    prose = BeautifulSoup(conversion.blocks[1].value, "html.parser")
+    assert type(prose.contents[0]) is Comment
+    assert prose.contents[0] == " "
+    assert prose.contents[1].name == "ul"
 
 
 def test_prefix_is_extracted_before_first_link():

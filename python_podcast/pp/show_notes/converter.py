@@ -84,7 +84,7 @@ class ParagraphConversion:
 def convert_paragraph_html(html: str) -> ParagraphConversion:
     """Convert one paragraph's HTML into structured shownote blocks."""
     soup = BeautifulSoup(html or "", "html.parser")
-    nodes = [node for node in soup.contents]
+    nodes = [node for node in soup.contents if isinstance(node, (Tag, NavigableString))]
 
     builder = _Builder()
     index = 0
@@ -108,22 +108,22 @@ class _Builder:
         self.blocks: list[ConvertedBlock] = []
         self.warnings: list[str] = []
         self.changed = False
-        self._pending: list[object] = []
+        self._pending: list[Tag | NavigableString] = []
 
     # -- pending prose --------------------------------------------------
-    def add_to_pending(self, node: object) -> None:
+    def add_to_pending(self, node: Tag | NavigableString) -> None:
         self._pending.append(node)
 
     def flush_pending(self) -> None:
-        if not self._pending:
-            return
-        html = "".join(str(node) for node in self._pending).strip()
-        self._pending = []
-        if _has_meaningful_content(html):
+        if any(not _is_blank(node) for node in self._pending):
+            html = "".join(
+                node.decode() if isinstance(node, Tag) else node.output_ready() for node in self._pending
+            ).strip()
             self.blocks.append(ConvertedBlock("paragraph", html))
+        self._pending.clear()
 
     # -- headings -------------------------------------------------------
-    def handle_heading(self, heading: Tag, nodes: list[object], index: int) -> int:
+    def handle_heading(self, heading: Tag, nodes: list[Tag | NavigableString], index: int) -> int:
         self.flush_pending()
         heading_text = _clean_text(heading.get_text())
         if not heading_text:
@@ -206,8 +206,7 @@ class _Builder:
         def flush_preserve() -> None:
             if run_preserve:
                 html = f"<{list_name}>" + "".join(str(li) for li in run_preserve) + f"</{list_name}>"
-                if _has_meaningful_content(html):
-                    self.blocks.append(ConvertedBlock("paragraph", html))
+                self.blocks.append(ConvertedBlock("paragraph", html))
                 run_preserve.clear()
 
         for kind, payload in entries:
@@ -523,28 +522,21 @@ def _plain_heading_text(heading: Tag) -> tuple[str | None, str]:
     return "".join(text_lines), ""
 
 
-def _next_meaningful_index(nodes: list[object], start: int) -> int | None:
+def _next_meaningful_index(nodes: list[Tag | NavigableString], start: int) -> int | None:
     for i in range(start, len(nodes)):
         if not _is_blank(nodes[i]):
             return i
     return None
 
 
-def _is_blank(node: object) -> bool:
+def _is_blank(node: Tag | NavigableString) -> bool:
+    if isinstance(node, PreformattedString):
+        return False
     if isinstance(node, NavigableString):
         return not _clean_text(str(node))
     if isinstance(node, Tag) and node.name == "br":
         return not node.attrs
     return False
-
-
-def _has_meaningful_content(html: str) -> bool:
-    soup = BeautifulSoup(html, "html.parser")
-    # Any real element (link, image, embed, iframe, hr, table, ...) is content
-    # worth keeping. Bare breaks and whitespace alone can be dropped.
-    if any(not _is_blank(tag) for tag in soup.find_all(True)):
-        return True
-    return bool(_clean_text(soup.get_text()))
 
 
 def _clean_text(text: str) -> str:

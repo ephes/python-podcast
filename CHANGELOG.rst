@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Keep HTML comments and escaped literal text intact in preserved show-note
+  paragraphs during conversion.
+
 * Keep attributed line breaks in show-note prose and list items, including
   fragment targets between a heading and a list.
 

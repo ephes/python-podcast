@@ -23,7 +23,9 @@ What the command does
   - a standalone heading becomes ``show_note_heading``;
   - a heading immediately followed by a ``ul``/``ol`` becomes a
     ``show_note_link_list``;
-  - contact/intro prose stays as a ``paragraph``.
+  - contact/intro prose stays as a ``paragraph``. Preserved HTML keeps
+    comments as comments, including in comment-only segments, and escaped
+    literal text stays text.
 
 * Per link item it extracts ``prefix`` (text before the first link),
   ``title``/``url`` (first link), ``extra_links`` (further inline links) and a
