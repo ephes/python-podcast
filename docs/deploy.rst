@@ -102,10 +102,10 @@ and fragment delimiters. This site sets only ``INDIEWEB_RATE_LIMITS`` of the
 affected settings, and ``manage.py check`` reports no ``indieweb`` issue.
 
 Local gates on Python 3.15.2 with PostgreSQL 17: prek, the Webmention tests
-with migrations (62 passed), the full suite (747 passed, the known hanging
+with migrations (62 passed), the full suite (720 passed, the known hanging
 ``test_stalled_phase_is_interrupted_and_resources_close`` deselected), the
 dock/navigation browser tests (152 passed), Sphinx ``-W``, the full suite on
-Python 3.14 (747 passed) and the core media gate (7 passed).
+Python 3.14 (720 passed) and the core media gate (7 passed).
 
 Rollback: the sequence under "2026-11-18" below with the previous commit.
 The old code does not know ``failure_attempts`` (a non-null column without a
