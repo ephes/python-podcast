@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Keep attributed line breaks in show-note prose and list items, including
+  fragment targets between a heading and a list.
+
 * Preserve show-note lists with HTML attributes as prose, including nested
   list wrappers with fragment targets.
 

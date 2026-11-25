@@ -286,6 +286,9 @@ def parse_list_item(li: Tag) -> tuple[dict | None, str | None]:
     as a topic label followed by a single nested list of sub-links is flattened
     into one item (label -> prefix, sub-links -> main link + extra links).
     """
+    if li.find(lambda tag: tag.name == "br" and bool(tag.attrs)) is not None:
+        return None, "has a line break with HTML attributes"
+
     nested = _direct_nested_list(li)
     if nested is not None:
         return _parse_grouped_item(li, nested)
@@ -531,15 +534,15 @@ def _is_blank(node: object) -> bool:
     if isinstance(node, NavigableString):
         return not _clean_text(str(node))
     if isinstance(node, Tag) and node.name == "br":
-        return True
+        return not node.attrs
     return False
 
 
 def _has_meaningful_content(html: str) -> bool:
     soup = BeautifulSoup(html, "html.parser")
     # Any real element (link, image, embed, iframe, hr, table, ...) is content
-    # worth keeping. Only buffers that are purely whitespace and <br> are dropped.
-    if any(tag.name != "br" for tag in soup.find_all(True)):
+    # worth keeping. Bare breaks and whitespace alone can be dropped.
+    if any(not _is_blank(tag) for tag in soup.find_all(True)):
         return True
     return bool(_clean_text(soup.get_text()))
 

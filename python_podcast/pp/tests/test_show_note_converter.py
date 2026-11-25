@@ -98,6 +98,38 @@ def test_list_container_attributes_survive_conversion(list_html, selector, attrs
         assert [item["title"] for item in conversion.blocks[2].value["items"]] == ["B"]
 
 
+@pytest.mark.parametrize("separator", ["<br>", '<br id="references">'])
+def test_only_bare_breaks_can_separate_a_heading_and_link_list(separator):
+    html = f'<h3>News</h3>{separator}<ul><li><a href="https://example.com/a">A</a></li></ul>'
+
+    conversion = convert_paragraph_html(html)
+
+    if separator == "<br>":
+        assert _types(conversion) == ["show_note_link_list"]
+    else:
+        assert _types(conversion) == ["show_note_heading", "paragraph"]
+        prose = BeautifulSoup(conversion.blocks[1].value, "html.parser")
+        assert prose.br["id"] == "references"
+        assert prose.br.find_next_sibling().name == "ul"
+
+
+def test_attributed_break_alone_survives_in_prose():
+    conversion = convert_paragraph_html('<br id="intro"><h3>News</h3>')
+
+    assert _types(conversion) == ["paragraph", "show_note_heading"]
+    assert BeautifulSoup(conversion.blocks[0].value, "html.parser").br["id"] == "intro"
+
+
+@pytest.mark.parametrize("break_html", ['<br id="item">', '<span><br id="item"></span>'])
+def test_list_item_with_attributed_break_stays_in_prose(break_html):
+    html = f'<h3>News</h3><ul><li>{break_html}<a href="https://example.com/a">A</a></li></ul>'
+
+    conversion = convert_paragraph_html(html)
+
+    assert _types(conversion) == ["show_note_heading", "paragraph"]
+    assert BeautifulSoup(conversion.blocks[1].value, "html.parser").li.br["id"] == "item"
+
+
 def test_prefix_is_extracted_before_first_link():
     html = '<h3>X</h3><ul><li>Visualisierungen:&nbsp;<a href="https://example.com/v">Vega</a></li></ul>'
 

@@ -55,6 +55,10 @@ What the command does
   - an unordered list with HTML attributes stays whole in prose, preserving
     its wrapper and attributes. A nested list with attributes keeps its parent
     item in prose, while eligible sibling items can still convert;
+  - a break with HTML attributes stays in prose. Between a heading and a
+    list it keeps the list in prose with it, and inside a list item it keeps
+    the item in prose. Bare breaks between a heading and a list still allow
+    the list to convert;
   - a list item is converted only when its prefix, link titles and note are
     unformatted text. Inline formatting around real text (``<strong>``,
     ``<b>``, ``<em>``, ``<i>``, ``<code>``, ``<sub>``, ``<sup>``, ``<small>``,
