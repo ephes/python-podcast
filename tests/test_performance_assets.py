@@ -105,12 +105,14 @@ def test_minifier_failure_preserves_previous_asset_set(asset_dir, monkeypatch, o
 def test_minifier_refuses_same_size_edit_during_backup(asset_dir, monkeypatch, replace_target):
     import os
     import shutil
+    import time
 
     from scripts import minify_static
 
     target = asset_dir / "asset"
     target.write_bytes(b"old bytes")
-    original_mtime = target.stat().st_mtime_ns
+    original = target.stat()
+    original_mtime = original.st_mtime_ns
     writer_bytes = b"new bytes"
     monkeypatch.setattr(minify_static, "_asset_targets", lambda: (target,))
     monkeypatch.setattr(minify_static, "minified_assets", lambda: {target: "generated"})
@@ -126,7 +128,13 @@ def test_minifier_refuses_same_size_edit_during_backup(asset_dir, monkeypatch, r
         else:
             target.write_bytes(writer_bytes)
             # Keep the original mtime so only the change time reveals the edit.
+            # Coarse kernel clocks can repeat a ctime, so retouch until it moves.
+            deadline = time.monotonic() + 1
             os.utime(target, ns=(original_mtime, original_mtime))
+            while target.stat().st_ctime_ns == original.st_ctime_ns:
+                assert time.monotonic() < deadline, "change time did not advance"
+                time.sleep(0.005)
+                os.utime(target, ns=(original_mtime, original_mtime))
         copy(source, destination, length)
 
     monkeypatch.setattr(shutil, "copyfileobj", edit_during_copy)
