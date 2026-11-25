@@ -328,6 +328,9 @@ persistent playback and delayed transcript tests across both server-rendered
 themes; explicit node IDs override marker filtering, and the JUnit report must
 contain exactly the seven required passing identities with no duplicates or skips.
 The identity includes the JUnit classname, browser, theme and response ordering.
+The report must contain a single suite whose summary counts report seven tests
+and zero failures, errors or skips. Failure indicators anywhere in the suite
+invalidate the report.
 The gate reads at most 1 MiB of JUnit XML from a regular file, with one extra
 byte to detect growth beyond the limit. JUnit reports with a DOCTYPE are rejected.
 For intentional test selection or parameter changes, update ``TESTS`` and

@@ -38,13 +38,39 @@ EXPECTED = [
 ]
 
 
-def write_report(report, identities=EXPECTED, status=None):
-    suite = ET.Element("testsuite")
+def write_report(report, identities=EXPECTED, variant=None):
+    root = ET.Element("testsuites")
+    suite = ET.SubElement(root, "testsuite", tests="7", failures="0", errors="0", skipped="0")
     for classname, name in identities:
         case = ET.SubElement(suite, "testcase", classname=classname, name=name)
-        if status:
-            ET.SubElement(case, status)
-    ET.ElementTree(suite).write(report)
+        if variant in ("skipped", "failure", "error"):
+            ET.SubElement(case, variant)
+    if variant == "suite-error":
+        ET.SubElement(suite, "error")
+    elif variant == "suite-failures":
+        suite.set("failures", "1")
+    elif variant == "suite-errors":
+        suite.set("errors", "1")
+    elif variant == "suite-skips":
+        suite.set("skipped", "1")
+    elif variant == "suite-test-count":
+        suite.set("tests", "8")
+    elif variant == "missing-counter":
+        del suite.attrib["errors"]
+    elif variant == "extra-suite":
+        ET.SubElement(root, "testsuite")
+    elif variant == "wrapper-error":
+        ET.SubElement(root, "failure")
+    elif variant == "wrapper-count":
+        root.set("tests", "8")
+    elif variant == "misplaced-cases":
+        group = ET.SubElement(suite, "properties")
+        for case in suite.findall("testcase"):
+            suite.remove(case)
+            group.append(case)
+    elif variant == "bare-suite":
+        root = suite
+    ET.ElementTree(root).write(report)
 
 
 @pytest.mark.parametrize("variant", ["oversized", "doctype"])
@@ -56,7 +82,7 @@ def test_report_admission(monkeypatch, capsys, variant):
             with report.open("ab") as stream:
                 stream.write(b" " * (1024 * 1024))
         else:
-            report.write_bytes(b"<!DOCTYPE testsuite>" + report.read_bytes())
+            report.write_bytes(b"<!DOCTYPE testsuites>" + report.read_bytes())
         return SimpleNamespace(returncode=0)
 
     def unexpected_parse(*args, **kwargs):
@@ -82,6 +108,17 @@ def test_report_admission(monkeypatch, capsys, variant):
         ("skipped", False),
         ("failure", False),
         ("error", False),
+        ("bare-suite", True),
+        ("suite-error", False),
+        ("suite-failures", False),
+        ("suite-errors", False),
+        ("suite-skips", False),
+        ("suite-test-count", False),
+        ("missing-counter", False),
+        ("extra-suite", False),
+        ("wrapper-error", False),
+        ("wrapper-count", False),
+        ("misplaced-cases", False),
         ("malformed", False),
     ],
 )
@@ -105,7 +142,7 @@ def test_report_contract(monkeypatch, capsys, variant, valid):
         if variant == "malformed":
             report.write_text("<broken>")
         else:
-            write_report(report, identities, variant if variant in ("skipped", "failure", "error") else None)
+            write_report(report, identities, variant)
         return SimpleNamespace(returncode=0)
 
     # Patch the launch boundary for both the old and repaired implementation.

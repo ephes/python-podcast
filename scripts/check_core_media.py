@@ -57,6 +57,25 @@ def read_report(report):
     return ET.fromstring(data, parser=ET.XMLParser(target=ReportTreeBuilder()))
 
 
+def passing_cases(root):
+    expected_counts = {"tests": str(len(EXPECTED_CASES)), "failures": "0", "errors": "0", "skipped": "0"}
+    suite = root
+    if root.tag == "testsuites":
+        if len(root) != 1 or any(root.get(name, count) != count for name, count in expected_counts.items()):
+            raise ValueError("JUnit report must contain one passing suite")
+        suite = root[0]
+    if suite.tag != "testsuite" or any(suite.get(name) != count for name, count in expected_counts.items()):
+        raise ValueError("JUnit suite counters must report seven passing tests")
+    if any(child.tag not in {"testcase", "properties", "system-out", "system-err"} for child in suite):
+        raise ValueError("Unexpected child in JUnit suite")
+    if any(node.tag in {"skipped", "failure", "error"} for node in suite.iter()):
+        raise ValueError("JUnit suite must not contain failures, errors or skips")
+    cases = suite.findall("testcase")
+    if len(cases) != sum(1 for _ in suite.iter("testcase")):
+        raise ValueError("JUnit cases must be direct children of the suite")
+    return cases
+
+
 def run_gate(command, *, cwd, env, timeout=300):
     """Own the pytest session and its ordinary descendants on POSIX systems."""
     if os.name != "posix":
@@ -116,16 +135,14 @@ def main() -> int:
             )
             if result.returncode:
                 return result.returncode
-            cases = list(read_report(report).iter("testcase"))
+            cases = passing_cases(read_report(report))
             identities = Counter((case.get("classname"), case.get("name")) for case in cases)
-            if identities != Counter(EXPECTED_CASES) or any(
-                case.find(tag) is not None for case in cases for tag in ("skipped", "failure", "error")
-            ):
+            if identities != Counter(EXPECTED_CASES):
                 print(
                     "Core media gate requires the exact seven required cases to pass without skips.", file=sys.stderr
                 )
                 return 1
-        except (OSError, subprocess.TimeoutExpired, KeyboardInterrupt, ET.ParseError) as error:
+        except (OSError, subprocess.TimeoutExpired, KeyboardInterrupt, ET.ParseError, ValueError) as error:
             print(f"Core media gate failed: {type(error).__name__}: {error}", file=sys.stderr)
             return 1
     return 0
