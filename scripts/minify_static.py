@@ -16,6 +16,7 @@ from rjsmin import jsmin
 ROOT = Path(__file__).resolve().parents[1]
 PERSISTENT_CSS = ROOT / "python_podcast/static/css/persistent-player.css"
 PERSISTENT_JS = ROOT / "python_podcast/static/js/persistent-player.js"
+BACKUP_CHUNK_SIZE = 1024 * 1024
 DOCK_MARKER = "/* ==========================================================================\n   The dock —"
 
 
@@ -186,9 +187,13 @@ def _publish_assets(journal: Path, targets: tuple[Path, ...]) -> None:
             scratch.mkdir(mode=0o700)
             mode = 0o644
             if target.exists():
-                mode = target.stat().st_mode & 0o777
+                previous = target.stat()
+                mode = previous.st_mode & 0o777
                 backup = scratch / "backup"
-                backup.write_bytes(target.read_bytes())
+                with target.open("rb") as source, backup.open("wb") as destination:
+                    shutil.copyfileobj(source, destination, length=BACKUP_CHUNK_SIZE)
+                if backup.stat().st_size != previous.st_size:
+                    raise OSError(f"Asset changed size while backing up {target}")
                 backup.chmod(mode)
                 _sync(backup)
             else:

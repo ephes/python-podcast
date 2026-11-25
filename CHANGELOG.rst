@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Copy generated asset recovery backups in bounded chunks and check their
+  sizes before publication.
+
 * Show retry controls when the current dock audio fails to load, and ignore
   errors from retired audio elements.
 
