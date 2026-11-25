@@ -128,26 +128,48 @@ def _recover(journal: Path, targets: tuple[Path, ...]) -> None:
     _sync(journal.parent)
 
 
+def _recovery_backup(scratch: Path) -> Path | None:
+    try:
+        mode = scratch.lstat().st_mode
+    except FileNotFoundError:
+        raise RuntimeError(f"Missing asset recovery directory: {scratch}") from None
+    if not stat.S_ISDIR(mode):
+        raise RuntimeError(f"Unexpected asset recovery directory: {scratch}")
+
+    roles = {"backup", "absent"}.intersection(os.listdir(scratch))
+    if len(roles) != 1:
+        raise RuntimeError(f"Invalid asset recovery role in {scratch}: expected exactly one of backup or absent")
+    (role,) = roles
+    path = scratch / role
+    info = path.lstat()
+    if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or (role == "absent" and info.st_size != 0):
+        raise RuntimeError(f"Invalid asset recovery role: {path}")
+    return path if role == "backup" else None
+
+
 def _finish_transaction(transaction: Path, targets: tuple[Path, ...]) -> None:
     pending = transaction / "pending"
     if pending.name in os.listdir(transaction):
+        # Validate the whole record before rollback can touch any output.
+        backups = {target: _recovery_backup(_scratch(target, transaction)) for target in reversed(targets)}
         # Replay every backup: after a power loss the candidate can still exist
         # even when the target entry was replaced. Keep the backups for retries.
-        for target in reversed(targets):
-            scratch = _scratch(target, transaction)
-            backup = scratch / "backup"
+        for target, backup in backups.items():
             try:
-                if (scratch / "absent").exists():
+                if backup is None:
                     target.unlink(missing_ok=True)
                 else:
-                    restored = scratch / "restore"
+                    restored = backup.with_name("restore")
                     restored.unlink(missing_ok=True)
                     shutil.copy(backup, restored)
                     os.replace(restored, target)
                     _sync(target)
                 _sync(target.parent)
             except BaseException as error:
-                error.add_note(f"Could not restore {target}; recovery files retained in {scratch} (backup: {backup})")
+                scratch = _scratch(target, transaction)
+                error.add_note(
+                    f"Could not restore {target}; recovery files retained in {scratch} (backup: {scratch / 'backup'})"
+                )
                 raise
         pending.unlink()
 
@@ -183,6 +205,37 @@ def _matches_output(target: Path, expected: bytes) -> bool:
         return False
 
 
+def _asset_generation(info: os.stat_result) -> tuple[int, ...]:
+    # Access time can change as a result of the backup read itself.
+    return (info.st_dev, info.st_ino, info.st_mode, info.st_nlink, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+
+
+def _current_generation(target: Path) -> tuple[int, ...] | None:
+    try:
+        return _asset_generation(target.lstat())
+    except FileNotFoundError:
+        return None
+
+
+def _backup_asset(target: Path, backup: Path, generation: tuple[int, ...]) -> int:
+    # Reject symlinks and avoid blocking if the pathname was swapped for a FIFO.
+    with os.fdopen(os.open(target, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK), "rb") as source:
+        previous = os.fstat(source.fileno())
+        if not stat.S_ISREG(previous.st_mode) or previous.st_nlink != 1 or _asset_generation(previous) != generation:
+            raise OSError(f"Asset changed while backing up {target}")
+        with backup.open("wb") as destination:
+            shutil.copyfileobj(source, destination, length=BACKUP_CHUNK_SIZE)
+        if backup.stat().st_size != previous.st_size:
+            raise OSError(f"Asset changed size while backing up {target}")
+        if _asset_generation(os.fstat(source.fileno())) != generation:
+            raise OSError(f"Asset changed while backing up {target}")
+
+    mode = previous.st_mode & 0o777
+    backup.chmod(mode)
+    _sync(backup)
+    return mode
+
+
 def _publish_assets(journal: Path, targets: tuple[Path, ...]) -> None:
     assets = {target: text.encode("utf-8") for target, text in minified_assets().items()}
     if all(_matches_output(target, assets[target]) for target in targets):
@@ -194,20 +247,14 @@ def _publish_assets(journal: Path, targets: tuple[Path, ...]) -> None:
         _sync(journal.parent)
         transaction.mkdir(mode=0o700)
         _sync(journal)
+        generations = {}
         for target in targets:
             scratch = _scratch(target, transaction)
             scratch.mkdir(mode=0o700)
+            generation = generations[target] = _current_generation(target)
             mode = 0o644
-            if target.exists():
-                previous = target.stat()
-                mode = previous.st_mode & 0o777
-                backup = scratch / "backup"
-                with target.open("rb") as source, backup.open("wb") as destination:
-                    shutil.copyfileobj(source, destination, length=BACKUP_CHUNK_SIZE)
-                if backup.stat().st_size != previous.st_size:
-                    raise OSError(f"Asset changed size while backing up {target}")
-                backup.chmod(mode)
-                _sync(backup)
+            if generation is not None:
+                mode = _backup_asset(target, scratch / "backup", generation)
             else:
                 absent = scratch / "absent"
                 absent.touch()
@@ -218,6 +265,11 @@ def _publish_assets(journal: Path, targets: tuple[Path, ...]) -> None:
             _sync(candidate)
             _sync(scratch)
             _sync(target.parent)
+
+        # A previously checked output may have changed while staging the rest.
+        for target, generation in generations.items():
+            if _current_generation(target) != generation:
+                raise OSError(f"Asset changed while backing up {target}")
 
         # Only this phase can leave published assets needing a rollback.
         pending = transaction / "pending"

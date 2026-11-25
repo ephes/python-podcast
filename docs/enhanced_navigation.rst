@@ -277,7 +277,10 @@ After recovery, the minifier compares the generated UTF-8 bytes to the current
 outputs. If all three match exactly, it skips the publication transaction.
 When any output is missing or differs, it stages all three assets and byte-exact
 recovery copies alongside their destinations. It copies existing outputs in
-bounded chunks and checks each backup's size. Before replacing any output, it
+bounded chunks from an open regular file and checks each backup's size and
+the source metadata before and after copying. It also rechecks the output
+paths after staging. A detected external edit or replacement aborts staging
+before the pending marker is written. Before replacing any output, it
 syncs the staged files, their directories and the pending publication recorded
 in ``.minify-static-transaction``. This ordering relies on local POSIX filesystems
 and storage that honor file and directory ``fsync``. On macOS each sync uses
@@ -287,11 +290,15 @@ fails or is interrupted by Ctrl-C, the command attempts recovery before
 propagating the original exception. After a forced kill or a cleanup error, rerun
 ``just minify-static``. Under the lock it restores the whole previous generation
 for a pending publication before reading the sources, including deleting outputs
-that were previously absent. Publication and rollback both sync the resulting
-files and their parent directories before removing the pending marker. Recovery
-files remain available until the marker removal itself has been synced. If the
-marker is gone on restart, the minifier keeps the current generation and syncs
-the journal before clearing the remaining recovery files.
+that were previously absent. Before changing any output, rollback checks every
+scratch directory for exactly one recovery record. It accepts a regular backup
+file or an empty regular absence marker, each with a single link. If any record
+is missing, conflicting or invalid, rollback leaves all outputs, the pending
+marker and the recovery files in place. Publication and rollback both sync
+the resulting files and their parent directories before removing the pending
+marker. Recovery files remain available until the marker removal itself has
+been synced. If the marker is gone on restart, the minifier keeps the current
+generation and syncs the journal before clearing the remaining recovery files.
 
 Before recovery or staging, the command checks all output paths. It lists
 every symlink, hard-linked file or other non-regular output and exits with the
