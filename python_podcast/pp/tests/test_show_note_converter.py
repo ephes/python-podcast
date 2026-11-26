@@ -1101,7 +1101,7 @@ def test_stored_heading_blocks_still_render_h3():
     assert BeautifulSoup(list_html, "html.parser").find(["h1", "h2", "h3", "h4", "h5", "h6"]).name == "h3"
 
 
-@pytest.mark.parametrize("spacer", ["&nbsp;", " ", " ", "　"])
+@pytest.mark.parametrize("spacer", ["&nbsp;", "\N{NO-BREAK SPACE}", "\N{EM SPACE}", "\N{IDEOGRAPHIC SPACE}"])
 def test_visible_space_between_heading_and_list_is_preserved(spacer):
     html = f'<h3>News</h3>{spacer}<ul><li><a href="https://example.com/a">A</a></li></ul>'
 
@@ -1113,7 +1113,7 @@ def test_visible_space_between_heading_and_list_is_preserved(spacer):
     assert BeautifulSoup(prose, "html.parser").find("a")["href"] == "https://example.com/a"
 
 
-@pytest.mark.parametrize("spacer", ["&nbsp;", " "])
+@pytest.mark.parametrize("spacer", ["&nbsp;", "\N{EM SPACE}"])
 def test_visible_space_between_direct_list_children_is_preserved(spacer):
     items = (
         '<li><a href="https://example.com/a">A</a></li>' + spacer + '<li><a href="https://example.com/b">B</a></li>'
@@ -1129,23 +1129,31 @@ def test_visible_space_between_direct_list_children_is_preserved(spacer):
     assert any("direct text outside list items" in warning for warning in conversion.warnings)
 
 
-@pytest.mark.parametrize("spacer", ["&nbsp;", " "])
-def test_visible_space_between_nested_group_children_is_preserved(spacer):
+@pytest.mark.parametrize("spacer", ["&nbsp;", "\N{EM SPACE}"])
+@pytest.mark.parametrize(
+    ("between", "after", "reason"),
+    [
+        (True, False, "nested list has text outside its items"),
+        (False, True, "has text or markup after the nested list"),
+    ],
+)
+def test_visible_space_inside_nested_group_is_preserved(spacer, between, after, reason):
     group = (
         "<li>Django<ul>"
         '<li><a href="https://example.com/a">A</a></li>'
-        f"{spacer}"
+        f"{spacer if between else ' '}"
         '<li><a href="https://example.com/b">B</a></li>'
-        f"</ul>{spacer}</li>"
+        f"</ul>{spacer if after else ' '}</li>"
     )
     conversion = convert_paragraph_html(f"<h3>News</h3><ul>{group}</ul>")
 
     assert _types(conversion) == ["show_note_heading", "paragraph"]
     space = BeautifulSoup(spacer, "html.parser").get_text()
-    assert conversion.blocks[1].value.count(space) == 2
+    assert conversion.blocks[1].value.count(space) == 1
+    assert conversion.warnings == [f"Ambiguous list item preserved as prose: {reason}"]
 
 
-@pytest.mark.parametrize("trailing", ["&nbsp;", " "])
+@pytest.mark.parametrize("trailing", ["&nbsp;", "\N{EM SPACE}"])
 def test_visible_space_at_prose_edges_is_preserved(trailing):
     space = BeautifulSoup(trailing, "html.parser").get_text()
     html = f"{trailing}<p>Intro</p>{trailing}<h3>Bücher</h3>"
