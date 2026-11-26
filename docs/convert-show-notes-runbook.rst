@@ -102,12 +102,13 @@ Safety model
   converted" guard. Use it to regenerate conversions after the converter has
   been improved. It uses the live body if it is still legacy. Otherwise it
   searches the newest 100 revisions for a detail with no ``show_note_*`` blocks.
-  The conversion matches historical ``detail`` sections to the current draft by
-  block ID. It keeps the draft's section order, any additional details, and
-  the current ``overview`` and other body sections. A missing ID is tolerated
-  when both bodies contain exactly one detail. If a historical section has
-  been removed or its ID cannot be matched uniquely, the command reports a
-  historical detail conflict, including in a dry run. It writes no revision
+  The conversion matches only the historical ``detail`` sections it changes to
+  the current draft by block ID. It keeps the draft's section order, untouched
+  and additional details, and the current ``overview`` and other body sections.
+  A missing ID is tolerated when both bodies contain exactly one detail. If a
+  changed historical section has been removed or its ID cannot be matched
+  uniquely, the command reports a historical detail conflict, including in a
+  dry run. It writes no revision
   for that episode and continues the batch. Inspect the current detail
   sections against the reported source revision before retrying.
   If the history ends without a legacy body, the episode is skipped with "no legacy body to re-convert" (its legacy

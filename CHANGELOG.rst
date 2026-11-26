@@ -7,6 +7,9 @@ Unreleased
 * Convert legacy sibling detail sections while preserving existing structured
   show notes. A subsequent publish can reuse the converted draft.
 
+* Reapply forced show-note conversions only to detail sections changed by the
+  converter, preserving current draft edits in other sections.
+
 * Reject core media JUnit reports that change during reading or whose byte
   count differs from the reported file size.
 

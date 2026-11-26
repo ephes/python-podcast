@@ -404,7 +404,7 @@ class Command(BaseCommand):
         merged_top: list[dict] | None = new_top
         if force:
             target_raw = episode.get_latest_revision_as_object().body.raw_data
-            merged_top = self._merge_detail(target_raw, new_top)
+            merged_top = self._merge_detail(target_raw, new_top, changed_positions)
             if merged_top is None:
                 result.status = "failed"
                 result.reason = "historical detail conflict: source sections do not match unique current block IDs"
@@ -596,22 +596,27 @@ class Command(BaseCommand):
         return changed
 
     @staticmethod
-    def _merge_detail(target_raw: list[dict], converted_top: list[dict]) -> list[dict] | None:
-        """Match historical details to the current body, or return None for a conflict."""
-        converted_details = [block for block in converted_top if block["type"] == "detail"]
+    def _merge_detail(
+        target_raw: list[dict], converted_top: list[dict], changed_positions: list[int]
+    ) -> list[dict] | None:
+        """Match changed historical details to the current body, or return None for a conflict."""
+        source_details = [block for block in converted_top if block["type"] == "detail"]
         target_details = [block for block in target_raw if block["type"] == "detail"]
-        if len(converted_details) == len(target_details) == 1:
-            (converted,) = converted_details
+        if len(source_details) == len(target_details) == 1:
+            (converted,) = source_details
             (target,) = target_details
             if not converted.get("id") or not target.get("id"):
                 # Older bodies may lack a block ID. One section on each side
                 # is the only case where a missing ID has an unambiguous match.
                 return [{**block, "value": converted["value"]} if block is target else block for block in target_raw]
 
-        converted_by_id = {block.get("id"): block["value"] for block in converted_details}
+        source_counts = Counter(block.get("id") for block in source_details)
         target_counts = Counter(block.get("id") for block in target_details)
-        if len(converted_by_id) != len(converted_details) or any(
-            not block_id or target_counts[block_id] != 1 for block_id in converted_by_id
+        changed_details = [converted_top[position] for position in changed_positions]
+        converted_by_id = {block.get("id"): block["value"] for block in changed_details}
+        if any(
+            not block_id or source_counts[block_id] != 1 or target_counts[block_id] != 1
+            for block_id in converted_by_id
         ):
             return None
 

@@ -829,7 +829,7 @@ def test_force_single_detail_fallback_requires_a_missing_id(current_id, historic
     current = {"type": "detail", "id": current_id, "value": []}
     historical = {"type": "detail", "id": historical_id, "value": [{"type": "show_note_heading"}]}
 
-    merged = Command._merge_detail([current], [historical])
+    merged = Command._merge_detail([current], [historical], [0])
 
     assert merged == ([{**current, "value": historical["value"]}] if matches else None)
 
@@ -855,6 +855,43 @@ def converted_two_detail_episode():
     episode.save_revision().publish()
     _run("--slug", episode.slug, "--publish")
     return Episode.objects.get(pk=episode.pk)
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize("replace_prose_id", [False, True])
+def test_force_preserves_current_prose_only_detail(replace_prose_id):
+    episode = _make_episode(
+        slug="force-prose-sibling", detail_children=[{"type": "paragraph", "value": SHOWNOTE_HTML}]
+    )
+    raw = [
+        *episode.body.raw_data,
+        {
+            "type": "detail",
+            "id": "prose-detail",
+            "value": [{"type": "paragraph", "value": "<p>Historical prose.</p>"}],
+        },
+    ]
+    episode.body = episode.body.stream_block.to_python(raw)
+    historical = episode.save_revision()
+    historical.publish()
+    _run("--slug", episode.slug, "--publish")
+
+    draft = _latest_revision_object(episode)
+    overview, notes, prose = list(draft.body.raw_data)
+    prose["value"][0]["value"] = "<p>Current prose &amp; spacing.  </p>"
+    if replace_prose_id:
+        prose["id"] = "new-prose-detail"
+    draft.body = draft.body.stream_block.to_python([overview, notes, prose])
+    draft.save_revision()
+    current_prose = _latest_revision_object(episode).body.raw_data[2]
+
+    output = _run("--slug", episode.slug, "--force", "--apply")
+
+    revised = _latest_revision_object(episode)
+    assert f"source: revision {historical.pk}," in output
+    assert revised.body.raw_data[2] == current_prose
+    assert revised.body.raw_data[1] != notes
+    assert any(child["type"] == "show_note_link_list" for child in revised.body.raw_data[1]["value"])
 
 
 @pytest.mark.django_db(transaction=True)
