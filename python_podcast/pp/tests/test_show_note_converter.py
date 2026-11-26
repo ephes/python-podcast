@@ -164,6 +164,24 @@ def test_whitespace_only_comment_between_heading_and_list_is_preserved():
     assert prose.contents[1].name == "ul"
 
 
+@pytest.mark.parametrize("nested", [False, True], ids=["outer", "nested"])
+@pytest.mark.parametrize("markup", ["<!-- -->", "<![CDATA[ ]]>"], ids=["comment", "cdata"])
+def test_whitespace_only_markup_directly_in_list_is_preserved(nested, markup):
+    inner = f'<ul>\n{markup}<li><a href="https://example.com/a">A</a></li>\n</ul>'
+    original = f"<ul><li>Topic{inner}</li></ul>" if nested else inner
+
+    conversion = convert_paragraph_html(f"<h3>Links</h3>{original}")
+
+    assert _types(conversion) == ["show_note_heading", "paragraph"]
+    assert conversion.blocks[1].value == original
+    assert any("non-text markup" in warning for warning in conversion.warnings)
+
+    control = convert_paragraph_html(f'<h3>Links</h3>{original.replace(markup, "")}')
+    assert _types(control) == ["show_note_link_list"]
+    assert control.blocks[0].value["items"][0]["title"] == "A"
+    assert control.warnings == []
+
+
 def test_prefix_is_extracted_before_first_link():
     html = '<h3>X</h3><ul><li>Visualisierungen:&nbsp;<a href="https://example.com/v">Vega</a></li></ul>'
 

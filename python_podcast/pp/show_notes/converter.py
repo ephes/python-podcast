@@ -254,6 +254,8 @@ def parse_link_list(list_tag: Tag) -> tuple[list[tuple[str, object]] | None, lis
     # Any direct child that is not an <li> (stray text or block content) means the
     # list is malformed; preserve it as prose rather than drop that content.
     for child in list_tag.children:
+        if isinstance(child, PreformattedString):
+            return None, [f"List <{list_tag.name}> has non-text markup outside list items; preserved as prose."]
         if isinstance(child, NavigableString):
             if _clean_text(str(child)):
                 return None, [f"List <{list_tag.name}> has direct text outside list items; preserved as prose."]
@@ -378,6 +380,8 @@ def _parse_grouped_item(li: Tag, nested: Tag) -> tuple[dict | None, str | None]:
 
     # The nested list must contain only <li> items, nothing stray.
     for child in nested.children:
+        if isinstance(child, PreformattedString):
+            return None, "nested list has non-text markup outside its items"
         if isinstance(child, NavigableString):
             if _clean_text(str(child)):
                 return None, "nested list has text outside its items"

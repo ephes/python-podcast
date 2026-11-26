@@ -13,6 +13,9 @@ Unreleased
 * Preserve attributed inline wrappers around show-note list separators,
   including attributes on nested elements.
 
+* Keep blank HTML comments and other non-text nodes directly inside outer or
+  nested show-note lists.
+
 * Reject core media JUnit reports that change during reading or whose byte
   count differs from the reported file size.
 
