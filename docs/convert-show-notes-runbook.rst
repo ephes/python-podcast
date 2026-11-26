@@ -70,9 +70,10 @@ What the command does
   - a break with HTML attributes stays in prose. Between a heading and a
     list it keeps the list in prose with it, and inside a list item it keeps
     the item in prose. Bare breaks between a heading and a list still allow
-    the list to convert. A direct bare break between meaningful lines of
-    text or links keeps a flat item in prose with a warning. Leading and
-    trailing padding breaks still allow conversion;
+    the list to convert. A bare break between meaningful lines of text or
+    links, directly or inside a plain separator wrapper such as
+    ``<span><br></span>``, keeps a flat item in prose with a warning. Leading
+    and trailing padding breaks still allow conversion;
   - a list item is converted only when its prefix, link titles and note are
     unformatted text. Inline formatting around real text (``<strong>``,
     ``<b>``, ``<em>``, ``<i>``, ``<code>``, ``<sub>``, ``<sup>``, ``<small>``,

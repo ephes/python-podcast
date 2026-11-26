@@ -156,11 +156,14 @@ def test_list_item_with_attributed_break_stays_in_prose(break_html):
         '<li>First paragraph<br/>Second paragraph: <a href="https://example.com/a">A</a></li>',
         '<li><a href="https://example.com/a">A</a> First paragraph<br/>Second paragraph</li>',
         '<li><a href="https://example.com/a">A</a><br/> | <br/><a href="https://example.com/b">B</a></li>',
+        '<li><a href="https://example.com/a">A</a><span><br/></span><a href="https://example.com/b">B</a></li>',
+        '<li><a href="https://example.com/a">A</a><b> | <br/></b><a href="https://example.com/b">B</a></li>',
     ],
 )
 def test_flat_item_with_break_between_content_stays_in_prose(multiline):
     html = (
-        f"<h3>News</h3><ul>{multiline}" '<li><br/> <br/> <a href="https://example.com/c">C</a> <br/> <br/></li></ul>'
+        f"<h3>News</h3><ul>{multiline}"
+        '<li><span><br/></span> <br/> <a href="https://example.com/c">C</a> <br/> <span><br/></span></li></ul>'
     )
 
     conversion = convert_paragraph_html(html)

@@ -460,7 +460,8 @@ def _tokenize_item(li: Tag, skip: Tag | None = None) -> list[tuple[str, object]]
     keep: an inline formatting tag around real text, an element inside a link,
     or attributes on a wrapper or link (except ``href`` on a link).
     Attribute-free formatting around whitespace/separators is plain text.
-    A direct break carries a space for callers that can flatten it.
+    A direct break, or a plain wrapper holding one, is a ``break`` token whose
+    payload carries a space for callers that can flatten it.
     """
     tokens: list[tuple[str, object]] = []
     for child in li.children:
@@ -496,7 +497,10 @@ def _tokenize_item(li: Tag, skip: Tag | None = None) -> list[tuple[str, object]]
                     tokens.append(("formatting", f"has HTML attributes on or inside <{child.name}>"))
                 elif not _is_separator_only(text):
                     tokens.append(("formatting", f"has <{child.name}> formatting that a plain-text field cannot keep"))
-                tokens.append(("text", text))
+                if child.find("br") is not None:
+                    tokens.append(("break", f"{text} "))
+                else:
+                    tokens.append(("text", text))
             else:
                 # Unknown tag: be conservative.
                 return None
