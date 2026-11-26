@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Keep flat show-note items with line breaks between meaningful lines as
+  HTML, preserving the line boundaries while eligible siblings still convert.
+
 * Abort legacy backup downloads on short staging writes or a staged size
   mismatch before publishing or restoring the backup.
 

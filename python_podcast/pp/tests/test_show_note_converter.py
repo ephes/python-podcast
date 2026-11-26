@@ -150,6 +150,28 @@ def test_list_item_with_attributed_break_stays_in_prose(break_html):
     assert BeautifulSoup(conversion.blocks[1].value, "html.parser").li.br["id"] == "item"
 
 
+@pytest.mark.parametrize(
+    "multiline",
+    [
+        '<li>First paragraph<br/>Second paragraph: <a href="https://example.com/a">A</a></li>',
+        '<li><a href="https://example.com/a">A</a> First paragraph<br/>Second paragraph</li>',
+        '<li><a href="https://example.com/a">A</a><br/> | <br/><a href="https://example.com/b">B</a></li>',
+    ],
+)
+def test_flat_item_with_break_between_content_stays_in_prose(multiline):
+    html = (
+        f"<h3>News</h3><ul>{multiline}" '<li><br/> <br/> <a href="https://example.com/c">C</a> <br/> <br/></li></ul>'
+    )
+
+    conversion = convert_paragraph_html(html)
+
+    assert _types(conversion) == ["show_note_heading", "paragraph", "show_note_link_list"]
+    assert conversion.blocks[1].value == f"<ul>{multiline}</ul>"
+    assert [item["title"] for item in conversion.blocks[2].value["items"]] == ["C"]
+    assert len(conversion.warnings) == 1
+    assert "line break" in conversion.warnings[0]
+
+
 def test_preserved_prose_keeps_comments_and_escaped_text_as_distinct_nodes():
     html = (
         "<!-- editorial note -->"

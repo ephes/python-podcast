@@ -320,6 +320,17 @@ def _parse_flat_item(li: Tag) -> tuple[dict | None, str | None]:
         if not payload["title"]:
             return None, "has a link with a blank title"
 
+    # A break between links or prose cannot be represented in a single row.
+    content_positions = [
+        i
+        for i, (kind, payload) in enumerate(tokens)
+        if kind == "link" or (kind == "text" and not _is_separator_only(str(payload)))
+    ]
+    first_content, last_content = content_positions[0], content_positions[-1]
+    if any(kind == "break" for kind, _ in tokens[first_content:last_content]):
+        return None, "has a line break between content"
+    tokens = [("text" if kind == "break" else kind, payload) for kind, payload in tokens]
+
     # Partition tokens around the first link.
     first_link_pos = next(i for i, token in enumerate(tokens) if token[0] == "link")
     prefix_text = _clean_text("".join(t[1] for t in tokens[:first_link_pos] if t[0] == "text"))
@@ -378,7 +389,7 @@ def _parse_grouped_item(li: Tag, nested: Tag) -> tuple[dict | None, str | None]:
     formatting = _first_formatting(label_tokens)
     if formatting is not None:
         return None, f"group label {formatting}"
-    label = _clean_text("".join(payload for kind, payload in label_tokens if kind == "text"))
+    label = _clean_text("".join(payload for kind, payload in label_tokens if kind in {"text", "break"}))
     if not label:
         return None, "nested list without a topic label"
     if len(label) > MAX_GROUP_LABEL_LENGTH:
@@ -439,7 +450,7 @@ def _label_prefix(label: str) -> str:
 
 
 def _tokenize_item(li: Tag, skip: Tag | None = None) -> list[tuple[str, object]] | None:
-    """Flatten an ``li`` into ordered ('text', str) / ('link', dict) / ('formatting', str) tokens.
+    """Flatten an ``li`` into ordered text, link, break and formatting tokens.
 
     ``skip`` is an optional direct child (e.g. a nested list) to ignore. Returns
     ``None`` if a link is nested inside an inline formatting tag, which we treat
@@ -449,6 +460,7 @@ def _tokenize_item(li: Tag, skip: Tag | None = None) -> list[tuple[str, object]]
     keep: an inline formatting tag around real text, an element inside a link,
     or attributes on a wrapper or link (except ``href`` on a link).
     Attribute-free formatting around whitespace/separators is plain text.
+    A direct break carries a space for callers that can flatten it.
     """
     tokens: list[tuple[str, object]] = []
     for child in li.children:
@@ -470,7 +482,7 @@ def _tokenize_item(li: Tag, skip: Tag | None = None) -> list[tuple[str, object]]
                     tokens.append(("formatting", "has link attributes that a title and URL cannot keep"))
                 tokens.append(("link", {"title": _clean_text(child.get_text()), "url": child.get("href", "")}))
             elif child.name == "br":
-                tokens.append(("text", " "))
+                tokens.append(("break", " "))
             elif child.name in INLINE_TEXT_TAGS:
                 if child.find("a") is not None:
                     return None
