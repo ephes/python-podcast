@@ -31,6 +31,9 @@ What the command does
   ``title``/``url`` (first link), ``extra_links`` (further inline links) and a
   short ``note`` (trailing explanatory text, with leading ``|`` / dash
   separators stripped).
+  If any link title is blank after whitespace normalization, the whole item
+  stays as original HTML with a warning, including when the blank title is on
+  an extra link or a nested sub-link. Eligible sibling items still convert.
 * A list item shaped as a *topic label + a nested list of single-link
   sub-items* is flattened into one item: the label becomes the ``prefix``, the
   first sub-link the main link, the rest ``extra_links``, and a lone sub-item

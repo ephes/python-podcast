@@ -317,6 +317,8 @@ def _parse_flat_item(li: Tag) -> tuple[dict | None, str | None]:
     for _kind, payload in links:
         if not payload["url"].lower().startswith(_WEB_SCHEMES):
             return None, "has a non-web link"
+        if not payload["title"]:
+            return None, "has a link with a blank title"
 
     # Partition tokens around the first link.
     first_link_pos = next(i for i, token in enumerate(tokens) if token[0] == "link")

@@ -32,6 +32,26 @@ def test_heading_followed_by_list_becomes_single_link_list():
     assert value["items"][0]["url"] == "https://example.com/a"
 
 
+@pytest.mark.parametrize(
+    "item",
+    [
+        '<li><a href="https://example.com/blank"></a></li>',
+        '<li><a href="https://example.com/main">Main</a> | <a href="https://example.com/blank"> &nbsp; </a></li>',
+        '<li>Topic<ul><li><a href="https://example.com/blank">&#8203;</a></li></ul></li>',
+    ],
+)
+def test_blank_link_title_keeps_item_in_prose(item):
+    html = f'<h3>News</h3><ul>{item}<li><a href="https://example.com/plain">Plain link</a></li></ul>'
+
+    conversion = convert_paragraph_html(html)
+
+    assert _types(conversion) == ["show_note_heading", "paragraph", "show_note_link_list"]
+    original_item = BeautifulSoup(item, "html.parser").li
+    assert BeautifulSoup(conversion.blocks[1].value, "html.parser").li == original_item
+    assert [item["title"] for item in conversion.blocks[2].value["items"]] == ["Plain link"]
+    assert len(conversion.warnings) == 1
+
+
 def test_link_attributes_stay_in_prose_in_list_order():
     html = (
         "<h3>News</h3><ul>"

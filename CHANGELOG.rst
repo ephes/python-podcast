@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Preserve show-note items with blank link titles as HTML, including items
+  with a blank title on an extra link or a nested sub-link.
+
 * Convert legacy sibling detail sections while preserving existing structured
   show notes. A subsequent publish can reuse the converted draft. ``--force``
   still needs a body whose details are all legacy, so a sibling converted from
