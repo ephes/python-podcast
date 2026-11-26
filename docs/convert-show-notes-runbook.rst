@@ -68,9 +68,10 @@ What the command does
     as prose. An anchor with attributes beyond ``href`` also stays in prose,
     preserving fragment targets such as ``id`` and filenames from ``download``.
     The other items of the same list still convert, in order. The same
-    applies to the topic label and sub-items of a nested group. Formatting that
-    wraps only whitespace or a separator (``<b> | </b>``) carries nothing and
-    does not block the conversion.
+    applies to the topic label and sub-items of a nested group. Inline wrappers
+    around whitespace or separators stay in prose if the wrapper or any
+    element inside it has attributes. A bare separator wrapper such as
+    ``<b> | </b>`` still converts.
 
 * Is **idempotent**: details that already contain ``show_note_*`` blocks are
   skipped independently, so an episode with structured notes in one detail can

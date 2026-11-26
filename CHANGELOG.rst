@@ -10,6 +10,9 @@ Unreleased
 * Reapply forced show-note conversions only to detail sections changed by the
   converter, preserving current draft edits in other sections.
 
+* Preserve attributed inline wrappers around show-note list separators,
+  including attributes on nested elements.
+
 * Reject core media JUnit reports that change during reading or whose byte
   count differs from the reported file size.
 

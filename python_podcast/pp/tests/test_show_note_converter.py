@@ -845,6 +845,25 @@ def test_empty_formatting_wrapping_an_element_is_preserved():
     assert conversion.blocks[1].value == f"<ul>{item}</ul>"
 
 
+@pytest.mark.parametrize("separator", ['<span id="references"> | </span>', '<span><b lang="en"> | </b></span>'])
+def test_attributed_separator_wrapper_is_preserved_in_list_order(separator):
+    def item(first, second, wrapper):
+        return (
+            f'<li><a href="https://example.com/{first}">{first}</a>'
+            f'{wrapper}<a href="https://example.com/{second}">{second}</a></li>'
+        )
+
+    preserved = item("C", "D", separator)
+    html = f'<h3>Links</h3><ul>{item("A", "B", "<span> | </span>")}{preserved}{item("E", "F", " | ")}</ul>'
+    conversion = convert_paragraph_html(html)
+
+    assert _types(conversion) == ["show_note_heading", "show_note_link_list", "paragraph", "show_note_link_list"]
+    assert conversion.blocks[1].value["items"][0]["extra_links"] == [{"title": "B", "url": "https://example.com/B"}]
+    assert conversion.blocks[2].value == f"<ul>{preserved}</ul>"
+    assert conversion.blocks[3].value["items"][0]["title"] == "E"
+    assert any("HTML attributes" in warning for warning in conversion.warnings)
+
+
 REALISTIC_SHOWNOTES = (
     "<h2>Shownotes</h2>"
     '<p>Unsere E-Mail für Fragen, Anregungen &amp; Kommentare: <a href="mailto:hallo@example.com">'

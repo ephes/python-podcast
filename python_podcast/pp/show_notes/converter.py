@@ -435,8 +435,8 @@ def _tokenize_item(li: Tag, skip: Tag | None = None) -> list[tuple[str, object]]
 
     A ``formatting`` token names markup the plain-text destination fields cannot
     keep: an inline formatting tag around real text, an element inside a link,
-    or a link attribute other than ``href``. Formatting that wraps only
-    whitespace/separators carries nothing and is tokenized as plain text.
+    or attributes on a wrapper or link (except ``href`` on a link).
+    Attribute-free formatting around whitespace/separators is plain text.
     """
     tokens: list[tuple[str, object]] = []
     for child in li.children:
@@ -468,6 +468,8 @@ def _tokenize_item(li: Tag, skip: Tag | None = None) -> list[tuple[str, object]]
                     tokens.append(("formatting", f"has <{nested.name}> markup inside <{child.name}>"))
                 elif _has_non_text_string(child):
                     tokens.append(("formatting", f"has a comment or other non-text markup inside <{child.name}>"))
+                elif child.attrs or child.find(lambda tag: bool(tag.attrs)) is not None:
+                    tokens.append(("formatting", f"has HTML attributes on or inside <{child.name}>"))
                 elif not _is_separator_only(text):
                     tokens.append(("formatting", f"has <{child.name}> formatting that a plain-text field cannot keep"))
                 tokens.append(("text", text))
