@@ -342,8 +342,9 @@ class Command(BaseCommand):
         new_top, after_types, warnings, changed_positions = self._convert_top(raw_top)
         if not changed_positions and not force and any(self._has_structured_notes(block) for block in detail_blocks):
             # The latest draft is already converted. When publishing, push that
-            # draft live -- but only if the live page is still legacy, i.e. the
-            # pending change really is our conversion and not an unrelated draft.
+            # draft live -- but only if the live page still has a legacy detail
+            # that the draft holds converted (same position and block ID), i.e.
+            # the pending change really is our conversion and not an unrelated draft.
             if (
                 snapshot is not None
                 and publish
@@ -652,7 +653,8 @@ class Command(BaseCommand):
         """Return the most recent body that has not yet been converted.
 
         Prefers the live body when it is still legacy, otherwise scans revisions
-        newest-first for a detail with no ``show_note_*`` blocks. Returns
+        newest-first for a body in which no detail has ``show_note_*`` blocks
+        (a mixed body is not a source). Returns
         ``None`` when the history ends without a source and raises if the search
         limit is reached while older revisions remain.
         """
