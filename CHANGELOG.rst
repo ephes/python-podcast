@@ -5,7 +5,9 @@ Unreleased
 ----------
 
 * Convert legacy sibling detail sections while preserving existing structured
-  show notes. A subsequent publish can reuse the converted draft.
+  show notes. A subsequent publish can reuse the converted draft. ``--force``
+  still needs a body whose details are all legacy, so a sibling converted from
+  an already mixed body cannot be regenerated with it.
 
 * Reapply forced show-note conversions only to detail sections changed by the
   converter, preserving current draft edits in other sections.

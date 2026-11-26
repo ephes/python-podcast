@@ -106,7 +106,11 @@ Safety model
 * ``--force`` re-converts from the original legacy body, ignoring the "already
   converted" guard. Use it to regenerate conversions after the converter has
   been improved. It uses the live body if it is still legacy. Otherwise it
-  searches the newest 100 revisions for a detail with no ``show_note_*`` blocks.
+  searches the newest 100 revisions for a body in which no ``detail`` section
+  contains ``show_note_*`` blocks. A body that was already mixed when it was
+  converted (one structured detail next to a legacy sibling) has no such
+  version, so ``--force`` cannot regenerate that sibling; it reports "no
+  legacy body to re-convert" or the search limit described below.
   The conversion matches only the historical ``detail`` sections it changes to
   the current draft by block ID. It keeps the draft's section order, untouched
   and additional details, and the current ``overview`` and other body sections.
@@ -259,7 +263,7 @@ Forced source and progress receipts
 -----------------------------------
 
 ``--force`` prefers a still-legacy live body. Otherwise it selects the newest
-unconverted revision by descending ``created_at`` and primary key, including
+revision without structured notes in any detail by descending ``created_at`` and primary key, including
 equal-timestamp histories. The receipt identifies that revision (or the live
 page when there is no live revision) and the SHA-256 of canonical source-body
 JSON (sorted keys, compact separators, UTF-8). Preserve this receipt with the
