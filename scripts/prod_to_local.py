@@ -180,7 +180,8 @@ def fetch_backup(host, username, backups):
                         total += len(data)
                         if total > expected[0]:
                             raise ValueError("backup grew during download")
-                        destination.write(data)
+                        if destination.write(data) != len(data):
+                            raise OSError("short write while staging backup")
                     if total != expected[0]:
                         raise ValueError("backup download is incomplete")
                     if (
@@ -189,6 +190,8 @@ def fetch_backup(host, username, backups):
                     ):
                         raise ValueError("backup changed during download")
                     destination.flush()
+                    if os.fstat(destination.fileno()).st_size != expected[0]:
+                        raise OSError("staged backup size does not match remote size")
                     os.fsync(destination.fileno())
         # Every transport close must succeed before verification/publication.
         with _deadline(TRANSFER_TIMEOUT):

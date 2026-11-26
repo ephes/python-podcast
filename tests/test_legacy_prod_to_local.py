@@ -423,6 +423,52 @@ def test_transfer_fault_preserves_previous_backup_and_prevents_restore(
         assert "sftp" in fake.closed_resources
 
 
+@pytest.mark.parametrize(
+    "report_full_write,message",
+    [(False, "short write"), (True, "staged backup size")],
+)
+def test_short_stage_write_preserves_previous_backup_and_prevents_restore(
+    transport, monkeypatch, tmp_path, report_full_write, message
+):
+    helper, install = transport
+    # Gzip accepts zero padding even if some of it is lost.
+    padding = b"\0" * 8
+    install(data=DUMP + padding)
+    backups = tmp_path / "backups"
+    backups.mkdir()
+    previous = backups / "backup_older.sql.gz"
+    previous.write_bytes(DUMP)
+    monkeypatch.setattr(helper, "ROOT", tmp_path)
+    monkeypatch.setattr(helper, "CHUNK", len(DUMP))
+    fdopen = os.fdopen
+
+    class ShortWriter(io.BufferedWriter):
+        def write(self, data):
+            if data == padding:
+                written = super().write(data[:-1])
+                return len(data) if report_full_write else written
+            return super().write(data)
+
+    monkeypatch.setattr(helper.os, "fdopen", lambda fd, mode: ShortWriter(fdopen(fd, mode, buffering=0)))
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("attempted to publish or restore a partial backup")
+
+    monkeypatch.setattr(helper.os, "link", forbidden)
+    monkeypatch.setattr(helper, "restore_download", forbidden)
+    with pytest.raises(OSError, match=message):
+        helper.transfer(
+            {
+                "PRODUCTION_HOST": "backup.invalid",
+                "PRODUCTION_USERNAME": "test",
+                "DATABASE_NAME": "podcast",
+                "POSTGRES_USER": "local_role",
+            }
+        )
+    assert previous.read_bytes() == DUMP
+    assert list(backups.iterdir()) == [previous]
+
+
 @pytest.mark.parametrize("data", [b"", b"not gzip", DUMP[:-5], gzip.compress(b"unfinished SQL")])
 def test_invalid_download_is_not_published(transport, tmp_path, data):
     helper, install = transport

@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Abort legacy backup downloads on short staging writes or a staged size
+  mismatch before publishing or restoring the backup.
+
 * Keep show-note groups with text or markup following their nested list as
   HTML, preserving the order of the links and the trailing content.
 

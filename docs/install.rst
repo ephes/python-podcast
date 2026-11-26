@@ -147,7 +147,8 @@ POSIX alarms bound whole phases even when a peer keeps sending small chunks.
 The remote file must be regular, nonempty and at most 1 GiB compressed. Its size,
 mode and modification time must agree before and after the read. SFTP bytes go
 into an exclusive 0600 file within a private 0700 staging directory. The received
-size must match; gzip integrity, at most 4 GiB of expanded SQL and the final
+byte count and flushed staging file size must match the remote size. A short
+write aborts the download. Gzip integrity, at most 4 GiB of expanded SQL and the final
 ``pg_dump`` completion marker are checked before atomic publication in
 ``backups/``. The authenticated producer and these completeness checks establish
 admission; there is no independent remote content digest or immutable snapshot.
