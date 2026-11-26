@@ -1,6 +1,7 @@
 """Independent synthetic JUnit oracle for the local media gate."""
 
 import importlib.util
+import os
 import subprocess
 from pathlib import Path
 from types import SimpleNamespace
@@ -71,6 +72,53 @@ def write_report(report, identities=EXPECTED, variant=None):
     elif variant == "bare-suite":
         root = suite
     ET.ElementTree(root).write(report)
+
+
+@pytest.mark.parametrize("change", [None, "overwrite", "replace", "append", "unlink", "short-read"])
+def test_report_generation(monkeypatch, capsys, change):
+    def run(command, **kwargs):
+        report = Path(next(arg.split("=", 1)[1] for arg in command if arg.startswith("--junitxml=")))
+        write_report(report)
+        original = report.read_bytes() + b" "
+        report.write_bytes(original)
+
+        def opener(path, *args, **kwargs):
+            stream = open(path, *args, **kwargs)
+            read = stream.read
+
+            def read_and_change(size):
+                data = read(size)
+                if change == "overwrite":
+                    report.write_bytes(original.replace(b'failures="0"', b"failures='0'"))
+                    os.utime(report, ns=(0, 0))
+                elif change == "replace":
+                    replacement = report.with_suffix(".new")
+                    replacement.write_bytes(original)
+                    replacement.replace(report)
+                elif change == "append":
+                    with report.open("ab") as writer:
+                        writer.write(b" ")
+                elif change == "unlink":
+                    report.unlink()
+                elif change == "short-read":
+                    return data[:-1]
+                return data
+
+            stream.read = read_and_change
+            return stream
+
+        monkeypatch.setattr(gate, "open", opener, raising=False)
+        return SimpleNamespace(returncode=0)
+
+    def unexpected_parse(*args, **kwargs):
+        pytest.fail("changed report reached the XML parser")
+
+    monkeypatch.setattr(gate, "run_gate", run)
+    if change is not None:
+        monkeypatch.setattr(gate.ET, "fromstring", unexpected_parse)
+    assert gate.main() == (0 if change is None else 1)
+    if change is not None:
+        assert "JUnit report changed while being read" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize("variant", ["oversized", "doctype"])

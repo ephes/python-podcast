@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Reject core media JUnit reports that change during reading or whose byte
+  count differs from the reported file size.
+
 * Match forced show-note conversions to current detail blocks by ID, keeping
   newly added and reordered sections in place. Report missing or ambiguous
   historical matches before writing a revision.

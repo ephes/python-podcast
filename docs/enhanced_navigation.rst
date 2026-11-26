@@ -332,7 +332,9 @@ The report must contain a single suite whose summary counts report seven tests
 and zero failures, errors or skips. Failure indicators anywhere in the suite
 invalidate the report.
 The gate reads at most 1 MiB of JUnit XML from a regular file, with one extra
-byte to detect growth beyond the limit. JUnit reports with a DOCTYPE are rejected.
+byte to detect growth beyond the limit. Before parsing, it checks that the byte
+count matches the file size and that the open file and report path still identify
+the same unchanged file. JUnit reports with a DOCTYPE are rejected.
 For intentional test selection or parameter changes, update ``TESTS`` and
 ``EXPECTED_CASES`` in ``scripts/check_core_media.py`` and the independently written
 ``EXPECTED`` fixture in ``tests/test_core_media_gate.py``. Check the collected

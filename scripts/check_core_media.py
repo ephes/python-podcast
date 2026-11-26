@@ -43,6 +43,10 @@ class ReportTreeBuilder(ET.TreeBuilder):
         raise ET.ParseError("JUnit report must not contain a DOCTYPE")
 
 
+def report_generation(info):
+    return info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns
+
+
 def read_report(report):
     # Nonblocking open lets us reject a FIFO without waiting for a writer.
     with open(report, "rb", opener=lambda path, flags: os.open(path, flags | os.O_NONBLOCK)) as stream:
@@ -52,8 +56,17 @@ def read_report(report):
         if info.st_size > MAX_REPORT_BYTES:
             raise OSError("JUnit report exceeds 1 MiB")
         data = stream.read(MAX_REPORT_BYTES + 1)
-    if len(data) > MAX_REPORT_BYTES:
-        raise OSError("JUnit report exceeds 1 MiB")
+        if len(data) > MAX_REPORT_BYTES:
+            raise OSError("JUnit report exceeds 1 MiB")
+        final_info = os.fstat(stream.fileno())
+        try:
+            path_info = report.stat()
+        except FileNotFoundError as error:
+            raise OSError("JUnit report changed while being read") from error
+        if len(data) != info.st_size or not (
+            report_generation(info) == report_generation(final_info) == report_generation(path_info)
+        ):
+            raise OSError("JUnit report changed while being read")
     return ET.fromstring(data, parser=ET.XMLParser(target=ReportTreeBuilder()))
 
 
