@@ -290,10 +290,11 @@ def test_intro_paragraph_is_preserved_between_headings():
 
     conversion = convert_paragraph_html(html)
 
-    assert _types(conversion) == ["show_note_heading", "paragraph", "show_note_link_list"]
-    assert "mailto:hallo@example.com" in conversion.blocks[1].value
-    assert conversion.blocks[0].value["heading"] == "Shownotes"
-    assert conversion.blocks[2].value["heading"] == "News"
+    # The h2 above the h3 sections keeps its level as HTML, with its prose.
+    assert _types(conversion) == ["paragraph", "show_note_link_list"]
+    assert conversion.blocks[0].value.startswith("<h2>Shownotes</h2><p>")
+    assert "mailto:hallo@example.com" in conversion.blocks[0].value
+    assert conversion.blocks[1].value["heading"] == "News"
 
 
 def test_prose_without_shownote_structure_is_unchanged():
@@ -701,9 +702,9 @@ LINK_LIST = '<ul><li><a href="https://example.com/a">A</a></li></ul>'
 
 def test_heading_attributes_preserve_fragment_target_and_following_list():
     intro = '<p><a href="#news">Go to news</a></p>'
-    heading = '<h2 data-topic="releases" id="news" lang="en">News</h2>'
+    heading = '<h3 data-topic="releases" id="news" lang="en">News</h3>'
 
-    conversion = convert_paragraph_html(intro + heading + LINK_LIST + "<h2>Books</h2>" + LINK_LIST)
+    conversion = convert_paragraph_html(intro + heading + LINK_LIST + "<h3>Books</h3>" + LINK_LIST)
 
     assert conversion.changed
     assert _types(conversion) == ["paragraph", "paragraph", "show_note_link_list"]
@@ -717,9 +718,9 @@ def test_heading_attributes_preserve_fragment_target_and_following_list():
 @pytest.mark.parametrize(
     "heading",
     [
-        '<h2><strong id="news">News</strong></h2>',
-        '<h2><b data-topic="releases">News</b></h2>',
-        '<h2>News<br class="spacer"/></h2>',
+        '<h3><strong id="news">News</strong></h3>',
+        '<h3><b data-topic="releases">News</b></h3>',
+        '<h3>News<br class="spacer"/></h3>',
     ],
 )
 def test_attributes_inside_heading_keep_heading_and_list_in_prose(heading):
@@ -734,14 +735,14 @@ def test_attributes_inside_heading_keep_heading_and_list_in_prose(heading):
 @pytest.mark.parametrize(
     "heading",
     [
-        '<h2><img alt="" src="meaningful.png"/>Links</h2>',
-        '<h2>Links <svg viewbox="0 0 1 1"><title>Icon</title><path d="M0 0"></path></svg></h2>',
-        '<h2>Links <embed embedtype="image" format="left" id="7"/></h2>',
-        '<h2><iframe src="https://example.com/player"></iframe>Video</h2>',
-        "<h2>Tools: <code>uv</code></h2>",
-        "<h2>Wirklich <em>wichtige</em> Links</h2>",
-        "<h2>Links<!-- keep me --></h2>",
-        "<h2>Erste Zeile<br/>Zweite Zeile</h2>",
+        '<h3><img alt="" src="meaningful.png"/>Links</h3>',
+        '<h3>Links <svg viewbox="0 0 1 1"><title>Icon</title><path d="M0 0"></path></svg></h3>',
+        '<h3>Links <embed embedtype="image" format="left" id="7"/></h3>',
+        '<h3><iframe src="https://example.com/player"></iframe>Video</h3>',
+        "<h3>Tools: <code>uv</code></h3>",
+        "<h3>Wirklich <em>wichtige</em> Links</h3>",
+        "<h3>Links<!-- keep me --></h3>",
+        "<h3>Erste Zeile<br/>Zweite Zeile</h3>",
     ],
 )
 def test_heading_with_unrepresentable_markup_is_preserved_verbatim(heading):
@@ -757,7 +758,7 @@ def test_heading_with_unrepresentable_markup_is_preserved_verbatim(heading):
 
 
 def test_heading_with_linked_image_is_preserved_verbatim():
-    heading = '<h2><a href="https://example.com/sponsor"><img alt="Sponsor" src="logo.png"/></a> Sponsor</h2>'
+    heading = '<h3><a href="https://example.com/sponsor"><img alt="Sponsor" src="logo.png"/></a> Sponsor</h3>'
 
     conversion = convert_paragraph_html(heading + LINK_LIST)
 
@@ -786,7 +787,8 @@ def test_unrepresentable_heading_does_not_block_other_sections():
 
     conversion = convert_paragraph_html(html)
 
-    assert _types(conversion) == ["show_note_heading", "paragraph", "show_note_link_list"]
+    assert _types(conversion) == ["paragraph", "paragraph", "show_note_link_list"]
+    assert conversion.blocks[0].value == "<h2>Shownotes</h2>"
     assert conversion.blocks[1].value == '<h3><img alt="" src="news.png"/>News</h3>' + LINK_LIST
     assert conversion.blocks[2].value["heading"] == "Bücher"
 
@@ -999,8 +1001,7 @@ def test_realistic_shownotes_round_trip_keeps_every_link_image_and_format():
     conversion = convert_paragraph_html(REALISTIC_SHOWNOTES)
 
     assert _types(conversion) == [
-        "show_note_heading",  # Shownotes
-        "paragraph",  # contact prose
+        "paragraph",  # h2 Shownotes (kept at its level) + contact prose
         "show_note_heading",  # News aus der Szene
         "show_note_link_list",  # two clean items
         "paragraph",  # formatted "Wichtig" item
@@ -1017,4 +1018,159 @@ def test_realistic_shownotes_round_trip_keeps_every_link_image_and_format():
     assert "<code>pip install -U django</code>" in preserved
     assert '<img alt="Werbung" src="https://example.com/sponsor.png"/>' in preserved
     assert "<em>Fluent</em> Python" in preserved
-    assert len(conversion.warnings) == 3
+    assert "<h2>Shownotes</h2>" in preserved
+    assert len(conversion.warnings) == 4
+
+
+def _render(conversion):
+    from python_podcast.pp.show_notes.blocks import ShowNoteHeadingBlock, ShowNoteLinkListBlock
+
+    renderers = {"show_note_heading": ShowNoteHeadingBlock(), "show_note_link_list": ShowNoteLinkListBlock()}
+    parts = []
+    for block in conversion.blocks:
+        if block.type == "paragraph":
+            parts.append(block.value)
+        else:
+            renderer = renderers[block.type]
+            parts.append(renderer.render(renderer.to_python(block.value), context={"render_for_feed": True}))
+    return BeautifulSoup("".join(parts), "html.parser")
+
+
+def test_neighboring_heading_levels_keep_their_order_and_hierarchy():
+    html = (
+        "<h3>News</h3>"
+        '<ul><li><a href="https://example.com/a">A</a></li></ul>'
+        "<h4>Python 3.15</h4>"
+        '<ul><li><a href="https://example.com/b">B</a></li></ul>'
+        "<h4>Rust</h4>"
+        "<h3>Bücher</h3>"
+    )
+
+    conversion = convert_paragraph_html(html)
+    rendered = _render(conversion)
+
+    headings = [(tag.name, tag.get_text(strip=True)) for tag in rendered.find_all(["h3", "h4"])]
+    assert headings == [("h3", "News"), ("h4", "Python 3.15"), ("h4", "Rust"), ("h3", "Bücher")]
+    assert [a["href"] for a in rendered.find_all("a")] == ["https://example.com/a", "https://example.com/b"]
+    # The h3 sections still convert, the h4 sections and their list stay HTML.
+    assert _types(conversion) == ["show_note_link_list", "paragraph", "paragraph", "show_note_heading"]
+    assert conversion.blocks[1].value == '<h4>Python 3.15</h4><ul><li><a href="https://example.com/b">B</a></li></ul>'
+    assert conversion.blocks[2].value == "<h4>Rust</h4>"
+    assert conversion.warnings == [
+        "Heading <h4> preserved verbatim because show-note headings render as <h3>.",
+        "Heading <h4> preserved verbatim because show-note headings render as <h3>.",
+    ]
+
+
+@pytest.mark.parametrize("level", ["h1", "h2", "h4", "h5", "h6"])
+def test_non_h3_headings_are_preserved_standalone_and_before_a_list(level):
+    standalone = convert_paragraph_html(f"<{level}>Bücher</{level}>")
+    with_list = convert_paragraph_html(
+        f'<{level}>News</{level}><ul><li><a href="https://example.com/a">A</a></li></ul>'
+    )
+
+    assert standalone.changed is False
+    assert _types(standalone) == ["paragraph"]
+    assert standalone.blocks[0].value == f"<{level}>Bücher</{level}>"
+    assert with_list.changed is False
+    assert _types(with_list) == ["paragraph"]
+    assert (
+        with_list.blocks[0].value == f'<{level}>News</{level}><ul><li><a href="https://example.com/a">A</a></li></ul>'
+    )
+
+
+def test_stored_heading_blocks_still_render_h3():
+    from python_podcast.pp.show_notes.blocks import ShowNoteHeadingBlock, ShowNoteLinkListBlock
+
+    heading = ShowNoteHeadingBlock()
+    link_list = ShowNoteLinkListBlock()
+    stored_list = {
+        "heading": "News",
+        "show_heading": True,
+        "show_items": True,
+        "kind": "auto",
+        "icon": "",
+        "intro": "",
+        "items": [],
+    }
+
+    heading_html = heading.render(heading.to_python({"heading": "Links", "kind": "auto", "icon": ""}))
+    list_html = link_list.render(link_list.to_python(stored_list))
+
+    assert BeautifulSoup(heading_html, "html.parser").find(["h1", "h2", "h3", "h4", "h5", "h6"]).name == "h3"
+    assert BeautifulSoup(list_html, "html.parser").find(["h1", "h2", "h3", "h4", "h5", "h6"]).name == "h3"
+
+
+@pytest.mark.parametrize("spacer", ["&nbsp;", " ", " ", "　"])
+def test_visible_space_between_heading_and_list_is_preserved(spacer):
+    html = f'<h3>News</h3>{spacer}<ul><li><a href="https://example.com/a">A</a></li></ul>'
+
+    conversion = convert_paragraph_html(html)
+
+    assert _types(conversion) == ["show_note_heading", "paragraph"]
+    prose = conversion.blocks[1].value
+    assert prose.startswith(BeautifulSoup(spacer, "html.parser").get_text())
+    assert BeautifulSoup(prose, "html.parser").find("a")["href"] == "https://example.com/a"
+
+
+@pytest.mark.parametrize("spacer", ["&nbsp;", " "])
+def test_visible_space_between_direct_list_children_is_preserved(spacer):
+    items = (
+        '<li><a href="https://example.com/a">A</a></li>' + spacer + '<li><a href="https://example.com/b">B</a></li>'
+    )
+    html = f"<h3>News</h3><ul>{items}</ul>"
+
+    conversion = convert_paragraph_html(html)
+
+    assert _types(conversion) == ["show_note_heading", "paragraph"]
+    space = BeautifulSoup(spacer, "html.parser").get_text()
+    ul = BeautifulSoup(conversion.blocks[1].value, "html.parser").ul
+    assert [str(child) for child in ul.children if isinstance(child, NavigableString)] == [space]
+    assert any("direct text outside list items" in warning for warning in conversion.warnings)
+
+
+@pytest.mark.parametrize("spacer", ["&nbsp;", " "])
+def test_visible_space_between_nested_group_children_is_preserved(spacer):
+    group = (
+        "<li>Django<ul>"
+        '<li><a href="https://example.com/a">A</a></li>'
+        f"{spacer}"
+        '<li><a href="https://example.com/b">B</a></li>'
+        f"</ul>{spacer}</li>"
+    )
+    conversion = convert_paragraph_html(f"<h3>News</h3><ul>{group}</ul>")
+
+    assert _types(conversion) == ["show_note_heading", "paragraph"]
+    space = BeautifulSoup(spacer, "html.parser").get_text()
+    assert conversion.blocks[1].value.count(space) == 2
+
+
+@pytest.mark.parametrize("trailing", ["&nbsp;", " "])
+def test_visible_space_at_prose_edges_is_preserved(trailing):
+    space = BeautifulSoup(trailing, "html.parser").get_text()
+    html = f"{trailing}<p>Intro</p>{trailing}<h3>Bücher</h3>"
+
+    conversion = convert_paragraph_html(html)
+
+    assert _types(conversion) == ["paragraph", "show_note_heading"]
+    assert conversion.blocks[0].value == f"{space}<p>Intro</p>{space}"
+
+
+def test_collapsible_whitespace_still_converts_indented_structure():
+    html = (
+        "\n  <h3>News</h3>\n  \t"
+        "<ul>\n    "
+        '<li><a href="https://example.com/a">A</a></li>\n    '
+        "<li>Django\n      <ul>\n        "
+        '<li><a href="https://example.com/b">B</a></li>\n      '
+        "</ul>\n    </li>\n  "
+        "</ul>\r\n"
+        "  <p>Kontakt</p>\n"
+    )
+
+    conversion = convert_paragraph_html(html)
+
+    assert _types(conversion) == ["show_note_link_list", "paragraph"]
+    assert [item["title"] for item in conversion.blocks[0].value["items"]] == ["A", "B"]
+    assert conversion.blocks[1].value == "<p>Kontakt</p>"
+    assert conversion.warnings == []

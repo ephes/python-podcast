@@ -20,9 +20,15 @@ What the command does
   preserved verbatim and in place.
 * Splits a paragraph by headings (``h1``–``h6``):
 
-  - a standalone heading becomes ``show_note_heading``;
-  - a heading immediately followed by an eligible ``ul`` becomes a
+  - a standalone ``h3`` heading becomes ``show_note_heading``;
+  - an ``h3`` heading immediately followed by an eligible ``ul`` becomes a
     ``show_note_link_list``. Ordered lists stay in prose with their numbering;
+  - both show-note blocks render their heading as ``h3``. A heading of any
+    other level (``h1``, ``h2``, ``h4``–``h6``) therefore stays original HTML
+    with a warning, together with a list that follows it, so a nested outline
+    such as ``h3`` sections with ``h4`` subsections keeps its hierarchy.
+    Neighbouring ``h3`` sections still convert, and already stored show-note
+    blocks keep rendering ``h3``;
   - contact/intro prose stays as a ``paragraph``. Preserved HTML keeps
     comments as comments, including in comment-only segments, and escaped
     literal text stays text.
@@ -67,6 +73,13 @@ What the command does
     in prose, even if the nodes contain only whitespace. For a nested list,
     the parent item stays in prose. Ordinary formatting whitespace between
     list items still allows conversion;
+  - only collapsible HTML whitespace (spaces, tabs, line breaks, form feeds
+    and zero-width spaces) counts as formatting between a heading and its
+    list, between list items, around a nested list and at the edges of
+    preserved prose. A visible space such as ``&nbsp;``, an em space or an
+    ideographic space keeps the heading's list (or the whole list) in prose
+    with the space where it was. Inside accepted items, prefix, link title and
+    note text is still normalized as before (``&nbsp;`` becomes a space);
   - a break with HTML attributes stays in prose. Between a heading and a
     list it keeps the list in prose with it, and inside a list item it keeps
     the item in prose. Bare breaks between a heading and a list still allow

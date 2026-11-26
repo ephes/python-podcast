@@ -9,9 +9,14 @@ episodes, preserving sibling blocks and writing Wagtail revisions.
 Design rules (see the conversion spec):
 
 * Split a paragraph by headings (``h1``-``h6``).
-* A standalone heading becomes ``show_note_heading``.
-* A heading immediately followed by a ``ul``/``ol`` becomes a
+* A standalone ``h3`` heading becomes ``show_note_heading``.
+* An ``h3`` heading immediately followed by a ``ul``/``ol`` becomes a
   ``show_note_link_list``.
+* Both show-note templates render ``h3``, so a heading of any other level stays
+  original HTML (with a following list) to keep the outline's hierarchy.
+* Only collapsible HTML whitespace may separate a heading from its list or sit
+  between list items; a visible space such as ``&nbsp;`` keeps the source as
+  HTML so it does not disappear.
 * Contact/intro prose stays as a ``paragraph``.
 * Anything ambiguous (nested lists, block content, items without a single web
   link, non-separator text between links) is preserved verbatim as a
@@ -33,6 +38,9 @@ from bs4.element import PreformattedString
 from python_podcast.pp.show_notes.icons import materialize_icon
 
 HEADING_TAGS = {"h1", "h2", "h3", "h4", "h5", "h6"}
+# The only level the show-note heading and link-list templates render. Any
+# other level keeps its original HTML so a nested outline is not flattened.
+STRUCTURED_HEADING_TAG = "h3"
 LIST_TAGS = {"ul", "ol"}
 
 # Inline formatting tags that may appear in a list item without making it
@@ -47,6 +55,10 @@ _SEPARATOR_CHARS = "|/–—·•-"
 _SEPARATOR_RE = re.compile(rf"^[\s{re.escape(_SEPARATOR_CHARS)}]+")
 _SEPARATOR_TRAIL_RE = re.compile(rf"[\s{re.escape(_SEPARATOR_CHARS)}]+$")
 _WEB_SCHEMES = ("http://", "https://")
+# Whitespace that HTML collapses or drops between and around blocks. Other
+# Unicode spaces (no-break, em, ideographic, ...) are visible and must survive.
+# A zero-width space renders nothing and counts as collapsible as well.
+_COLLAPSIBLE_WHITESPACE = " \t\n\r\f\u200b"
 
 # Markup a plain-text ``show_note_heading`` represents without visible loss: a
 # heading is rendered bold anyway. Everything else (images, embeds, code,
@@ -118,7 +130,7 @@ class _Builder:
         if any(not _is_blank(node) for node in self._pending):
             html = "".join(
                 node.decode() if isinstance(node, Tag) else node.output_ready() for node in self._pending
-            ).strip()
+            ).strip(_COLLAPSIBLE_WHITESPACE)
             self.blocks.append(ConvertedBlock("paragraph", html))
         self._pending.clear()
 
@@ -128,6 +140,17 @@ class _Builder:
         heading_text = _clean_text(heading.get_text())
         if not heading_text:
             # Nothing useful in this heading; preserve it verbatim.
+            self.add_to_pending(heading)
+            return index + 1
+
+        if heading.name != STRUCTURED_HEADING_TAG:
+            # The structured blocks always render h3. Converting another level
+            # would flatten (or invert) the outline, so keep the original HTML;
+            # a following list stays prose too, as for any preserved heading.
+            self.warnings.append(
+                f"Heading <{heading.name}> preserved verbatim because show-note headings render as "
+                f"<{STRUCTURED_HEADING_TAG}>."
+            )
             self.add_to_pending(heading)
             return index + 1
 
@@ -257,7 +280,7 @@ def parse_link_list(list_tag: Tag) -> tuple[list[tuple[str, object]] | None, lis
         if isinstance(child, PreformattedString):
             return None, [f"List <{list_tag.name}> has non-text markup outside list items; preserved as prose."]
         if isinstance(child, NavigableString):
-            if _clean_text(str(child)):
+            if not _is_collapsible(str(child)):
                 return None, [f"List <{list_tag.name}> has direct text outside list items; preserved as prose."]
         elif isinstance(child, Tag) and child.name != "li":
             return None, [
@@ -380,7 +403,7 @@ def _parse_grouped_item(li: Tag, nested: Tag) -> tuple[dict | None, str | None]:
     # Only whitespace may follow the list. The label tokenizer would otherwise
     # move trailing text into the prefix or discard trailing markup.
     for sibling in nested.next_siblings:
-        if isinstance(sibling, (Tag, PreformattedString)) or _clean_text(str(sibling)):
+        if isinstance(sibling, (Tag, PreformattedString)) or not _is_collapsible(str(sibling)):
             return None, "has text or markup after the nested list"
 
     label_tokens = _tokenize_item(li, skip=nested)
@@ -402,7 +425,7 @@ def _parse_grouped_item(li: Tag, nested: Tag) -> tuple[dict | None, str | None]:
         if isinstance(child, PreformattedString):
             return None, "nested list has non-text markup outside its items"
         if isinstance(child, NavigableString):
-            if _clean_text(str(child)):
+            if not _is_collapsible(str(child)):
                 return None, "nested list has text outside its items"
         elif isinstance(child, Tag) and child.name != "li":
             return None, "nested list has non-item content"
@@ -568,10 +591,15 @@ def _is_blank(node: Tag | NavigableString) -> bool:
     if isinstance(node, PreformattedString):
         return False
     if isinstance(node, NavigableString):
-        return not _clean_text(str(node))
+        return _is_collapsible(str(node))
     if isinstance(node, Tag) and node.name == "br":
         return not node.attrs
     return False
+
+
+def _is_collapsible(text: str) -> bool:
+    """Whether ``text`` holds only whitespace HTML collapses away (not ``&nbsp;``)."""
+    return not text.strip(_COLLAPSIBLE_WHITESPACE)
 
 
 def _clean_text(text: str) -> str:

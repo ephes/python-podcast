@@ -4,6 +4,17 @@ Changelog
 Unreleased
 ----------
 
+* Keep show-note headings other than ``h3`` as HTML when converting legacy
+  show notes, with the list that follows them. Both show-note blocks render
+  ``h3``, so an ``h4`` subsection (or an ``h2`` above the sections) was
+  flattened to the same level before. ``h3`` sections still convert, and
+  stored show-note blocks keep rendering ``h3``.
+
+* Keep visible spaces such as ``&nbsp;`` between a show-note heading and its
+  list, between list items and at the edges of preserved show-note prose.
+  The converter dropped them because it treated every Unicode space as
+  collapsible HTML whitespace; ordinary indentation still converts.
+
 * Keep crawlers that honour ``robots.txt`` out of the episode index filter URLs:
   ``robots.txt`` now disallows the ``date_facets``, ``tag_facets`` and
   ``category_facets`` query parameters, as first (``/*?tag_facets=``) or later

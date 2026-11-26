@@ -75,7 +75,7 @@ def _latest_revision_object(episode):
 
 
 SHOWNOTE_HTML = (
-    "<h2>Shownotes</h2>"
+    "<h3>Shownotes</h3>"
     '<p>Unsere E-Mail: <a href="mailto:hallo@example.com">hallo@example.com</a></p>'
     "<h3>News</h3><ul>"
     '<li><a href="https://example.com/a">Article A</a></li>'
@@ -1118,12 +1118,14 @@ def test_apply_persists_unrepresentable_markup_in_the_revision():
 
     children = _detail_children(_latest_revision_object(episode))
     assert [child["type"] for child in children] == [
-        "show_note_heading",
+        "paragraph",
         "show_note_heading",
         "show_note_link_list",
         "paragraph",
         "paragraph",
     ]
+    # The h2 keeps its level: the show-note blocks would render it as h3.
+    assert children[0]["value"] == "<h2>Shownotes</h2>"
     items = children[2]["value"]["items"]
     assert [(item["title"], item["note"]) for item in items] == [("Article A", "plain note")]
     # The formatted item and the heading with its image are stored unchanged.
@@ -1135,7 +1137,8 @@ def test_apply_persists_unrepresentable_markup_in_the_revision():
         '<h3><img alt="Werbung" src="https://example.com/sponsor.png"/> Werbung</h3>'
         '<ul><li><a href="https://example.com/sponsor">Sponsor</a></li></ul>'
     )
-    assert output.count("warning:") == 2
+    assert output.count("warning:") == 3
+    assert "Heading <h2> preserved verbatim" in output
     assert "Heading contains <img>" in output
 
 
