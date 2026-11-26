@@ -203,6 +203,39 @@ def test_report_contract(monkeypatch, capsys, variant, valid):
 
 
 @pytest.mark.parametrize(
+    "report_state,returncode,expected_exit,diagnostic",
+    [
+        ("absent", 0, 1, "missing JUnit report proving that the exact 7 required cases passed"),
+        ("unreadable", 0, 1, "PermissionError: injected unreadable report"),
+        ("invalid", 0, 1, "ParseError:"),
+        ("valid", 0, 0, ""),
+        ("absent", 7, 7, ""),
+    ],
+)
+def test_report_diagnostic_after_test_exit(monkeypatch, capsys, report_state, returncode, expected_exit, diagnostic):
+    def unreadable(*args, **kwargs):
+        raise PermissionError("injected unreadable report")
+
+    def run(command, **kwargs):
+        report = Path(next(arg.split("=", 1)[1] for arg in command if arg.startswith("--junitxml=")))
+        if report_state in {"valid", "unreadable"}:
+            write_report(report)
+        elif report_state == "invalid":
+            report.write_text("<broken>")
+        if report_state == "unreadable":
+            monkeypatch.setattr(gate, "open", unreadable, raising=False)
+        return SimpleNamespace(returncode=returncode)
+
+    monkeypatch.setattr(gate, "run_gate", run)
+    assert gate.main() == expected_exit
+    error = capsys.readouterr().err
+    if diagnostic:
+        assert diagnostic in error
+    else:
+        assert error == ""
+
+
+@pytest.mark.parametrize(
     "failure", [7, FileNotFoundError("missing"), subprocess.TimeoutExpired("pytest", 300), KeyboardInterrupt()]
 )
 def test_launch_failure_cleans_report(monkeypatch, capsys, failure):

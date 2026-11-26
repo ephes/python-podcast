@@ -148,7 +148,16 @@ def main() -> int:
             )
             if result.returncode:
                 return result.returncode
-            cases = passing_cases(read_report(report))
+            try:
+                root = read_report(report)
+            except FileNotFoundError:
+                print(
+                    "Core media gate failed after pytest exited successfully: "
+                    f"missing JUnit report proving that the exact {len(EXPECTED_CASES)} required cases passed.",
+                    file=sys.stderr,
+                )
+                return 1
+            cases = passing_cases(root)
             identities = Counter((case.get("classname"), case.get("name")) for case in cases)
             if identities != Counter(EXPECTED_CASES):
                 print(

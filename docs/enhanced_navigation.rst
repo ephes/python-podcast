@@ -335,6 +335,9 @@ The gate reads at most 1 MiB of JUnit XML from a regular file, with one extra
 byte to detect growth beyond the limit. Before parsing, it checks that the byte
 count matches the file size and that the open file and report path still identify
 the same unchanged file. JUnit reports with a DOCTYPE are rejected.
+After a successful pytest exit, a missing report produces a diagnostic that
+names the required evidence and its case count. Unreadable or invalid reports
+retain their read or validation errors. A nonzero pytest exit is passed through.
 For intentional test selection or parameter changes, update ``TESTS`` and
 ``EXPECTED_CASES`` in ``scripts/check_core_media.py`` and the independently written
 ``EXPECTED`` fixture in ``tests/test_core_media_gate.py``. Check the collected
