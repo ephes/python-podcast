@@ -4,11 +4,13 @@ Changelog
 Unreleased
 ----------
 
-* Keep crawlers that honour ``robots.txt`` out of the episode index filter URLs
-  (``Disallow: /*?*_facets=``). Filter URLs (every ``date_facets``/``tag_facets``
-  combination) were about a quarter of all requests, and about 45% of those came
-  from such crawlers. Unfiltered index pages, their pagination, episodes and
-  feeds stay crawlable.
+* Keep crawlers that honour ``robots.txt`` out of the episode index filter URLs:
+  ``robots.txt`` now disallows the ``date_facets``, ``tag_facets`` and
+  ``category_facets`` query parameters, as first (``/*?tag_facets=``) or later
+  (``/*?*&tag_facets=``) parameter. Filter URLs were about a quarter of all
+  requests, and about 45% of those came from such crawlers. Unfiltered index
+  pages, their pagination, episodes, feeds and other query parameters (such as
+  ``utm_tag_facets``) stay crawlable.
 
 * Keep flat show-note items with line breaks between meaningful lines as
   HTML, preserving the line boundaries while eligible siblings still convert.
