@@ -366,6 +366,12 @@ def _parse_grouped_item(li: Tag, nested: Tag) -> tuple[dict | None, str | None]:
     if nested.attrs:
         return None, "nested list has HTML attributes"
 
+    # Only whitespace may follow the list. The label tokenizer would otherwise
+    # move trailing text into the prefix or discard trailing markup.
+    for sibling in nested.next_siblings:
+        if isinstance(sibling, (Tag, PreformattedString)) or _clean_text(str(sibling)):
+            return None, "has text or markup after the nested list"
+
     label_tokens = _tokenize_item(li, skip=nested)
     if label_tokens is None or any(kind == "link" for kind, _ in label_tokens):
         return None, "group label contains a link or unsupported markup"

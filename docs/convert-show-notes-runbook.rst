@@ -39,6 +39,9 @@ What the command does
   first sub-link the main link, the rest ``extra_links``, and a lone sub-item
   note the item ``note``. This covers the common ``Django 5.0 -> Release Notes /
   What's new`` shownote shape without nesting.
+  If text or markup follows the nested list inside the parent item, the group
+  stays as original HTML with a warning so the trailing content remains after
+  its links. Ordinary whitespace still allows the group to convert.
 * Anything ambiguous — block-level content, list items without a single
   ``http(s)`` link, non-separator text *between* links, or a nested group that
   would lose structure (a sub-item with multiple links or its own prefix, more

@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Keep show-note groups with text or markup following their nested list as
+  HTML, preserving the order of the links and the trailing content.
+
 * Preserve show-note items with blank link titles as HTML, including items
   with a blank title on an extra link or a nested sub-link.
 

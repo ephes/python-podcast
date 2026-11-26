@@ -291,6 +291,25 @@ def test_grouped_label_with_single_link_subitems_flattens():
     assert conversion.warnings == []
 
 
+@pytest.mark.parametrize("trailing", [" Follow these steps in order.", "<br/>", "<span> | </span>"])
+def test_content_after_nested_group_stays_after_its_links(trailing):
+    group = '<li>Setup<ul><li><a href="https://example.com/install">Install</a></li></ul>' + trailing + "</li>"
+    html = (
+        f"<h3>News</h3><ul>{group}"
+        '<li>Updates<ul><li><a href="https://example.com/release">Release</a></li></ul>\n  </li>'
+        "</ul>"
+    )
+
+    conversion = convert_paragraph_html(html)
+
+    assert _types(conversion) == ["show_note_heading", "paragraph", "show_note_link_list"]
+    original_group = BeautifulSoup(group, "html.parser").li
+    assert BeautifulSoup(conversion.blocks[1].value, "html.parser").li == original_group
+    item = conversion.blocks[2].value["items"][0]
+    assert (item["prefix"], item["title"]) == ("Updates: ", "Release")
+    assert len(conversion.warnings) == 1
+
+
 def test_grouped_subitem_note_becomes_item_note():
     html = (
         "<h3>News</h3><ul>"
