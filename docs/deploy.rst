@@ -75,6 +75,31 @@ chromium`` and run ``just test-e2e``. Before deploying, also check the new froze
 environment with production settings and ``migrate --plan`` against PostgreSQL,
 and retain a fresh database backup and the previous commit/lock for rollback.
 
+2026-11-26 robots.txt for the episode index filter URLs
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Deployed ``88ee7f0`` over ``c03be33`` on 2026-11-26 at 16:40 as a routine
+code-only deploy. ``robots.txt`` now disallows the episode index filter
+parameters ``date_facets``, ``tag_facets`` and ``category_facets``, as first
+(``/*?tag_facets=``) or later (``/*?*&tag_facets=``) query parameter; crawlers
+walked every filter combination (about a quarter of all requests). The deploy
+also shipped every change merged since ``c03be33``: the show-note converter
+fixes of the manually run ``convert_show_notes`` command, the Fediverse proxy
+trying another address when socket creation fails, and script/test-only
+changes (legacy backup staging checks, core media gate). No migration, settings,
+dependency or unit change; ``just pyinfra-check python_podcast production``
+showed only the source sync; ops-control ran at ``8ff629a4``. No task result was
+``READY`` or ``RUNNING`` before it. The command was not run.
+
+Verified after the deploy: ``https://python-podcast.de/robots.txt`` serves the
+new rules; ``/show/``, its second page, an episode, the MP3 feed and
+``/cms/login/`` answered 200 (``/`` redirects to ``/show/`` as before); both
+units are active with ``NRestarts=0``; their journal since the deploy holds no
+warning or error.
+
+Rollback: the sequence under "2026-11-18" below with ``c03be33``. No database
+step is needed.
+
 2026-11-25 django-cast d4f29f33, cast-bootstrap5 8a11f2b, django-indieweb 3faf52a
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
