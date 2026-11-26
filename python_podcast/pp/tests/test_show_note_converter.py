@@ -227,6 +227,16 @@ def test_whitespace_only_markup_directly_in_list_is_preserved(nested, markup):
     assert control.warnings == []
 
 
+def test_wrapped_leading_break_keeps_adjacent_prefix_text():
+    html = '<h3>X</h3><ul><li><span><br/>/</span>usr/bin <a href="https://example.com/v">Vega</a></li></ul>'
+
+    conversion = convert_paragraph_html(html)
+
+    assert _types(conversion) == ["show_note_link_list"]
+    assert conversion.blocks[0].value["items"][0]["prefix"] == "/usr/bin "
+    assert conversion.warnings == []
+
+
 def test_prefix_is_extracted_before_first_link():
     html = '<h3>X</h3><ul><li>Visualisierungen:&nbsp;<a href="https://example.com/v">Vega</a></li></ul>'
 

@@ -497,10 +497,15 @@ def _tokenize_item(li: Tag, skip: Tag | None = None) -> list[tuple[str, object]]
                     tokens.append(("formatting", f"has HTML attributes on or inside <{child.name}>"))
                 elif not _is_separator_only(text):
                     tokens.append(("formatting", f"has <{child.name}> formatting that a plain-text field cannot keep"))
-                if child.find("br") is not None:
-                    tokens.append(("break", f"{text} "))
-                else:
+                if child.find("br") is None:
                     tokens.append(("text", text))
+                else:
+                    # Keep wrapped breaks in document order around their text.
+                    for node in child.descendants:
+                        if isinstance(node, NavigableString):
+                            tokens.append(("text", str(node)))
+                        elif node.name == "br":
+                            tokens.append(("break", " "))
             else:
                 # Unknown tag: be conservative.
                 return None
