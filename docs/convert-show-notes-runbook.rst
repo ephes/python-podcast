@@ -73,8 +73,9 @@ What the command does
     does not block the conversion.
 
 * Is **idempotent**: details that already contain ``show_note_*`` blocks are
-  skipped, and the command reads the latest draft revision so re-running never
-  duplicates a conversion.
+  skipped independently, so an episode with structured notes in one detail can
+  still have a legacy sibling converted. The command reads the latest draft
+  revision so re-running never duplicates a conversion.
 
 Safety model
 ------------
@@ -124,6 +125,7 @@ A Wagtail revision holds the whole page, so publishing a draft publishes every
 pending edit in it. ``--publish`` therefore compares the draft with the live
 page and publishes only when they differ in nothing but the ``detail`` section
 (the conversion itself, including corrections made to it during review).
+This also covers a draft that converts a legacy sibling in a mixed live body.
 
 If the draft also changes anything else — an ``overview`` edit, a new title, a
 different cover image — the episode is a *conflict*:

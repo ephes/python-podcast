@@ -255,6 +255,40 @@ def test_idempotent_skips_already_converted():
 
 
 @pytest.mark.django_db(transaction=True)
+def test_convert_legacy_sibling_and_publish_existing_mixed_draft():
+    episode = _make_episode(
+        slug="mixed-details",
+        detail_children=[
+            {"type": "show_note_heading", "value": {"heading": "Existing notes"}},
+            {"type": "paragraph", "value": SHOWNOTE_HTML},
+        ],
+    )
+    raw = [
+        *episode.body.raw_data,
+        {"type": "detail", "value": [{"type": "paragraph", "value": SHOWNOTE_HTML}]},
+    ]
+    episode.body = episode.body.stream_block.to_python(raw)
+    episode.save_revision().publish()
+    live = Episode.objects.get(pk=episode.pk)
+    original_detail = live.body.raw_data[1]
+
+    _run("--slug", episode.slug, "--apply")
+
+    draft = _latest_revision_object(episode)
+    assert draft.body.raw_data[1] == original_detail
+    assert any(child["type"] == "show_note_link_list" for child in draft.body.raw_data[2]["value"])
+    previous_count = episode.revisions.count()
+
+    assert "already converted" in _run("--slug", episode.slug, "--apply")
+    assert "published existing converted draft" in _run("--slug", episode.slug, "--publish")
+    live = Episode.objects.get(pk=episode.pk)
+    assert live.revisions.count() == previous_count
+    assert live.live_revision_id == live.latest_revision_id
+    assert live.body.raw_data[1] == original_detail
+    assert any(child["type"] == "show_note_link_list" for child in live.body.raw_data[2]["value"])
+
+
+@pytest.mark.django_db(transaction=True)
 def test_publish_after_apply_publishes_existing_draft():
     episode = _make_episode(
         slug="apply-then-publish-ep",
@@ -893,7 +927,7 @@ def test_force_reports_history_beyond_legacy_search_limit():
         ]
     )
 
-    with patch.object(Command, "_already_converted", wraps=Command._already_converted) as inspected:
+    with patch.object(Command, "_has_structured_notes", wraps=Command._has_structured_notes) as inspected:
         output, error = _run_expecting_error("--slug", episode.slug, "--force", "--publish")
 
     assert "legacy revision search limit reached (100 revisions)" in output

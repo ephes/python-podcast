@@ -339,13 +339,17 @@ class Command(BaseCommand):
         if not detail_blocks:
             return EpisodeResult(episode.slug, episode.pk, "skipped", reason="no detail section")
 
-        if not force and self._already_converted(detail_blocks):
+        new_top, after_types, warnings, changed_positions = self._convert_top(raw_top)
+        if not changed_positions and not force and any(self._has_structured_notes(block) for block in detail_blocks):
             # The latest draft is already converted. When publishing, push that
             # draft live -- but only if the live page is still legacy, i.e. the
             # pending change really is our conversion and not an unrelated draft.
-            live_detail = [block for block in episode.body.raw_data if block["type"] == "detail"]
-            live_converted = bool(live_detail) and self._already_converted(live_detail)
-            if snapshot is not None and publish and episode.has_unpublished_changes and not live_converted:
+            if (
+                snapshot is not None
+                and publish
+                and episode.has_unpublished_changes
+                and self._has_pending_conversion(episode.body.raw_data, raw_top)
+            ):
                 revision = episode.get_latest_revision()
                 unrelated = self._unrelated_draft_changes(episode, revision.as_object())
                 if unrelated:
@@ -379,13 +383,12 @@ class Command(BaseCommand):
                 return result
             return EpisodeResult(episode.slug, episode.pk, "skipped", reason="already converted")
 
+        if not changed_positions:
+            return EpisodeResult(episode.slug, episode.pk, "skipped", reason="no convertible shownote HTML")
+
         # Full ordered lists for the per-episode review; handle() drops them
         # from the retained summary record right after reporting.
         before_types = [child["type"] for block in detail_blocks for child in block["value"]]
-
-        new_top, after_types, warnings, changed = self._convert_top(raw_top)
-        if not changed:
-            return EpisodeResult(episode.slug, episode.pk, "skipped", reason="no convertible shownote HTML")
 
         result = EpisodeResult(
             episode.slug,
@@ -622,8 +625,23 @@ class Command(BaseCommand):
         ]
 
     @staticmethod
-    def _already_converted(detail_blocks: list[dict]) -> bool:
-        return any(child["type"] in SHOW_NOTE_TYPES for block in detail_blocks for child in block["value"])
+    def _has_structured_notes(detail: dict) -> bool:
+        return any(child["type"] in SHOW_NOTE_TYPES for child in detail["value"])
+
+    def _has_pending_conversion(self, live_top: list[dict], draft_top: list[dict]) -> bool:
+        if not any(block["type"] == "detail" and self._has_structured_notes(block) for block in live_top):
+            return True
+
+        # A mixed live body can have a pending conversion too. A section that
+        # was already structured on the live page is not evidence of one.
+        _, _, _, live_positions = self._convert_top(live_top)
+        return any(
+            position < len(draft_top)
+            and draft_top[position]["type"] == "detail"
+            and draft_top[position].get("id") == live_top[position].get("id")
+            and self._has_structured_notes(draft_top[position])
+            for position in live_positions
+        )
 
     def _legacy_raw_top(self, episode: Episode) -> tuple[list[dict], int | None] | None:
         """Return the most recent body that has not yet been converted.
@@ -635,7 +653,7 @@ class Command(BaseCommand):
         """
         live = episode.body.raw_data
         live_detail = [block for block in live if block["type"] == "detail"]
-        if live_detail and not self._already_converted(live_detail):
+        if live_detail and not any(self._has_structured_notes(block) for block in live_detail):
             return live, episode.live_revision_id
 
         revisions = episode.revisions.using(episode._state.db).order_by("-created_at", "-pk").only("content")
@@ -647,7 +665,7 @@ class Command(BaseCommand):
                 continue
             raw = json.loads(body) if isinstance(body, str) else body
             detail = [block for block in raw if block["type"] == "detail"]
-            if detail and not self._already_converted(detail):
+            if detail and not any(self._has_structured_notes(block) for block in detail):
                 return raw, revision.pk
 
         # Check for more history without loading another revision body.
@@ -655,17 +673,22 @@ class Command(BaseCommand):
             raise LegacyRevisionSearchLimitExceeded
         return None
 
-    def _convert_top(self, raw_top: list[dict]) -> tuple[list[dict], list[str], list[str], bool]:
+    def _convert_top(self, raw_top: list[dict]) -> tuple[list[dict], list[str], list[str], list[int]]:
         new_top: list[dict] = []
         after_types: list[str] = []
         warnings: list[str] = []
-        changed = False
+        changed_positions: list[int] = []
 
-        for block in raw_top:
+        for position, block in enumerate(raw_top):
             if block["type"] != "detail":
                 new_top.append(block)
                 continue
+            if self._has_structured_notes(block):
+                new_top.append(block)
+                after_types.extend(child["type"] for child in block["value"])
+                continue
 
+            changed = False
             new_children: list[dict] = []
             for child in block["value"]:
                 if child["type"] != "paragraph":
@@ -683,9 +706,13 @@ class Command(BaseCommand):
                     new_children.append(self._raw_block(converted))
 
             after_types.extend(grandchild["type"] for grandchild in new_children)
-            new_top.append({"type": "detail", "value": new_children, "id": block.get("id")})
+            if changed:
+                changed_positions.append(position)
+                new_top.append({**block, "value": new_children})
+            else:
+                new_top.append(block)
 
-        return new_top, after_types, warnings, changed
+        return new_top, after_types, warnings, changed_positions
 
     @staticmethod
     def _raw_block(converted: ConvertedBlock) -> dict:
