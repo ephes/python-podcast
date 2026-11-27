@@ -10,6 +10,13 @@ Unreleased
   of a separate white or dark band. Rollback in ``docs/deploy.rst``
   (2026-11-27 cast-vue caa1386).
 
+* Move the React theme to cast-react ``v0.0.9`` (from ``v0.0.8``). The Month,
+  Order and Site theme menus open on a solid, theme-coloured surface instead
+  of the translucent system menu, with a checkmark on the current choice and
+  year headings in the Month list; the expanded tag and category lists get a
+  solid background. Rollback in ``docs/deploy.rst`` (2026-11-27 cast-react
+  v0.0.9).
+
 * Move the React theme to cast-react ``v0.0.8`` (from ``v0.0.7``). Readers
   see a labelled "Subscribe" link in the header (written blogs: "Feeds"),
   podcast app links on the post list and episode pages, and follow links in the
