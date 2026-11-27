@@ -4,6 +4,17 @@ Changelog
 Unreleased
 ----------
 
+* Relock django-cast to develop ``766c225f`` (from ``d4f29f33``),
+  cast-bootstrap5 to ``44aece3`` (from ``8a11f2b``) and django-indieweb to
+  develop ``47a983a`` (from ``3faf52a``). Uncached podcast feeds no longer ask
+  the media storage for every enclosure size: a size read from storage is now
+  stored with its file name. Also included: the "Cache file sizes" admin
+  action keeps concurrent editor changes, chapter saves no longer overwrite
+  unrelated chapters on retry, replaced theme-switcher controls show the
+  current colour mode, and Webmentions with an out-of-range date or a
+  ``#author`` link to another page are stored correctly. No migration; see
+  ``docs/deploy.rst`` (2026-11-27 relock).
+
 * Keep show-note headings other than ``h3`` as HTML when converting legacy
   show notes, with the list that follows them. Both show-note blocks render
   ``h3``, so an ``h4`` subsection (or an ``h2`` above the sections) was

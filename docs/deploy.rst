@@ -75,6 +75,31 @@ chromium`` and run ``just test-e2e``. Before deploying, also check the new froze
 environment with production settings and ``migrate --plan`` against PostgreSQL,
 and retain a fresh database backup and the previous commit/lock for rollback.
 
+2026-11-27 django-cast 766c225f, cast-bootstrap5 44aece3, django-indieweb 47a983a
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``uv.lock`` moves django-cast ``develop`` from ``d4f29f33`` to ``766c225f``
+(still 0.2.70 development state; release notes ``docs/releases/0.2.70.rst``),
+cast-bootstrap5 from ``8a11f2b`` to ``44aece3`` and django-indieweb
+``develop`` from ``3faf52a`` to ``47a983a``. Nothing else in the lock changed.
+No package adds a migration in these ranges; django-cast and cast-bootstrap5
+ship new Vite bundles and manifests.
+
+Visible effects: a podcast feed cache miss no longer issues one storage
+request per enclosure (sizes read from storage are stored with their file
+name after the request commits), the "Cache file sizes" admin action no
+longer overwrites concurrent editor changes, chapter saves no longer reuse
+rolled-back IDs, several transcript editor fixes, replaced theme-switcher
+controls show the current colour mode, and django-indieweb drops only an
+out-of-range Webmention date instead of failing and ignores an ``#author``
+link to another page. The upgrade actions in django-cast 0.2.70 concern the
+editor API, Voxhelm settings clients and primary/replica routers; this site
+uses none of them (no ``DATABASE_ROUTERS``).
+
+Rollback: the sequence under "2026-11-18" below with the previous commit,
+including the clean static rebuild (the older Vite manifests would otherwise
+stay behind). No database step is needed.
+
 2026-11-26 robots.txt for the episode index filter URLs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
