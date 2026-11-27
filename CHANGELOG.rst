@@ -4,6 +4,14 @@ Changelog
 Unreleased
 ----------
 
+* Move the React theme to cast-react ``v0.0.10`` (from ``v0.0.9``) and the
+  Vue.js theme to cast-vue ``c52e95c`` (from ``f71c75d``; Git commit, not on
+  PyPI). Both themes now offer the same Appearance menu in the header: the
+  button shows the current choice and opens Light, Dark and System (default:
+  follow the device) instead of cycling on click. The choice is shared between
+  both themes and applied before the page paints. Rollback in
+  ``docs/deploy.rst`` (2026-11-27 Appearance menu).
+
 * Move the Vue.js theme to cast-vue ``f71c75d`` (from ``caa1386``; Git
   commit, not on PyPI). Links keep working when the blog address is delivered
   as a full URL (needed for wersdoerfer.de; python-podcast is unchanged).
