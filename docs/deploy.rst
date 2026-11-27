@@ -96,9 +96,36 @@ link to another page. The upgrade actions in django-cast 0.2.70 concern the
 editor API, Voxhelm settings clients and primary/replica routers; this site
 uses none of them (no ``DATABASE_ROUTERS``).
 
-Rollback: the sequence under "2026-11-18" below with the previous commit,
-including the clean static rebuild (the older Vite manifests would otherwise
-stay behind). No database step is needed.
+Local gates on PostgreSQL 17: prek, the Webmention tests with migrations (62
+passed), the full suite on Python 3.15.2 and 3.14 (807 passed each, the known
+hanging ``test_stalled_phase_is_interrupted_and_resources_close``
+deselected), the dock/navigation browser tests (152 passed), Sphinx ``-W``
+and the core media gate (7 passed).
+
+Deployed ``bacf947`` over ``88ee7f0`` on 2026-11-27 at 08:41 (owner approval
+in chat the same day). It also shipped the show-note converter changes
+``1f873f5`` and ``fae75db`` of the manually run ``convert_show_notes``
+command. No task result was ``READY`` or ``RUNNING`` before it; ``just
+pyinfra-check python_podcast production`` showed only the source sync;
+ops-control ran at ``49b3ab74``. Verified after it: the host's ``uv.lock``
+names the three new revisions; both units are active with new PIDs and
+``NRestarts=0``; ``/``, ``/show/``, an episode, its transcript page, the M4A
+and MP3 feeds, ``/cms/login/`` and ``robots.txt`` answered 200 and the
+static CSS/JS of the episode page answered 200; the journal of both units
+held no error for the first ten minutes and no warning that was not already
+logged before the deploy (the two allauth deprecation warnings at worker
+start, the HEAD body notice, a 403 on ``/api/audios/`` and 404s for unknown
+URLs).
+
+Uncached feeds (cache-busting query, five runs, time to first byte): M4A
+0.44-0.55 s, MP3 0.43-0.53 s, the same as before the deploy (0.44-0.60 s).
+All audio sizes were already bound by the "Cache file sizes" admin action on
+2026-11-26, so this release only keeps them bound; the remaining time is the
+feed rendering itself.
+
+Rollback: the sequence under "2026-11-18" below with ``88ee7f0``, including
+the clean static rebuild (the older Vite manifests would otherwise stay
+behind). No database step is needed.
 
 2026-11-26 robots.txt for the episode index filter URLs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
