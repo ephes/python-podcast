@@ -90,6 +90,13 @@ Rollback: as under "2026-11-27 React theme (cast-react v0.0.3)" below, with
 the commit before this change; a reader who chose React then sees the 0.0.4
 look again.
 
+Deployed ``1d93174`` on 2026-11-27 at 14:00 with ``just pyinfra-check python_podcast
+production`` first. Verified after it: the host's ``uv.lock`` names cast-react
+``v0.0.5``; the units are active with ``NRestarts=0`` and their journal since
+the deploy holds no warning or error. In a browser with React chosen (phone
+and desktop, light and dark): the episode list with the tag filter, the feed page, a transcript, Über uns and the theme chooser render in the theme's look. The other
+themes answer 200 unchanged.
+
 2026-11-27 cast-react v0.0.4
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
