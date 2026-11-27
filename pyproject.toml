@@ -58,7 +58,7 @@ dev = [
 
 [tool.uv.sources]
 # Vue theme redesign, pinned to a commit (not on PyPI).
-cast-vue = { git = "https://github.com/ephes/cast-vue", rev = "7684476d19a35854f2383fe4f473742fcf7dea31" }
+cast-vue = { git = "https://github.com/ephes/cast-vue", rev = "caa13867cee13ec8f939f7bcbb40fe89fee1a59d" }
 # React theme, pinned to a release tag (not on PyPI).
 cast-react = { git = "https://github.com/ephes/cast-react", tag = "v0.0.8" }
 # Git sources for deploys (rsync sends the working tree, so the deployed

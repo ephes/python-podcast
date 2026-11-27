@@ -75,6 +75,19 @@ chromium`` and run ``just test-e2e``. Before deploying, also check the new froze
 environment with production settings and ``migrate --plan`` against PostgreSQL,
 and retain a fresh database backup and the previous commit/lock for rollback.
 
+2026-11-27 cast-vue caa1386
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``uv.lock`` moves cast-vue from ``7684476d`` to ``caa13867`` (Git commit, not
+on PyPI; the version stays ``0.0.28``). Nothing else in the lock changed. No
+migration and no settings change. The Vue.js footer no longer paints its own
+band and full-width rule; it sits on the page background with a hairline in
+the content column. CSS and the rebuilt static bundle only.
+
+Rollback: as under "2026-11-18" below with the commit before this change,
+including the clean static rebuild; a reader who chose Vue.js then sees the
+``7684476`` footer again.
+
 2026-11-27 cast-vue 7684476
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -756,7 +756,7 @@ def switch_to_git_sources():
 
     # Define default git sources
     default_sources = {
-        "cast-vue": {"git": "https://github.com/ephes/cast-vue", "rev": "7684476d19a35854f2383fe4f473742fcf7dea31"},
+        "cast-vue": {"git": "https://github.com/ephes/cast-vue", "rev": "caa13867cee13ec8f939f7bcbb40fe89fee1a59d"},
         "cast-react": {"git": "https://github.com/ephes/cast-react", "tag": "v0.0.3"},
         "cast-bootstrap5": {"git": "https://github.com/ephes/cast-bootstrap5"},
         "django-cast": {"git": "https://github.com/ephes/django-cast", "branch": "develop"},
