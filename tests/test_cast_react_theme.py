@@ -58,4 +58,6 @@ def test_pages_without_a_blog_render_with_react_selected(client, react_blog, pat
     assert client.post(chooser, {"template_base_dir": "react", "next": "/"}).status_code == 302
     response = client.get(path)
     assert response.status_code == 200
-    assert 'class="cr-plain"' in response.content.decode()
+    content = response.content.decode()
+    assert "cr-page-content" in content  # cast-react's server-rendered page layout
+    assert "cast-react-configuration" not in content  # without the React app

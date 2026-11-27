@@ -75,6 +75,24 @@ chromium`` and run ``just test-e2e``. Before deploying, also check the new froze
 environment with production settings and ``migrate --plan`` against PostgreSQL,
 and retain a fresh database backup and the previous commit/lock for rollback.
 
+2026-11-27 cast-react v0.0.4
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``uv.lock`` moves cast-react from ``v0.0.3`` (``6a949de5``) to ``v0.0.4``
+(``8030bdad``, from its Git tag). Nothing else in the lock changed. No
+migration and no settings change. The release orders the tag and category
+filters by post count (12 shown, the rest behind "Show all"), shows months as
+one select grouped by year, and renders the feed page (``/show/feed/``),
+transcript pages, the theme chooser and pages without a blog (Impressum,
+Über uns, Datenschutz, account pages) with the theme's header and styles.
+These pages load a small ``page`` entry from the same Vite manifest instead of
+the React app; ``collectstatic`` picks it up. ``test_cast_react_theme.py``
+checks for the new page layout instead of the old plain page.
+
+Rollback: as under "2026-11-27 React theme (cast-react v0.0.3)" below, with
+the commit before this change; a reader who chose React then sees the 0.0.3
+look again.
+
 2026-11-27 cast-vue redesign (785a147)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

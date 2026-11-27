@@ -4,6 +4,12 @@ Changelog
 Unreleased
 ----------
 
+* Move the React theme to cast-react ``v0.0.4`` (from ``v0.0.3``). Tags and
+  categories are ordered by post count, months are one select grouped by
+  year, and the feed page, transcripts, the theme chooser and the Impressum,
+  Über uns and account pages get the theme's header and styles instead of a
+  bare fallback. Rollback in ``docs/deploy.rst`` (2026-11-27 cast-react v0.0.4).
+
 * Move the Vue.js theme to the cast-vue redesign (Git commit ``785a147``, from
   ``b82a2e6``; not on PyPI). The new reading design has a light/dark switch
   and an episode list with search and filters in a side column. A lightweight
