@@ -93,7 +93,8 @@ unless an editor has since saved React as a theme: first check ``manage.py
 shell`` for ``Blog.objects.filter(template_base_dir="react")`` and
 ``TemplateBaseDirectory.objects.filter(name="react")`` (both in
 ``cast.models``) and set any match back to its previous theme in the Wagtail
-admin, because django-cast keeps using a stored ``react`` after the package is
+admin and publish it (a draft leaves the live theme on React), then rerun the
+queries; django-cast keeps using a stored ``react`` after the package is
 gone. A reader whose session still names ``react`` falls back to the site's
 theme on its own.
 
