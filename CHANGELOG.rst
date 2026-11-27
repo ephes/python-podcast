@@ -4,6 +4,13 @@ Changelog
 Unreleased
 ----------
 
+* Move the React theme to cast-react ``v0.0.8`` (from ``v0.0.7``). Readers
+  see a labelled "Subscribe" link in the header (written blogs: "Feeds"),
+  podcast app links on the post list and episode pages, and follow links in the
+  footer; the feed page becomes a subscribe page with app buttons, a copyable
+  MP3 feed address, the other formats and the blog feeds. Rollback in
+  ``docs/deploy.rst`` (2026-11-27 cast-react v0.0.8).
+
 * Move the Vue.js theme to cast-vue ``7684476`` (from ``062fa8e``; Git
   commit, not on PyPI). Visitors can now subscribe from every Vue.js page: a
   "Subscribe" link in the header, Apple Podcasts, Overcast, Pocket Casts,

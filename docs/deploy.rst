@@ -124,6 +124,21 @@ reload, the footer select shows Vue.js under ``?theme=vue``, and the theme
 chooser marks Vue.js as current, without console errors. The other themes
 answer 200 unchanged.
 
+2026-11-27 cast-react v0.0.8
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``uv.lock`` moves cast-react from ``v0.0.7`` (``78ecc24a``) to ``v0.0.8``
+(``14dd4f6d``, from its Git tag). Nothing else in the lock changed. No
+migration and no settings change. The header shows a labelled Subscribe link
+(Feeds for written blogs), podcast blogs get app links (from
+``CAST_FOLLOW_LINKS``; Overcast, Pocket Casts and Castro derived from the Apple
+Podcasts id) on lists and episodes, the footer lists follow links, and the feed
+page becomes a subscribe page. Static assets and templates only.
+
+Rollback: as under "2026-11-27 React theme (cast-react v0.0.3)" below, with the
+commit before this change; a reader who chose React then sees the 0.0.7
+feed icon and plain feed page again.
+
 2026-11-27 cast-react v0.0.7
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
