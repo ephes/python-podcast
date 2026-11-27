@@ -88,6 +88,14 @@ Rollback: as under "2026-11-27 React theme (cast-react v0.0.3)" below, with the
 commit before this change; a reader who chose React then sees the 0.0.5 list
 again.
 
+Deployed ``15918ae`` on 2026-11-27 at 17:17 with ``just pyinfra-check python_podcast
+production`` first, from an isolated clean ``PROJECTS_ROOT``. Verified after
+it: the host's ``uv.lock`` names cast-react ``v0.0.6``; the units are active
+with ``NRestarts=0`` and their journal since the deploy holds no warning or
+error. In a browser with React chosen (phone and desktop): the episode lists (first page, page 3, tag, month and search filters) and an episode
+show only the overview with a Read more link, no detail part; the post page
+shows overview and detail. The other themes answer 200 unchanged.
+
 2026-11-27 cast-vue cdc53e4
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
