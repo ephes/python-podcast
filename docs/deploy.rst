@@ -93,6 +93,23 @@ Rollback: the sequence under "2026-11-18" below with the commit before this
 change, including the clean static rebuild. Otherwise the Vite manifest
 from the redesign can survive the rollback.
 
+Deployed ``9390c20`` over ``d08c9f7`` on 2026-11-27 at 12:29. No task result
+was ``READY`` or ``RUNNING`` before it; ``just pyinfra-check python_podcast
+production`` showed the source sync and its dependent steps; ops-control ran
+at ``6717d7a0``. Verified after it: the host's ``uv.lock`` names cast-vue
+``785a147d``; ``staticfiles/cast_vue/manifest.json`` points at
+``main-Col8ctVI.js``; both units are active with ``NRestarts=0``. In a
+browser, choosing Vue.js on ``/select-theme/`` shows the new episode list
+(search and filters in the side column) and an episode with the new player,
+chapters and transcript; the player plays the episode and keeps playing in
+the bottom bar after going back to the list. Choosing Python Podcast again
+restores the previous look; the other themes answer 200 (``?theme=`` for pp,
+bootstrap5, react, bootstrap4 and plain). The journal since the deploy holds
+only known notices (old-URL 404s, the HEAD body notice, the worker's
+graceful shutdown and the allauth deprecation warnings at worker start).
+The largest live audio API response is 0.46 MB, below the 2 MiB limit of
+the new player's JSON reader.
+
 2026-11-27 React theme (cast-react v0.0.3)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
