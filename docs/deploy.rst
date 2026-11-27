@@ -75,6 +75,21 @@ chromium`` and run ``just test-e2e``. Before deploying, also check the new froze
 environment with production settings and ``migrate --plan`` against PostgreSQL,
 and retain a fresh database backup and the previous commit/lock for rollback.
 
+2026-11-27 cast-vue 7684476
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``uv.lock`` moves cast-vue from ``062fa8e7`` to ``7684476d`` (Git commit, not
+on PyPI; the version stays ``0.0.28``). Nothing else in the lock changed. No
+migration and no settings change. The Vue.js theme gets a "Subscribe" link in
+the header, a row of podcast app links on the archive and below the episode
+player, follow links in the footer, and ``/show/feed/`` becomes a subscribe
+page with app buttons and copyable feed URLs. Templates, a template tag and
+static assets only.
+
+Rollback: as under "2026-11-18" below with the commit before this change,
+including the clean static rebuild; a reader who chose Vue.js then sees the
+``062fa8e`` look again.
+
 2026-11-27 cast-vue 062fa8e
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
