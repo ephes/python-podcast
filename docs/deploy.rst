@@ -75,10 +75,10 @@ chromium`` and run ``just test-e2e``. Before deploying, also check the new froze
 environment with production settings and ``migrate --plan`` against PostgreSQL,
 and retain a fresh database backup and the previous commit/lock for rollback.
 
-2026-11-27 React theme (cast-react v0.0.2)
+2026-11-27 React theme (cast-react v0.0.3)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``uv.lock`` adds cast-react ``v0.0.2`` (``97a01687``, from its Git tag; it is
+``uv.lock`` adds cast-react ``v0.0.3`` (``6a949de5``, from its Git tag; it is
 not on PyPI). Nothing else in the lock changed. ``cast_react`` joins
 ``INSTALLED_APPS``, ``CAST_CUSTOM_THEMES`` offers it as "React" and the
 production ``DJANGO_VITE`` reads its manifest from
@@ -88,9 +88,14 @@ migration. No blog changes its theme: React is only used where a reader picks
 it in the theme chooser (stored in the session) or an editor sets it.
 
 Rollback: the sequence under "2026-11-18" below with the commit before this
-change, including the clean static rebuild. No database step is needed. A
-reader whose session still names ``react`` falls back to the site's theme once
-the theme is gone.
+change, including the clean static rebuild. No database step is needed,
+unless an editor has since saved React as a theme: first check ``manage.py
+shell`` for ``Blog.objects.filter(template_base_dir="react")`` and
+``TemplateBaseDirectory.objects.filter(name="react")`` (both in
+``cast.models``) and set any match back to its previous theme in the Wagtail
+admin, because django-cast keeps using a stored ``react`` after the package is
+gone. A reader whose session still names ``react`` falls back to the site's
+theme on its own.
 
 2026-11-27 django-cast 766c225f, cast-bootstrap5 44aece3, django-indieweb 47a983a
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

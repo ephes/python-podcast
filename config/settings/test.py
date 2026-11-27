@@ -2,6 +2,10 @@
 With these settings, tests run faster.
 """
 
+from pathlib import Path
+
+import cast_react
+
 from .base import *  # noqa
 from .base import env
 
@@ -71,3 +75,13 @@ STORAGES = {
     "production": {"BACKEND": "django.core.files.storage.InMemoryStorage"},
 }
 MEDIA_URL = "/media/"
+
+# Django Vite: the React theme ships its built manifest, so pages in that theme
+# render in tests without a Vite build.
+DJANGO_VITE = {
+    "cast_react": {
+        "dev_mode": False,
+        "static_url_prefix": "cast_react/",
+        "manifest_path": Path(cast_react.__file__).resolve().parent / "static" / "cast_react" / "manifest.json",
+    },
+}
