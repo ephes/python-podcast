@@ -89,6 +89,15 @@ Rollback: as under "2026-11-18" below with the commit before this change,
 including the clean static rebuild; a reader who chose Vue.js then sees the
 ``cdc53e4`` look again.
 
+Deployed ``cd5ca3d`` on 2026-11-27 at 17:26 with ``just pyinfra-check
+python_podcast production`` first (ops-control ``8ff629a4``). Verified after
+it: pages under ``?theme=vue`` load ``cast_vue/main-CowE9Zwe.js``; in a browser
+(phone and desktop, light and dark) the sort and footer theme selects show
+the inset chevron, Oldest first and back reorders the list and survives a
+reload, the footer select shows Vue.js under ``?theme=vue``, and the theme
+chooser marks Vue.js as current, without console errors. The other themes
+answer 200 unchanged.
+
 2026-11-27 cast-react v0.0.6
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
