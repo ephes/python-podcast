@@ -75,6 +75,24 @@ chromium`` and run ``just test-e2e``. Before deploying, also check the new froze
 environment with production settings and ``migrate --plan`` against PostgreSQL,
 and retain a fresh database backup and the previous commit/lock for rollback.
 
+2026-11-27 cast-vue redesign (785a147)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``uv.lock`` moves cast-vue from ``b82a2e62`` to ``785a147d``. It stays at
+``0.0.28`` and comes from the pinned Git commit (not on PyPI). The lockfile
+changes are limited to the cast-vue source and its project dependency entry.
+The package ships its built Vite bundle and
+``cast_vue/static/cast_vue/manifest.json``. ``collectstatic`` picks them up and
+production ``DJANGO_VITE`` reads ``staticfiles/cast_vue/manifest.json``. No
+migration. The redesign uses the site's existing settings, URLs and template
+configuration. cast-vue now requires django-cast ``>=0.2.55`` and Python
+``>=3.11``. The lock has django-cast ``0.2.70`` and the project requires
+Python ``>=3.12``.
+
+Rollback: the sequence under "2026-11-18" below with the commit before this
+change, including the clean static rebuild. Otherwise the Vite manifest
+from the redesign can survive the rollback.
+
 2026-11-27 React theme (cast-react v0.0.3)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

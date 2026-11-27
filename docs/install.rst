@@ -163,9 +163,11 @@ uses only fake SSH/SFTP/process boundaries and synthetic gzip data.
 Work on local package checkouts
 -------------------------------
 
-``django-cast``, ``cast-bootstrap5``, ``cast-vue``, ``cast-react`` (from a version
-tag) and ``django-indieweb`` are installed from Git by default. Two commands rewrite their entries in
-``[tool.uv.sources]`` of ``pyproject.toml`` and then run ``uv sync``:
+``django-cast``, ``cast-bootstrap5``, ``cast-vue`` (pinned to the redesign
+commit ``785a147``), ``cast-react`` (from a version tag) and
+``django-indieweb`` are installed from Git by default. Two commands rewrite
+their entries in ``[tool.uv.sources]`` of ``pyproject.toml`` and then run
+``uv sync``:
 
 .. code-block:: console
 

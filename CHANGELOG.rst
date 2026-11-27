@@ -4,6 +4,16 @@ Changelog
 Unreleased
 ----------
 
+* Move the Vue.js theme to the cast-vue redesign (Git commit ``785a147``, from
+  ``b82a2e6``; not on PyPI). The new reading design has a light/dark switch
+  and an episode list with search and filters in a side column. A lightweight
+  audio player replaces Podlove within the Vue.js theme and supports chapters,
+  transcripts and playback speed. Playback continues across page changes
+  with controls in a bottom bar. Only readers who choose Vue.js in the theme
+  chooser or visit a blog set to ``vue`` see the redesign. The package ships
+  its built bundle (no Node.js build on the server). No migration. Rollback
+  in ``docs/deploy.rst`` (2026-11-27 cast-vue redesign).
+
 * Offer the React theme (cast-react ``v0.0.3``, from its Git tag; not on
   PyPI) in the theme chooser next to Vue.js, Bootstrap 5 and Python Podcast.
   It is installed as ``cast_react``, ships its built bundle (no Node.js build
