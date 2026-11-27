@@ -151,6 +151,13 @@ Rollback: as under "2026-11-27 React theme (cast-react v0.0.3)" below, with the
 commit before this change; a reader who chose React then sees the system
 menus again.
 
+Deployed ``bd11951`` on 2026-11-27 at 19:04 with ``just pyinfra-check python_podcast
+production`` first, from an isolated clean ``PROJECTS_ROOT`` and a current
+ops-control checkout. Verified after it in Chrome and Safari with React chosen
+(phone and desktop, light and dark): the live page loads the 0.0.9 bundle, and
+the Month and Site theme menus open on a solid surface in the page colours,
+without console errors.
+
 2026-11-27 cast-react v0.0.8
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
