@@ -112,6 +112,14 @@ Rollback: as under "2026-11-27 React theme (cast-react v0.0.3)" below, with the
 commit before this change; a reader who chose React then sees the 0.0.6
 controls again.
 
+Deployed ``1af22e4`` on 2026-11-27 at 17:57 with ``just pyinfra-check python_podcast
+production`` first, from an isolated clean ``PROJECTS_ROOT`` and a current
+ops-control checkout. Verified after it in a browser with React chosen (phone
+and desktop, light and dark): on the episode list the month and order dropdowns and the
+footer Site theme menu show the inset arrow; the footer lines up with the
+header and stacks on phones; choosing another theme there reloads the same page
+in that theme. The theme chooser page shows no duplicate footer menu.
+
 2026-11-27 cast-react v0.0.6
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
