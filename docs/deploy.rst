@@ -87,6 +87,21 @@ so ``collectstatic`` picks it up and no Node.js build runs on the host. No
 migration. No blog changes its theme: React is only used where a reader picks
 it in the theme chooser (stored in the session) or an editor sets it.
 
+Deployed ``951697b`` over ``f920736`` on 2026-11-27 at 11:47. No task result
+was ``READY`` or ``RUNNING`` before it; ``just pyinfra-check python_podcast
+production`` showed the source sync and its dependent steps; ops-control ran
+at ``9c555d76``. Verified after it: the host's ``uv.lock`` names cast-react
+``v0.0.3`` (``6a949de5``); both units are active with ``NRestarts=0``;
+``/show/``, ``/about/`` and ``robots.txt`` answered 200. In a browser the
+theme chooser offers React; choosing it shows the episode list and an episode
+with its player, chapters and hosts, and the player plays the episode;
+``/about/``, ``/impressum/``, ``/datenschutzerklaerung/``, the chooser page
+and the login page still render; choosing Python Podcast again restores the
+previous look. The other themes answer 200 unchanged (``?theme=`` for pp,
+bootstrap5, vue, bootstrap4 and plain). The journal since the deploy holds
+only known notices (``/favicon.ico`` 404, the HEAD body notice, the two
+allauth deprecation warnings at worker start).
+
 Rollback: the sequence under "2026-11-18" below with the commit before this
 change, including the clean static rebuild. No database step is needed,
 unless an editor has since saved React as a theme: first check ``manage.py
