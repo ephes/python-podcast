@@ -9,6 +9,7 @@ from pathlib import Path
 
 import cast
 import cast_bootstrap5
+import cast_react
 import cast_vue
 
 from .test import *  # noqa
@@ -49,6 +50,11 @@ DJANGO_VITE = {
         "dev_mode": False,
         "static_url_prefix": "cast_vue/",
         "manifest_path": _package_manifest_path(cast_vue, "cast_vue"),
+    },
+    "cast_react": {
+        "dev_mode": False,
+        "static_url_prefix": "cast_react/",
+        "manifest_path": _package_manifest_path(cast_react, "cast_react"),
     },
     "cast-bootstrap5": {
         "dev_mode": False,

@@ -66,6 +66,7 @@ THIRD_PARTY_APPS = [
     "django_vite",  # required for vue theme
     "cast_bootstrap5.apps.CastBootstrap5Config",  # bootstrap5 theme for django-cast
     "cast_vue.apps.CastVueConfig",  # vue theme for django-cast
+    "cast_react.apps.CastReactConfig",  # react theme for django-cast
     "cast",  # blog/podcast package
 ]
 LOCAL_APPS = [
@@ -477,6 +478,7 @@ CSRF_FAILURE_VIEW = "cast.views.defaults.csrf_failure"
 CAST_CUSTOM_THEMES = [
     ("vue", "Vue.js"),
     ("bootstrap5", "Bootstrap 5"),
+    ("react", "React"),
     ("pp", "Python Podcast"),
 ]
 

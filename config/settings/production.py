@@ -223,6 +223,11 @@ DJANGO_VITE = {
         "static_url_prefix": "cast_vue/",
         "manifest_path": ROOT_DIR.path("staticfiles").path("cast_vue").path("manifest.json"),
     },
+    "cast_react": {
+        "dev_mode": False,
+        "static_url_prefix": "cast_react/",
+        "manifest_path": ROOT_DIR.path("staticfiles").path("cast_react").path("manifest.json"),
+    },
     "cast-bootstrap5": {
         "dev_mode": False,
         "static_url_prefix": "cast_bootstrap5/vite/",

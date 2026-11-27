@@ -3,6 +3,7 @@ from pathlib import Path
 
 import cast
 import cast_bootstrap5
+import cast_react
 import cast_vue
 
 from .base import *  # noqa
@@ -126,6 +127,12 @@ DJANGO_VITE = {
         "dev_mode": DJANGO_VITE_DEV_MODE,
         "static_url_prefix": "" if DJANGO_VITE_DEV_MODE else "cast_vue/",
         "manifest_path": _package_manifest_path(cast_vue, "cast_vue"),
+    },
+    # The React theme ships its built bundle and has no Vite dev server here.
+    "cast_react": {
+        "dev_mode": False,
+        "static_url_prefix": "cast_react/",
+        "manifest_path": _package_manifest_path(cast_react, "cast_react"),
     },
     "cast-bootstrap5": {
         "dev_mode": DJANGO_VITE_DEV_MODE,

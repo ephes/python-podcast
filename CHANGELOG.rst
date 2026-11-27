@@ -4,6 +4,12 @@ Changelog
 Unreleased
 ----------
 
+* Offer the React theme (cast-react ``v0.0.2``, from its Git tag; not on
+  PyPI) in the theme chooser next to Vue.js, Bootstrap 5 and Python Podcast.
+  It is installed as ``cast_react``, ships its built bundle (no Node.js build
+  on the server) and is only used where a reader picks it or a blog sets it
+  as its theme. Rollback in ``docs/deploy.rst`` (2026-11-27 React theme).
+
 * Relock django-cast to develop ``766c225f`` (from ``d4f29f33``),
   cast-bootstrap5 to ``44aece3`` (from ``8a11f2b``) and django-indieweb to
   develop ``47a983a`` (from ``3faf52a``). Uncached podcast feeds no longer ask

@@ -9,6 +9,7 @@ dependencies = [
     "boto3",
     "cast-bootstrap5",
     "cast-vue",
+    "cast-react",
     "certifi>=2026.10.19",
     "django-allauth",
     "django-anymail[mailgun]",
@@ -57,6 +58,8 @@ dev = [
 
 [tool.uv.sources]
 cast-vue = { git = "https://github.com/ephes/cast-vue" }
+# React theme, pinned to a release tag (not on PyPI).
+cast-react = { git = "https://github.com/ephes/cast-react", tag = "v0.0.2" }
 # Git sources for deploys (rsync sends the working tree, so the deployed
 # pyproject must resolve server-side). Production and staging both use the
 # persistent player from cast-bootstrap5 main.
