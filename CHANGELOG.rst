@@ -4,6 +4,11 @@ Changelog
 Unreleased
 ----------
 
+* Move the React theme to cast-react ``v0.0.7`` (from ``v0.0.6``). Dropdown
+  arrows sit inside the field with room to the edge in light and dark mode,
+  and the footer theme switcher lines up with the header and stacks on
+  phones. Rollback in ``docs/deploy.rst`` (2026-11-27 cast-react v0.0.7).
+
 * Move the Vue.js theme to cast-vue ``062fa8e`` (from ``cdc53e4``; Git
   commit, not on PyPI). The sort and site theme selects get an inset chevron
   and the theme's control style in light and dark, the footer theme switcher
