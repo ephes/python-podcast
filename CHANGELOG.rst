@@ -4,6 +4,16 @@ Changelog
 Unreleased
 ----------
 
+* Move the Vue.js theme to cast-vue ``cdc53e4`` (from ``785a147``; Git
+  commit, not on PyPI). The tag filter shows the most-used tags plus a tag
+  search and an alphabetical index instead of one pill per tag; the archive
+  lists years with counts and opens the months of a year; the custom date
+  range is folded away; active filters appear as removable chips above the
+  list. The feed page, transcripts, the theme chooser, error pages and the
+  Impressum, Über uns and account pages get the theme's header, footer and
+  styles instead of a bare fallback. Rollback in ``docs/deploy.rst``
+  (2026-11-27 cast-vue cdc53e4).
+
 * Move the React theme to cast-react ``v0.0.5`` (from ``v0.0.4``). The tag
   filter shows the ten most-used tags and opens the rest as a searchable A-Z
   index instead of one pill per tag; the custom date range folds below the

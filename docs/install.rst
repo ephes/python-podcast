@@ -164,7 +164,7 @@ Work on local package checkouts
 -------------------------------
 
 ``django-cast``, ``cast-bootstrap5``, ``cast-vue`` (pinned to the redesign
-commit ``785a147``), ``cast-react`` (from a version tag) and
+commit ``cdc53e4``), ``cast-react`` (from a version tag) and
 ``django-indieweb`` are installed from Git by default. Two commands rewrite
 their entries in ``[tool.uv.sources]`` of ``pyproject.toml`` and then run
 ``uv sync``:

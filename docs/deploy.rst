@@ -75,6 +75,24 @@ chromium`` and run ``just test-e2e``. Before deploying, also check the new froze
 environment with production settings and ``migrate --plan`` against PostgreSQL,
 and retain a fresh database backup and the previous commit/lock for rollback.
 
+2026-11-27 cast-vue cdc53e4
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``uv.lock`` moves cast-vue from ``785a147d`` to ``cdc53e40`` (Git commit, not
+on PyPI; the version stays ``0.0.28``). Nothing else in the lock changed. No
+migration and no settings change. The Vue.js theme's tag filter shows the
+most-used tags with a tag search and an alphabetical index, the archive is a
+year list that opens a year's months, and pages rendered by Django (feed page,
+transcripts, theme chooser, error, flat and account pages) get the theme's
+header, footer and styles. The blog list and post pages now extend the
+theme's ``spa.html``; site templates that extend ``cast/vue/base.html`` with
+``{% block content %}`` get the server-rendered layout. Static assets and
+templates only.
+
+Rollback: as under "2026-11-18" below with the commit before this change,
+including the clean static rebuild; a reader who chose Vue.js then sees the
+``785a147`` look again.
+
 2026-11-27 cast-react v0.0.5
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
