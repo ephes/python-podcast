@@ -348,8 +348,8 @@ dependencies = [
 
 [[package]]
 name = "cast-react"
-version = "0.0.4"
-source = { git = "https://github.com/ephes/cast-react?tag=v0.0.4#8030bdaddb21ba8cfaad00222f9c539d4b72cb7c" }
+version = "0.0.5"
+source = { git = "https://github.com/ephes/cast-react?tag=v0.0.5#b82b43cb2898d89e590471fbac77ddd055e5592e" }
 dependencies = [
     { name = "django-cast" },
     { name = "django-vite" },
@@ -2008,7 +2008,7 @@ requires-dist = [
     { name = "argon2-cffi" },
     { name = "boto3" },
     { name = "cast-bootstrap5", git = "https://github.com/ephes/cast-bootstrap5" },
-    { name = "cast-react", git = "https://github.com/ephes/cast-react?tag=v0.0.4" },
+    { name = "cast-react", git = "https://github.com/ephes/cast-react?tag=v0.0.5" },
     { name = "cast-vue", git = "https://github.com/ephes/cast-vue?rev=785a147d13323a39769f6fabb3a6ced6cccfd0da" },
     { name = "certifi", specifier = ">=2026.10.19" },
     { name = "django-allauth" },
