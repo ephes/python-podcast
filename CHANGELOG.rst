@@ -4,6 +4,11 @@ Changelog
 Unreleased
 ----------
 
+* Move the React theme to cast-react ``v0.0.6`` (from ``v0.0.5``). Episode
+  lists show each episode's overview with a "Read more" link to the full
+  episode page, and list rows never show the detail part. Rollback in
+  ``docs/deploy.rst`` (2026-11-27 cast-react v0.0.6).
+
 * Move the Vue.js theme to cast-vue ``cdc53e4`` (from ``785a147``; Git
   commit, not on PyPI). The tag filter shows the most-used tags plus a tag
   search and an alphabetical index instead of one pill per tag; the archive
