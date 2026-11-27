@@ -93,6 +93,14 @@ Rollback: as under "2026-11-18" below with the commit before this change,
 including the clean static rebuild; a reader who chose Vue.js then sees the
 ``785a147`` look again.
 
+Deployed ``38505b7`` on 2026-11-27 at 14:26 with ``just pyinfra-check
+python_podcast production`` first (ops-control ``6717d7a0``). Verified after
+it: pages under ``?theme=vue`` load ``cast_vue/main-BV9bxGCU.js``; in a
+browser with Vue.js chosen (phone and desktop, light and dark) the theme
+chooser, the episode list with tag search and year filter, an episode, its
+transcript, the feed page and Über uns/Impressum render in the theme's look
+without console errors. The other themes answer 200 unchanged.
+
 2026-11-27 cast-react v0.0.5
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
