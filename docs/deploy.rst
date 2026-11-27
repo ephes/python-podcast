@@ -139,6 +139,14 @@ Rollback: as under "2026-11-27 React theme (cast-react v0.0.3)" below, with the
 commit before this change; a reader who chose React then sees the 0.0.7
 feed icon and plain feed page again.
 
+Deployed ``628f7f3`` on 2026-11-27 at 18:35 with ``just pyinfra-check python_podcast
+production`` first, from an isolated clean ``PROJECTS_ROOT`` and a current
+ops-control checkout. Verified after it in a browser with React chosen (phone
+and desktop, light and dark): the header shows the labelled Subscribe (podcast)
+or Feeds (blog) link, podcast lists and episodes show the app links, the feed
+page shows the copyable feed address, and the footer lists the follow links.
+The other themes answer 200 unchanged.
+
 2026-11-27 cast-react v0.0.7
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
