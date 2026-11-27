@@ -93,6 +93,15 @@ dialogs in post bodies from covering the page. Templates and static bundles only
 Rollback: as under "2026-11-18" below with the commit before this change,
 including the clean static rebuild.
 
+Deployed ``bea1671`` on 2026-11-27 at 19:59 with ``just pyinfra-check python_podcast
+production`` first, from an isolated clean ``PROJECTS_ROOT`` and ops-control
+``14aae132``. Verified after it in Chrome and WebKit (phone and desktop, light and
+dark) with React and Vue.js chosen on ``/show/`` and ``/show/feed/``: the header button
+shows the setting and only opens the menu; Light, Dark and System apply,
+persist and are set before the page paints on reload; keyboard selection
+works; a choice made in React carries over to Vue.js; no console errors;
+units active with ``NRestarts=0`` and no new journal warnings.
+
 2026-11-27 cast-vue f71c75d
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
