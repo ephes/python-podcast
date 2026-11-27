@@ -15,7 +15,7 @@ import typer
 import commands
 
 GIT_SOURCES = {
-    "cast-vue": {"git": "https://github.com/ephes/cast-vue", "rev": "cdc53e40e13ea2b9dfdbe328b28f52ccfc3cbdc5"},
+    "cast-vue": {"git": "https://github.com/ephes/cast-vue", "rev": "062fa8e7027df489992803bcdc9753dffa223e39"},
     "cast-react": {"git": "https://github.com/ephes/cast-react", "tag": "v0.0.3"},
     "cast-bootstrap5": {"git": "https://github.com/ephes/cast-bootstrap5"},
     "django-cast": {"git": "https://github.com/ephes/django-cast", "branch": "develop"},

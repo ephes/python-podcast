@@ -75,6 +75,20 @@ chromium`` and run ``just test-e2e``. Before deploying, also check the new froze
 environment with production settings and ``migrate --plan`` against PostgreSQL,
 and retain a fresh database backup and the previous commit/lock for rollback.
 
+2026-11-27 cast-vue 062fa8e
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``uv.lock`` moves cast-vue from ``cdc53e40`` to ``062fa8e7`` (Git commit, not
+on PyPI; the version stays ``0.0.28``). Nothing else in the lock changed. No
+migration and no settings change. The Vue.js theme's sort and site theme
+selects, footer, theme chooser page and filter controls are restyled; the
+footer theme select shows the theme that renders the page and offers "Keep
+this theme" from a ``?theme=vue`` preview. Static assets and templates only.
+
+Rollback: as under "2026-11-18" below with the commit before this change,
+including the clean static rebuild; a reader who chose Vue.js then sees the
+``cdc53e4`` look again.
+
 2026-11-27 cast-react v0.0.6
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -4,6 +4,14 @@ Changelog
 Unreleased
 ----------
 
+* Move the Vue.js theme to cast-vue ``062fa8e`` (from ``cdc53e4``; Git
+  commit, not on PyPI). The sort and site theme selects get an inset chevron
+  and the theme's control style in light and dark, the footer theme switcher
+  stacks on phones and shows the theme that renders the page, the theme
+  chooser page becomes an aligned grid that marks the current theme, and the
+  archive, tag search, date range, chips, pagination and header controls share
+  one style. Rollback in ``docs/deploy.rst`` (2026-11-27 cast-vue 062fa8e).
+
 * Move the React theme to cast-react ``v0.0.6`` (from ``v0.0.5``). Episode
   lists show each episode's overview with a "Read more" link to the full
   episode page, and list rows never show the detail part. Rollback in
