@@ -4,6 +4,11 @@ Changelog
 Unreleased
 ----------
 
+* Move the Vue.js theme to cast-vue ``f71c75d`` (from ``caa1386``; Git
+  commit, not on PyPI). Links keep working when the blog address is delivered
+  as a full URL (needed for wersdoerfer.de; python-podcast is unchanged).
+  Rollback in ``docs/deploy.rst`` (2026-11-27 cast-vue f71c75d).
+
 * Move the Vue.js theme to cast-vue ``caa1386`` (from ``7684476``; Git
   commit, not on PyPI). The footer with the site name and theme selection now
   sits on the page background with a thin line in the content column instead

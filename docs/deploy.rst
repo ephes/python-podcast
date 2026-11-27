@@ -75,6 +75,18 @@ chromium`` and run ``just test-e2e``. Before deploying, also check the new froze
 environment with production settings and ``migrate --plan`` against PostgreSQL,
 and retain a fresh database backup and the previous commit/lock for rollback.
 
+2026-11-27 cast-vue f71c75d
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``uv.lock`` moves cast-vue from ``caa13867`` to ``f71c75d5`` (Git commit, not
+on PyPI; the version stays ``0.0.28``). Nothing else in the lock changed. No
+migration and no settings change. The Vue.js router uses the path of an
+absolute blog URL as its base; python-podcast delivers a path already, so its
+pages behave as before. Static bundle only.
+
+Rollback: as under "2026-11-18" below with the commit before this change,
+including the clean static rebuild.
+
 2026-11-27 cast-vue caa1386
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
