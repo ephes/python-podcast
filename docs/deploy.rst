@@ -87,6 +87,15 @@ pages behave as before. Static bundle only.
 Rollback: as under "2026-11-18" below with the commit before this change,
 including the clean static rebuild.
 
+Deployed ``8f80cef`` on 2026-11-27 at 19:15 with ``just pyinfra-check
+python_podcast production`` first, from an isolated clean ``PROJECTS_ROOT``
+and ops-control ``14aae132`` (``caa1386`` itself went live at 18:43 as ``8ac3444``).
+Verified after it in a browser with Vue.js chosen (phone and desktop, light and
+dark): pages load ``cast_vue/main-BB-OyYTZ.js`` and ``main-DaiSgm8b.css``; the
+footer sits on the page background with a hairline in the content column;
+episode links are ``/show/<slug>/``; no console errors and no horizontal
+overflow.
+
 2026-11-27 cast-vue caa1386
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
