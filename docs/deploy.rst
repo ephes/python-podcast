@@ -90,6 +90,17 @@ Rollback: as under "2026-11-18" below with the commit before this change,
 including the clean static rebuild; a reader who chose Vue.js then sees the
 ``062fa8e`` look again.
 
+Deployed ``21c7320`` on 2026-11-27 at 18:22 with ``just pyinfra-check
+python_podcast production`` first, from an isolated clean ``PROJECTS_ROOT``
+and ops-control ``14aae132``. Verified after it in a browser with Vue.js chosen
+(phone and desktop, light and dark): the header shows "Subscribe" and leads to
+``/show/feed/``; the archive shows the app row (Apple Podcasts, Overcast,
+Pocket Casts, Spotify, YouTube, RSS; phones show three plus "More options");
+episodes show the subscribe line below the player; the footer lists Feeds,
+Mastodon, LinkedIn and E-Mail; the feed page's Copy button puts the MP3 RSS
+URL on the clipboard; no horizontal overflow and no console errors. The feed
+page answers 200 in all themes.
+
 2026-11-27 cast-vue 062fa8e
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
