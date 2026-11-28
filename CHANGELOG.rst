@@ -4,6 +4,13 @@ Changelog
 Unreleased
 ----------
 
+* Move the React theme to cast-react ``v0.0.11`` (from ``v0.0.10``) and the
+  Vue.js theme to cast-vue ``7928378`` (from ``c52e95c``; Git commit, not on
+  PyPI). The subscribe page of both themes now recommends the M4A feed instead
+  of MP3 (better sound at the same size, plays in every common podcast app);
+  MP3 stays available among the other formats. Rollback in ``docs/deploy.rst``
+  (2026-11-28 M4A recommendation).
+
 * Move the React theme to cast-react ``v0.0.10`` (from ``v0.0.9``) and the
   Vue.js theme to cast-vue ``c52e95c`` (from ``f71c75d``; Git commit, not on
   PyPI). Both themes now offer the same Appearance menu in the header: the

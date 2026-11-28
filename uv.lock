@@ -348,8 +348,8 @@ dependencies = [
 
 [[package]]
 name = "cast-react"
-version = "0.0.10"
-source = { git = "https://github.com/ephes/cast-react?tag=v0.0.10#febd84bb1b618340bd850b2bcb4e7c7b1ededf7d" }
+version = "0.0.11"
+source = { git = "https://github.com/ephes/cast-react?tag=v0.0.11#68b56333191b86be27034370c76d02548031a4e8" }
 dependencies = [
     { name = "django-cast" },
     { name = "django-vite" },
@@ -358,7 +358,7 @@ dependencies = [
 [[package]]
 name = "cast-vue"
 version = "0.0.28"
-source = { git = "https://github.com/ephes/cast-vue?rev=c52e95c27de04cd86d5b9963309ae9980cb2ce65#c52e95c27de04cd86d5b9963309ae9980cb2ce65" }
+source = { git = "https://github.com/ephes/cast-vue?rev=79283784fa86ce362d4dbef6b655d838810bae8f#79283784fa86ce362d4dbef6b655d838810bae8f" }
 dependencies = [
     { name = "django-cast" },
     { name = "django-vite" },
@@ -2008,8 +2008,8 @@ requires-dist = [
     { name = "argon2-cffi" },
     { name = "boto3" },
     { name = "cast-bootstrap5", git = "https://github.com/ephes/cast-bootstrap5" },
-    { name = "cast-react", git = "https://github.com/ephes/cast-react?tag=v0.0.10" },
-    { name = "cast-vue", git = "https://github.com/ephes/cast-vue?rev=c52e95c27de04cd86d5b9963309ae9980cb2ce65" },
+    { name = "cast-react", git = "https://github.com/ephes/cast-react?tag=v0.0.11" },
+    { name = "cast-vue", git = "https://github.com/ephes/cast-vue?rev=79283784fa86ce362d4dbef6b655d838810bae8f" },
     { name = "certifi", specifier = ">=2026.10.19" },
     { name = "django-allauth" },
     { name = "django-anymail", extras = ["mailgun"] },
