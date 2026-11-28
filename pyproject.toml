@@ -58,9 +58,9 @@ dev = [
 
 [tool.uv.sources]
 # Vue theme redesign, pinned to a commit (not on PyPI).
-cast-vue = { git = "https://github.com/ephes/cast-vue", rev = "79283784fa86ce362d4dbef6b655d838810bae8f" }
+cast-vue = { git = "https://github.com/ephes/cast-vue", rev = "3f2733324736b6d5704995626285c3b19eaa9e17" }
 # React theme, pinned to a release tag (not on PyPI).
-cast-react = { git = "https://github.com/ephes/cast-react", tag = "v0.0.11" }
+cast-react = { git = "https://github.com/ephes/cast-react", tag = "v0.0.12" }
 # Git sources for deploys (rsync sends the working tree, so the deployed
 # pyproject must resolve server-side). Production and staging both use the
 # persistent player from cast-bootstrap5 main.

@@ -75,6 +75,24 @@ chromium`` and run ``just test-e2e``. Before deploying, also check the new froze
 environment with production settings and ``migrate --plan`` against PostgreSQL,
 and retain a fresh database backup and the previous commit/lock for rollback.
 
+2026-11-28 Theme layouts (cast-react v0.0.12, cast-vue 3f27333)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``uv.lock`` moves cast-react from ``v0.0.11`` (``68b56333``) to ``v0.0.12``
+(``6a6ea776``, Git tag, not on PyPI) and cast-vue from ``79283784`` to
+``3f273332`` (Git commit, not on PyPI; the version stays ``0.0.28``). Nothing
+else in the lock changed. No migration and no settings change. The two themes
+get their own post-list layouts: React shows the show (cover, title, podcast
+apps, follow links) as a left column with the episodes as cards beside it;
+Vue.js is a centred magazine column with a cover masthead, the newest episode
+as the lead story and filters folded into a bar above the posts. Follow links
+(Mastodon, LinkedIn, ...) now appear below the podcast apps and on the
+subscribe page as well as in the footer. Vue.js list and post requests send
+``theme=vue`` to the pages API. Templates, template tags and static bundles only.
+
+Rollback: as under "2026-11-18" below with the commit before this change,
+including the clean static rebuild.
+
 2026-11-28 M4A recommendation (cast-react v0.0.11, cast-vue 7928378)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

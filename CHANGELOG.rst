@@ -4,6 +4,14 @@ Changelog
 Unreleased
 ----------
 
+* Move the React theme to cast-react ``v0.0.12`` (from ``v0.0.11``) and the
+  Vue.js theme to cast-vue ``3f27333`` (from ``7928378``; Git commit, not on
+  PyPI). The two themes now look clearly different: React has a podcast-app
+  layout with the show in a left column and episode cards, Vue.js a centred
+  magazine layout with a large cover. Mastodon and LinkedIn links appear right
+  below the podcast app buttons and on the subscribe page. Rollback in
+  ``docs/deploy.rst`` (2026-11-28 Theme layouts).
+
 * Move the React theme to cast-react ``v0.0.11`` (from ``v0.0.10``) and the
   Vue.js theme to cast-vue ``7928378`` (from ``c52e95c``; Git commit, not on
   PyPI). The subscribe page of both themes now recommends the M4A feed instead
